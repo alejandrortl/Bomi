@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectOperario = document.getElementById('select-operario');
     const searchInput = document.getElementById('search-tareas');
 
+    // Referencias Nueva Tarea (Fecha y Voz)
+    const inputFecha = document.getElementById('input-fecha');
+    const inputTarea = document.getElementById('input-tarea');
+    const btnDictar = document.getElementById('btn-dictar');
+
     // Referencias Pizarra (Canvas)
     const modalCanvas = document.getElementById('modal-canvas');
     const btnOpenCanvas = document.getElementById('btn-open-canvas');
@@ -32,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allTasks = [];
     let drawingBlob = null;
 
-    // Escuchar cuando el usuario inicie sesión correctamente desde auth.js
+    // Escuchar cuando el usuario inicie sesión
     window.addEventListener('userLoggedIn', () => {
         loadTasks();
         if (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin') {
@@ -40,6 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
             loadOperariosSelect();
         }
     });
+
+    // Función auxiliar para obtener la fecha local de hoy en formato YYYY-MM-DD
+    function getTodayLocalString() {
+        const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+        return (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
+    }
 
     // === NAVEGACIÓN ===
     function hideAllViews() {
@@ -75,21 +86,59 @@ document.addEventListener('DOMContentLoaded', () => {
         hideAllViews();
         viewNewTask.classList.remove('hidden');
         viewNewTask.classList.add('flex');
+        // Al abrir el formulario, poner la fecha de hoy por defecto
+        if (inputFecha) inputFecha.value = getTodayLocalString();
     });
+
+    // === DICTADO POR VOZ (Web Speech API) ===
+    if (btnDictar && inputTarea) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES'; // Español
+            recognition.continuous = false; // Se detiene al hacer pausa
+            recognition.interimResults = false;
+
+            btnDictar.addEventListener('click', () => {
+                recognition.start();
+                // Animación visual MD3 para indicar que está escuchando
+                btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                // Añade al final dejando un espacio si ya hay texto
+                inputTarea.value += (inputTarea.value ? ' ' : '') + transcript;
+            };
+
+            recognition.onend = () => {
+                btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Error en dictado: ", event.error);
+                btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
+            };
+        } else {
+            // Si el navegador (como algunos Safari antiguos) no lo soporta, ocultamos el botón
+            btnDictar.style.display = 'none';
+        }
+    }
 
     // === 1. TAREAS ===
     async function loadTasks() {
         tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
         
-        // Cargar tareas (Corregido a supabaseClient)
+        const today = getTodayLocalString();
+
+        // Cargar SOLO las tareas programadas para HOY
         const { data, error } = await supabaseClient
             .from('tareas')
             .select('*')
-            .order('completada', { ascending: true })
-            .order('fecha', { ascending: false });
+            .eq('fecha', today)
+            .order('completada', { ascending: true });
 
         if (error) {
-            console.error("Error al cargar tareas:", error);
             tasksContainer.innerHTML = '<p class="text-error text-center mt-4">Error al cargar tareas.</p>';
             return;
         }
@@ -100,15 +149,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTasks(tasksToRender) {
         tasksContainer.innerHTML = '';
         if (tasksToRender.length === 0) {
-            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas pendientes.</p>';
+            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas programadas para hoy.</p>';
             return;
         }
 
         tasksToRender.forEach(tarea => {
             const isCompleted = tarea.completada;
             const cardBg = isCompleted ? 'bg-surface-variant opacity-70' : 'bg-surface-container-low';
-            
-            // Validar si el usuario actual es el operario asignado (usando username)
             const isMyTask = window.currentUserProfile && (tarea.operario_username === window.currentUserProfile.username);
 
             const card = document.createElement('div');
@@ -135,14 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Marcar como completada
     window.marcarCompletada = async function(id) {
         const { error } = await supabaseClient.from('tareas').update({ completada: true }).eq('id', id);
         if (!error) loadTasks();
-        else alert("Error al actualizar la tarea: " + error.message);
     };
 
-    // Buscador
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
@@ -155,16 +199,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 2. EMPLEADOS (Solo Admin) ===
+    // === 2. EMPLEADOS ===
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
         
         const { data, error } = await supabaseClient.from('perfiles').select('*').order('activo', { ascending: true });
-        if (error) {
-            console.error("Error al cargar empleados:", error);
-            return;
-        }
+        if (error) return;
         
         empleadosContainer.innerHTML = '';
         data.forEach(emp => {
@@ -178,118 +219,73 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <span class="text-xs px-2 py-1 rounded-full ${emp.rol === 'SuperAdmin' ? 'bg-purple-200 text-purple-900' : 'bg-blue-100 text-blue-800'}">${emp.rol}</span>
                 </div>
-                ${!emp.activo ? `
-                    <button onclick="activarEmpleado('${emp.id}')" class="mt-2 bg-primary text-on-primary py-2 rounded-lg text-sm font-medium hover:shadow-md transition-all">Aprobar Acceso</button>
-                ` : ''}
+                ${!emp.activo ? `<button onclick="activarEmpleado('${emp.id}')" class="mt-2 bg-primary text-on-primary py-2 rounded-lg text-sm font-medium hover:shadow-md transition-all">Aprobar Acceso</button>` : ''}
             `;
             empleadosContainer.appendChild(card);
         });
     }
 
-    // Aprobar operario nuevo
     window.activarEmpleado = async function(id) {
         if (confirm("¿Aprobar a este operario para que pueda usar la app?")) {
             const { error } = await supabaseClient.from('perfiles').update({ activo: true }).eq('id', id);
-            if (!error) {
-                loadEmpleados();
-                loadOperariosSelect();
-            } else {
-                alert("Error al activar: " + error.message);
-            }
+            if (!error) { loadEmpleados(); loadOperariosSelect(); }
         }
     };
 
-    // Llenar selector de operarios en nueva tarea
     async function loadOperariosSelect() {
         if (!selectOperario) return;
         const { data, error } = await supabaseClient.from('perfiles').select('username').eq('activo', true);
-        if (error) return console.error(error);
+        if (error) return;
         
         selectOperario.innerHTML = '<option value="" disabled selected>Selecciona un operario...</option>';
-        data.forEach(op => {
-            selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`;
-        });
+        data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
     }
 
-    // === 3. LÓGICA DE LA PIZARRA (CANVAS) ===
-    let isDrawing = false;
-    let currentColor = '#000000';
+    // === 3. PIZARRA ===
+    let isDrawing = false, currentColor = '#000000';
 
     function resizeCanvas() {
         if (!canvas) return;
         const rect = canvas.parentElement.getBoundingClientRect();
         canvas.width = rect.width;
         canvas.height = rect.height;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = 3;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    if (btnOpenCanvas) {
-        btnOpenCanvas.addEventListener('click', () => {
-            modalCanvas.classList.remove('hidden');
-            setTimeout(resizeCanvas, 50); // Dar tiempo a que el modal se renderice
-        });
-    }
-
-    if (btnCloseCanvas) {
-        btnCloseCanvas.addEventListener('click', () => modalCanvas.classList.add('hidden'));
-    }
+    if (btnOpenCanvas) btnOpenCanvas.addEventListener('click', () => { modalCanvas.classList.remove('hidden'); setTimeout(resizeCanvas, 50); });
+    if (btnCloseCanvas) btnCloseCanvas.addEventListener('click', () => modalCanvas.classList.add('hidden'));
 
     if (colorPickers) {
-        colorPickers.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                currentColor = e.target.dataset.color;
-                colorPickers.forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-primary'));
-                e.target.classList.add('ring-2', 'ring-offset-2', 'ring-primary');
-            });
-        });
+        colorPickers.forEach(btn => btn.addEventListener('click', (e) => {
+            currentColor = e.target.dataset.color;
+            colorPickers.forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-primary'));
+            e.target.classList.add('ring-2', 'ring-offset-2', 'ring-primary');
+        }));
     }
 
-    function startDrawing(e) {
-        isDrawing = true;
-        draw(e);
-    }
-
-    function stopDrawing() {
-        isDrawing = false;
-        if (ctx) ctx.beginPath();
-    }
-
+    function startDrawing(e) { isDrawing = true; draw(e); }
+    function stopDrawing() { isDrawing = false; if (ctx) ctx.beginPath(); }
     function draw(e) {
         if (!isDrawing || !ctx) return;
         e.preventDefault();
-        
         let clientX = e.clientX || (e.touches && e.touches[0].clientX);
         let clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        
         const rect = canvas.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-
-        ctx.strokeStyle = currentColor;
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
+        const x = clientX - rect.left; const y = clientY - rect.top;
+        ctx.strokeStyle = currentColor; ctx.lineTo(x, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y);
     }
 
     if (canvas) {
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseout', stopDrawing);
-
-        // Soporte táctil
+        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
         canvas.addEventListener('touchstart', startDrawing, { passive: false });
         canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stopDrawing);
     }
 
     if (btnClearCanvas) btnClearCanvas.addEventListener('click', resizeCanvas);
-
     if (btnSaveCanvas) {
         btnSaveCanvas.addEventListener('click', () => {
             if (!canvas) return;
@@ -304,44 +300,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnRemoveDrawing) {
         btnRemoveDrawing.addEventListener('click', () => {
-            drawingBlob = null;
-            previewDrawing.src = '';
+            drawingBlob = null; previewDrawing.src = '';
             attachedDrawingContainer.classList.add('hidden');
         });
     }
 
-    // === 4. GUARDAR NUEVA TAREA ===
+    // === 4. GUARDAR TAREA ===
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btnSubmit = e.target.querySelector('button[type="submit"]');
-            btnSubmit.disabled = true;
-            btnSubmit.textContent = "Guardando...";
+            btnSubmit.disabled = true; btnSubmit.textContent = "Guardando...";
 
             let imagenUrl = null;
-
-            // 1. Subir imagen a Storage (bucket 'pizarras') si hay un dibujo
             if (drawingBlob) {
                 const fileName = `pizarra_${Date.now()}.jpg`;
-                const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                    .from('pizarras')
-                    .upload(fileName, drawingBlob);
-
-                if (uploadError) {
-                    alert("Error al subir el dibujo: " + uploadError.message);
-                    btnSubmit.disabled = false;
-                    btnSubmit.textContent = "Guardar Tarea";
-                    return;
-                }
-
-                // Obtener URL pública de la imagen
+                const { error: uploadError } = await supabaseClient.storage.from('pizarras').upload(fileName, drawingBlob);
+                if (uploadError) { alert("Error al subir el dibujo."); btnSubmit.disabled = false; btnSubmit.textContent = "Guardar Tarea"; return; }
                 const { data: { publicUrl } } = supabaseClient.storage.from('pizarras').getPublicUrl(fileName);
                 imagenUrl = publicUrl;
             }
 
-            // 2. Insertar en base de datos de tareas
             const nuevaTarea = {
+                fecha: document.getElementById('input-fecha').value, // Guardamos la fecha seleccionada
                 cliente: document.getElementById('input-cliente').value,
                 obra: document.getElementById('input-obra').value,
                 direccion: document.getElementById('input-direccion').value,
@@ -353,17 +335,9 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const { error } = await supabaseClient.from('tareas').insert([nuevaTarea]);
-
-            if (error) {
-                alert("Error al guardar: " + error.message);
-            } else {
-                e.target.reset();
-                if (btnRemoveDrawing) btnRemoveDrawing.click();
-                navHome.click(); // Volver al inicio
-            }
-
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = "Guardar Tarea";
+            if (error) alert("Error: " + error.message);
+            else { e.target.reset(); if (btnRemoveDrawing) btnRemoveDrawing.click(); navHome.click(); }
+            btnSubmit.disabled = false; btnSubmit.textContent = "Guardar Tarea";
         });
     }
 });
