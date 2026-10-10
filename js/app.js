@@ -1,28 +1,34 @@
 // js/app.js
 document.addEventListener('DOMContentLoaded', () => {
-    // Vistas principales
     const viewTaskList = document.getElementById('view-task-list');
     const viewNewTask = document.getElementById('view-new-task');
     const viewEmpleados = document.getElementById('view-empleados');
     
-    // Navegación
     const navHome = document.getElementById('nav-home');
     const navEmpleados = document.getElementById('nav-empleados');
     const fabNewTask = document.getElementById('fab-new-task');
     
-    // Contenedores y Buscador
     const tasksContainer = document.getElementById('tasks-container');
     const empleadosContainer = document.getElementById('empleados-container');
     const selectOperario = document.getElementById('select-operario');
     const searchInput = document.getElementById('search-tareas');
-    const filtroFechaDiario = document.getElementById('filtro-fecha-diario'); // Nuevo
+    const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
 
-    // Referencias Nueva Tarea (Fecha y Voz)
     const inputFecha = document.getElementById('input-fecha');
+    const inputCliente = document.getElementById('input-cliente');
+    const inputObra = document.getElementById('input-obra');
+    const inputDireccion = document.getElementById('input-direccion');
+    const inputLocalidad = document.getElementById('input-localidad');
     const inputTarea = document.getElementById('input-tarea');
+    const editTaskId = document.getElementById('edit-task-id');
+    const btnCancelTask = document.getElementById('btn-cancel-task');
     const btnDictar = document.getElementById('btn-dictar');
 
-    // Referencias Pizarra (Canvas)
+    // Modales
+    const modalDetalle = document.getElementById('modal-detalle-tarea');
+    const detalleContenido = document.getElementById('detalle-contenido');
+    const btnCloseDetalle = document.getElementById('btn-close-detalle');
+
     const modalCanvas = document.getElementById('modal-canvas');
     const btnOpenCanvas = document.getElementById('btn-open-canvas');
     const btnCloseCanvas = document.getElementById('btn-close-canvas');
@@ -39,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let drawingBlob = null;
 
     window.addEventListener('userLoggedIn', () => {
-        // Al iniciar sesión, seteamos el calendario principal al día de hoy
         if (filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
         loadTasks();
         if (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin') {
@@ -85,12 +90,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fabNewTask.addEventListener('click', () => {
         hideAllViews();
+        document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea";
+        document.getElementById('form-new-task').reset();
+        editTaskId.value = "";
+        if (inputFecha) inputFecha.value = getTodayLocalString();
         viewNewTask.classList.remove('hidden');
         viewNewTask.classList.add('flex');
-        if (inputFecha) inputFecha.value = getTodayLocalString();
     });
 
-    // === DICTADO POR VOZ (Web Speech API) ===
+    if (btnCancelTask) {
+        btnCancelTask.addEventListener('click', () => {
+            navHome.click();
+        });
+    }
+
+    // === DICTADO POR VOZ (Con manejo de error de red) ===
     if (btnDictar && inputTarea) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
@@ -104,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     recognition.start();
                     btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
                 } catch (e) {
-                    console.log("El micrófono ya está escuchando o hubo un error de inicio.");
+                    console.log("Reconocimiento ya activo.");
                 }
             });
 
@@ -118,35 +132,32 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             recognition.onerror = (event) => {
-                console.error("Error en dictado: ", event.error);
                 btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
-                if (event.error === 'not-allowed') {
-                    alert("Debes darle permiso al navegador para usar el micrófono.");
+                if (event.error === 'network') {
+                    alert("Error de red: El dictado por voz requiere conexión estable a internet y permisos de los servicios de voz del navegador.");
+                } else if (event.error === 'not-allowed') {
+                    alert("Permiso de micrófono denegado.");
+                } else {
+                    alert("Error en dictado: " + event.error);
                 }
             };
         } else {
-            // Si no está soportado, al hacer clic mostramos un aviso en lugar de ocultarlo.
             btnDictar.addEventListener('click', () => {
-                alert("Tu navegador actual no soporta el dictado por voz nativo. Por favor, usa el teclado o el micrófono del teclado de tu móvil.");
+                alert("Tu navegador no soporta el dictado por voz nativo.");
             });
         }
     }
 
-    // === 1. TAREAS ===
-    // Listener para cuando el usuario cambie la fecha en la pantalla principal
+    // === 1. TAREAS Y BUSCADOR MULTICRITERIO ===
     if (filtroFechaDiario) {
-        filtroFechaDiario.addEventListener('change', () => {
-            loadTasks();
-        });
+        filtroFechaDiario.addEventListener('change', loadTasks);
     }
 
     async function loadTasks() {
         if (!tasksContainer || !filtroFechaDiario) return;
         tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
         
-        // Lee la fecha seleccionada en el calendario principal
         const selectedDate = filtroFechaDiario.value;
-
         const { data, error } = await supabaseClient
             .from('tareas')
             .select('*')
@@ -164,9 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTasks(tasksToRender) {
         tasksContainer.innerHTML = '';
         if (tasksToRender.length === 0) {
-            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas programadas para esta fecha.</p>';
+            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas para esta fecha.</p>';
             return;
         }
+
+        const isAdmin = window.currentUserProfile && (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin');
 
         tasksToRender.forEach(tarea => {
             const isCompleted = tarea.completada;
@@ -175,46 +188,125 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const card = document.createElement('div');
             card.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2 transition-all`;
+            
+            // Vista resumida
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-medium text-primary bg-primary-container px-2 py-1 rounded-md">${tarea.cliente} - ${tarea.obra}</span>
                     ${isCompleted ? '<span class="material-symbols-outlined text-green-600">check_circle</span>' : ''}
                 </div>
-                <h3 class="font-medium text-lg ${isCompleted ? 'line-through text-on-surface-variant' : 'text-on-surface'}">${tarea.tarea}</h3>
-                <div class="text-sm text-on-surface-variant flex flex-col gap-1 mt-1">
-                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">location_on</span> ${tarea.direccion}, ${tarea.localidad}</span>
-                    <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">person</span> Operario: <b>@${tarea.operario_username}</b></span>
+                <h3 class="font-medium text-base truncate ${isCompleted ? 'line-through text-on-surface-variant' : 'text-on-surface'}">${tarea.tarea}</h3>
+                <div class="text-xs text-on-surface-variant flex justify-between mt-1">
+                    <span>👷 @${tarea.operario_username}</span>
+                    <span>📍 ${tarea.localidad}</span>
                 </div>
-                ${tarea.imagen_url ? `<img src="${tarea.imagen_url}" class="mt-2 rounded-xl border border-outline-variant max-w-full h-auto" alt="Pizarra adjunta">` : ''}
                 
-                ${(!isCompleted && isMyTask) ? `
-                    <button onclick="marcarCompletada('${tarea.id}')" class="mt-3 bg-secondary-container text-on-secondary-container py-2 rounded-xl font-medium w-full flex items-center justify-center gap-2 hover:bg-primary-container transition-colors">
-                        <span class="material-symbols-outlined">done</span> Marcar Realizada
+                <!-- Botones de Acción (Ver, Editar, Eliminar, Marcar realizada) -->
+                <div class="flex gap-2 mt-3 pt-2 border-t border-outline-variant items-center justify-between">
+                    <button onclick="verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">visibility</span> Ver
                     </button>
-                ` : ''}
+                    
+                    <div class="flex gap-2">
+                        ${(!isCompleted && isMyTask) ? `
+                            <button onclick="marcarCompletada('${tarea.id}')" class="text-xs bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg font-medium">Realizada</button>
+                        ` : ''}
+
+                        ${isAdmin ? `
+                            <button onclick="editarTarea('${tarea.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">edit</span> Editar
+                            </button>
+                            <button onclick="eliminarTarea('${tarea.id}')" class="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">delete</span>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
             `;
             tasksContainer.appendChild(card);
         });
     }
+
+    // Buscador Multicriterio (operario, fecha, cliente, obra, direccion, localidad)
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtradas = allTasks.filter(t => 
+                (t.operario_username && t.operario_username.toLowerCase().includes(q)) || 
+                (t.fecha && t.fecha.toLowerCase().includes(q)) ||
+                (t.cliente && t.cliente.toLowerCase().includes(q)) ||
+                (t.obra && t.obra.toLowerCase().includes(q)) ||
+                (t.direccion && t.direccion.toLowerCase().includes(q)) ||
+                (t.localidad && t.localidad.toLowerCase().includes(q)) ||
+                (t.tarea && t.tarea.toLowerCase().includes(q))
+            );
+            renderTasks(filtradas);
+        });
+    }
+
+    // === 2. VER DETALLES Y GOOGLE MAPS ===
+    window.verDetalles = function(id) {
+        const tarea = allTasks.find(t => t.id === id);
+        if (!tarea) return;
+
+        const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+        detalleContenido.innerHTML = `
+            <div><span class="text-xs text-on-surface-variant">Cliente / Obra:</span><p class="font-medium text-lg">${tarea.cliente} - ${tarea.obra}</p></div>
+            <div><span class="text-xs text-on-surface-variant">Fecha programada:</span><p class="font-medium">${tarea.fecha}</p></div>
+            <div>
+                <span class="text-xs text-on-surface-variant">Dirección:</span>
+                <p class="font-medium flex items-center justify-between">
+                    <span>${tarea.direccion}, ${tarea.localidad}</span>
+                    <a href="${mapsUrl}" target="_blank" class="bg-primary text-on-primary text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-sm hover:opacity-90">
+                        <span class="material-symbols-outlined text-[14px]">map</span> Google Maps
+                    </a>
+                </p>
+            </div>
+            <div><span class="text-xs text-on-surface-variant">Operario Asignado:</span><p class="font-medium">@${tarea.operario_username}</p></div>
+            <div><span class="text-xs text-on-surface-variant">Descripción de la Tarea:</span><p class="bg-surface-container p-3 rounded-xl mt-1">${tarea.tarea}</p></div>
+            ${tarea.imagen_url ? `<div><span class="text-xs text-on-surface-variant">Pizarra Adjunta:</span><img src="${tarea.imagen_url}" class="mt-2 rounded-xl border border-outline-variant w-full"></div>` : ''}
+        `;
+        modalDetalle.classList.remove('hidden');
+    };
+
+    if (btnCloseDetalle) btnCloseDetalle.addEventListener('click', () => modalDetalle.classList.add('hidden'));
+
+    // === 3. EDITAR Y ELIMINAR TAREA (Solo Admin) ===
+    window.editarTarea = function(id) {
+        const tarea = allTasks.find(t => t.id === id);
+        if (!tarea) return;
+
+        hideAllViews();
+        document.getElementById('form-task-title').textContent = "Editar Tarea";
+        editTaskId.value = tarea.id;
+        inputFecha.value = tarea.fecha;
+        inputCliente.value = tarea.cliente;
+        inputObra.value = tarea.obra;
+        inputDireccion.value = tarea.direccion;
+        inputLocalidad.value = tarea.localidad;
+        selectOperario.value = tarea.operario_username;
+        inputTarea.value = tarea.tarea;
+
+        viewNewTask.classList.remove('hidden');
+        viewNewTask.classList.add('flex');
+    };
+
+    window.eliminarTarea = async function(id) {
+        if (confirm("¿Estás seguro de eliminar esta tarea?")) {
+            const { error } = await supabaseClient.from('tareas').delete().eq('id', id);
+            if (!error) loadTasks();
+            else alert("Error al eliminar: " + error.message);
+        }
+    };
 
     window.marcarCompletada = async function(id) {
         const { error } = await supabaseClient.from('tareas').update({ completada: true }).eq('id', id);
         if (!error) loadTasks();
     };
 
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            const filtradas = allTasks.filter(t => 
-                (t.operario_username && t.operario_username.toLowerCase().includes(query)) || 
-                (t.tarea && t.tarea.toLowerCase().includes(query)) ||
-                (t.obra && t.obra.toLowerCase().includes(query))
-            );
-            renderTasks(filtradas);
-        });
-    }
-
-    // === 2. EMPLEADOS ===
+    // === 4. EMPLEADOS ===
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
@@ -233,14 +325,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <span class="text-xs px-2 py-1 rounded-full ${emp.rol === 'SuperAdmin' ? 'bg-purple-200 text-purple-900' : 'bg-blue-100 text-blue-800'}">${emp.rol}</span>
                 </div>
-                ${!emp.activo ? `<button onclick="activarEmpleado('${emp.id}')" class="mt-2 bg-primary text-on-primary py-2 rounded-lg text-sm font-medium hover:shadow-md transition-all">Aprobar Acceso</button>` : ''}
+                ${!emp.activo ? `<button onclick="activarEmpleado('${emp.id}')" class="mt-2 bg-primary text-on-primary py-2 rounded-lg text-sm font-medium">Aprobar Acceso</button>` : ''}
             `;
             empleadosContainer.appendChild(card);
         });
     }
 
     window.activarEmpleado = async function(id) {
-        if (confirm("¿Aprobar a este operario para que pueda usar la app?")) {
+        if (confirm("¿Aprobar a este operario?")) {
             const { error } = await supabaseClient.from('perfiles').update({ activo: true }).eq('id', id);
             if (!error) { loadEmpleados(); loadOperariosSelect(); }
         }
@@ -254,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
     }
 
-    // === 3. PIZARRA ===
+    // === 5. PIZARRA ===
     let isDrawing = false, currentColor = '#000000';
     function resizeCanvas() {
         if (!canvas) return;
@@ -310,60 +402,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 4. GUARDAR TAREA (SISTEMA ANTI-ERRORES) ===
+    // === 6. GUARDAR O ACTUALIZAR TAREA ===
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            // Verificación profunda para evitar errores 'null'
-            const camposRequeridos = ['input-fecha', 'input-cliente', 'input-obra', 'input-direccion', 'input-localidad', 'select-operario', 'input-tarea'];
-            let faltaHTML = null;
-            
-            camposRequeridos.forEach(id => {
-                if (!document.getElementById(id)) faltaHTML = id;
-            });
-
-            if (faltaHTML) {
-                alert(`Error en el HTML: Falta el id "${faltaHTML}" en tu archivo index.html. Por favor revisa que copiaste todo el bloque correctamente.`);
-                return;
-            }
-
-            const btnSubmit = e.target.querySelector('button[type="submit"]');
+            const btnSubmit = document.getElementById('btn-submit-task');
             btnSubmit.disabled = true; btnSubmit.textContent = "Guardando...";
 
             let imagenUrl = null;
             if (drawingBlob) {
                 const fileName = `pizarra_${Date.now()}.jpg`;
                 const { error: uploadError } = await supabaseClient.storage.from('pizarras').upload(fileName, drawingBlob);
-                if (uploadError) { alert("Error al subir el dibujo."); btnSubmit.disabled = false; btnSubmit.textContent = "Guardar Tarea"; return; }
-                const { data: { publicUrl } } = supabaseClient.storage.from('pizarras').getPublicUrl(fileName);
+                if (uploadError) { alert("Error al subir el dibujo."); btnSubmit.disabled = false; btnSubmit.textContent = "Guardar"; return; }
+                const { data: { publicUrl } } = await supabaseClient.storage.from('pizarras').getPublicUrl(fileName);
                 imagenUrl = publicUrl;
             }
 
-            const nuevaTarea = {
-                fecha: document.getElementById('input-fecha').value, 
-                cliente: document.getElementById('input-cliente').value,
-                obra: document.getElementById('input-obra').value,
-                direccion: document.getElementById('input-direccion').value,
-                localidad: document.getElementById('input-localidad').value,
-                operario_username: document.getElementById('select-operario').value,
-                tarea: document.getElementById('input-tarea').value,
-                imagen_url: imagenUrl,
+            const tareaData = {
+                fecha: inputFecha.value,
+                cliente: inputCliente.value,
+                obra: inputObra.value,
+                direccion: inputDireccion.value,
+                localidad: inputLocalidad.value,
+                operario_username: selectOperario.value,
+                tarea: inputTarea.value,
                 user_id: window.currentUserProfile.id
             };
+            if (imagenUrl) tareaData.imagen_url = imagenUrl;
 
-            const { error } = await supabaseClient.from('tareas').insert([nuevaTarea]);
-            if (error) {
-                alert("Error base de datos: " + error.message);
-            } else { 
-                e.target.reset(); 
-                if (btnRemoveDrawing) btnRemoveDrawing.click(); 
-                // Restauramos el calendario de la vista principal al día actual para ver la tarea (si era de hoy)
-                if (filtroFechaDiario) filtroFechaDiario.value = document.getElementById('input-fecha').value;
-                navHome.click(); 
+            const taskId = editTaskId.value;
+            let error;
+
+            if (taskId) {
+                // Actualizar tarea existente
+                const res = await supabaseClient.from('tareas').update(tareaData).eq('id', taskId);
+                error = res.error;
+            } else {
+                // Crear nueva tarea
+                const res = await supabaseClient.from('tareas').insert([tareaData]);
+                error = res.error;
             }
-            btnSubmit.disabled = false; btnSubmit.textContent = "Guardar Tarea";
+
+            if (error) {
+                alert("Error: " + error.message);
+            } else {
+                formNewTask.reset();
+                if (btnRemoveDrawing) btnRemoveDrawing.click();
+                if (filtroFechaDiario) filtroFechaDiario.value = inputFecha.value;
+                navHome.click();
+            }
+            btnSubmit.disabled = false; btnSubmit.textContent = "Guardar";
         });
     }
 });
