@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelTask = document.getElementById('btn-cancel-task');
     const btnDictar = document.getElementById('btn-dictar');
 
-    // Modales
     const modalDetalle = document.getElementById('modal-detalle-tarea');
     const detalleContenido = document.getElementById('detalle-contenido');
     const btnCloseDetalle = document.getElementById('btn-close-detalle');
@@ -104,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === DICTADO POR VOZ (Con manejo de error de red) ===
+    // === DICTADO POR VOZ ===
     if (btnDictar && inputTarea) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
@@ -134,11 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
             recognition.onerror = (event) => {
                 btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
                 if (event.error === 'network') {
-                    alert("Error de red: El dictado por voz requiere conexión estable a internet y permisos de los servicios de voz del navegador.");
+                    alert("Error de red: El dictado por voz requiere conexión estable a internet.");
                 } else if (event.error === 'not-allowed') {
                     alert("Permiso de micrófono denegado.");
-                } else {
-                    alert("Error en dictado: " + event.error);
                 }
             };
         } else {
@@ -186,22 +183,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const cardBg = isCompleted ? 'bg-surface-variant opacity-70' : 'bg-surface-container-low';
             const isMyTask = window.currentUserProfile && (tarea.operario_username === window.currentUserProfile.username);
 
+            // Generar enlace directo a Google Maps con la dirección y localidad
+            const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
             const card = document.createElement('div');
             card.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2 transition-all`;
             
-            // Vista resumida
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-medium text-primary bg-primary-container px-2 py-1 rounded-md">${tarea.cliente} - ${tarea.obra}</span>
                     ${isCompleted ? '<span class="material-symbols-outlined text-green-600">check_circle</span>' : ''}
                 </div>
                 <h3 class="font-medium text-base truncate ${isCompleted ? 'line-through text-on-surface-variant' : 'text-on-surface'}">${tarea.tarea}</h3>
-                <div class="text-xs text-on-surface-variant flex justify-between mt-1">
+                
+                <div class="text-xs text-on-surface-variant flex justify-between items-center mt-1">
                     <span>👷 @${tarea.operario_username}</span>
-                    <span>📍 ${tarea.localidad}</span>
+                    <!-- ACCESO DIRECTO A GOOGLE MAPS EN LA TARJETA PRINCIPAL -->
+                    <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-primary font-medium hover:underline bg-surface px-2 py-1 rounded-md border border-outline-variant">
+                        <span class="material-symbols-outlined text-[14px]">map</span> ${tarea.localidad}
+                    </a>
                 </div>
                 
-                <!-- Botones de Acción (Ver, Editar, Eliminar, Marcar realizada) -->
                 <div class="flex gap-2 mt-3 pt-2 border-t border-outline-variant items-center justify-between">
                     <button onclick="verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px]">visibility</span> Ver
@@ -227,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Buscador Multicriterio (operario, fecha, cliente, obra, direccion, localidad)
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const q = e.target.value.toLowerCase();
@@ -244,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 2. VER DETALLES Y GOOGLE MAPS ===
+    // === 2. VER DETALLES ===
     window.verDetalles = function(id) {
         const tarea = allTasks.find(t => t.id === id);
         if (!tarea) return;
@@ -273,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnCloseDetalle) btnCloseDetalle.addEventListener('click', () => modalDetalle.classList.add('hidden'));
 
-    // === 3. EDITAR Y ELIMINAR TAREA (Solo Admin) ===
+    // === 3. EDITAR Y ELIMINAR ===
     window.editarTarea = function(id) {
         const tarea = allTasks.find(t => t.id === id);
         if (!tarea) return;
@@ -402,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 6. GUARDAR O ACTUALIZAR TAREA ===
+    // === 6. GUARDAR O ACTUALIZAR ===
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
@@ -435,11 +437,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let error;
 
             if (taskId) {
-                // Actualizar tarea existente
                 const res = await supabaseClient.from('tareas').update(tareaData).eq('id', taskId);
                 error = res.error;
             } else {
-                // Crear nueva tarea
                 const res = await supabaseClient.from('tareas').insert([tareaData]);
                 error = res.error;
             }
