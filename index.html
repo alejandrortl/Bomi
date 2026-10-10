@@ -23,7 +23,7 @@
         </div>
     </header>
 
-    <!-- BLOQUE 2: AUTENTICACIÓN (Login y Registro) -->
+    <!-- BLOQUE 2: AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
         <div class="bg-surface-container-low p-8 rounded-3xl shadow-md w-full flex flex-col gap-6">
             <div class="text-center">
@@ -33,49 +33,34 @@
             </div>
             
             <form id="form-auth" class="flex flex-col gap-4">
-                <!-- Campos extra para Registro (Ocultos en Login) -->
                 <div id="register-fields" class="hidden flex-col gap-4">
-                    <div class="md3-input-group">
-                        <label>Nombre</label>
-                        <input type="text" id="auth-nombre">
-                    </div>
-                    <div class="md3-input-group">
-                        <label>Apellido</label>
-                        <input type="text" id="auth-apellido">
-                    </div>
+                    <div class="md3-input-group"><label>Nombre</label><input type="text" id="auth-nombre"></div>
+                    <div class="md3-input-group"><label>Apellido</label><input type="text" id="auth-apellido"></div>
                 </div>
-
-                <div class="md3-input-group">
-                    <label>Correo Electrónico</label>
-                    <input type="email" id="auth-email" required>
-                </div>
-                <div class="md3-input-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="auth-password" required minlength="6">
-                </div>
+                <div class="md3-input-group"><label>Correo Electrónico</label><input type="email" id="auth-email" required></div>
+                <div class="md3-input-group"><label>Contraseña</label><input type="password" id="auth-password" required minlength="6"></div>
                 
-                <button type="submit" id="btn-auth-submit" class="bg-primary text-on-primary w-full py-3 rounded-full font-medium mt-2 shadow-sm hover:shadow-md transition-all">Ingresar</button>
+                <button type="submit" id="btn-auth-submit" class="bg-primary text-on-primary w-full py-3 rounded-full font-medium mt-2 shadow-sm">Ingresar</button>
                 <p id="auth-error" class="text-error text-sm text-center hidden"></p>
                 <p id="auth-success" class="text-green-600 text-sm text-center hidden"></p>
             </form>
-            
             <div class="text-center mt-2">
                 <button id="btn-toggle-auth" class="text-primary text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
             </div>
         </div>
     </main>
 
-    <!-- BLOQUE 3: CONTENIDO PRINCIPAL DE LA APP -->
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-24 relative">
         
-        <!-- Vista: Lista de Tareas (Con selector de fecha) -->
+        <!-- Vista: Lista de Tareas -->
         <section id="view-task-list" class="flex flex-col gap-4">
+            <!-- Buscador Multicriterio -->
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-tareas" placeholder="Buscar por operario o tarea..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant">
+                <input type="text" id="search-tareas" placeholder="Buscar por operario, fecha, cliente, obra..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant">
             </div>
             
-            <!-- NUEVO BLOQUE: Título con Selector de Fecha MD3 -->
             <div class="flex justify-between items-center mt-2">
                 <h2 class="text-lg font-medium text-on-surface">Diario de Tareas</h2>
                 <input type="date" id="filtro-fecha-diario" class="bg-surface-container-low border border-outline-variant rounded-lg p-2 text-sm text-on-surface focus:outline-none focus:border-primary">
@@ -84,16 +69,13 @@
             <div id="tasks-container" class="flex flex-col gap-3"></div>
         </section>
 
-       <!-- Vista: Nueva Tarea (Revisada para evitar el error null) -->
+        <!-- Vista: Nueva Tarea (Con Botón Cancelar) -->
         <section id="view-new-task" class="hidden flex-col gap-4">
-            <h2 class="text-lg font-medium text-on-surface">Asignar Nueva Tarea</h2>
+            <h2 class="text-lg font-medium text-on-surface" id="form-task-title">Asignar Nueva Tarea</h2>
             <form id="form-new-task" class="flex flex-col gap-4 bg-surface-container-low p-4 rounded-2xl shadow-sm">
+                <input type="hidden" id="edit-task-id" value="">
                 
-                <div class="md3-input-group">
-                    <label>Fecha a realizar</label>
-                    <input type="date" id="input-fecha" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface focus:outline-none focus:border-primary focus:border-2">
-                </div>
-
+                <div class="md3-input-group"><label>Fecha a realizar</label><input type="date" id="input-fecha" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
                 <div class="md3-input-group"><label>Cliente</label><input type="text" id="input-cliente" required></div>
                 <div class="md3-input-group"><label>Obra</label><input type="text" id="input-obra" required></div>
                 
@@ -104,7 +86,7 @@
                 
                 <div class="md3-input-group">
                     <label>Operario (Asignado a)</label>
-                    <select id="select-operario" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface focus:outline-none focus:border-primary focus:border-2">
+                    <select id="select-operario" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
                         <option value="">Cargando operarios...</option>
                     </select>
                 </div>
@@ -112,26 +94,27 @@
                 <div class="md3-input-group">
                     <label>Tarea a realizar</label>
                     <div class="flex items-start gap-2">
-                        <textarea id="input-tarea" rows="3" required class="flex-1 bg-surface border border-outline-variant rounded p-3 text-on-surface focus:outline-none focus:border-primary focus:border-2"></textarea>
-                        <!-- Botón del Micrófono -->
+                        <textarea id="input-tarea" rows="3" required class="flex-1 bg-surface border border-outline-variant rounded p-3 text-on-surface"></textarea>
                         <button type="button" id="btn-dictar" class="material-symbols-outlined bg-secondary-container text-on-secondary-container p-3 rounded-full hover:bg-primary-container transition-colors shrink-0 shadow-sm" title="Dictar por voz">mic</button>
                     </div>
                 </div>
                 
-                <!-- Contenedor del dibujo -->
                 <div id="attached-drawing-container" class="hidden flex flex-col gap-2">
                     <img id="preview-drawing" src="" class="rounded-xl border border-outline max-w-xs">
                     <button type="button" id="btn-remove-drawing" class="text-error text-sm font-medium self-start">Eliminar dibujo</button>
                 </div>
                 
                 <div class="flex justify-between items-center mt-4">
-                    <button type="button" id="btn-open-canvas" class="flex items-center gap-2 text-primary font-medium p-2 rounded-xl hover:bg-primary-container transition-colors"><span class="material-symbols-outlined">draw</span>Añadir Pizarra</button>
-                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Tarea</button>
+                    <button type="button" id="btn-open-canvas" class="flex items-center gap-2 text-primary font-medium p-2 rounded-xl hover:bg-primary-container transition-colors"><span class="material-symbols-outlined">draw</span>Pizarra</button>
+                    <div class="flex gap-2">
+                        <button type="button" id="btn-cancel-task" class="px-4 py-2 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors">Cancelar</button>
+                        <button type="submit" id="btn-submit-task" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar</button>
+                    </div>
                 </div>
             </form>
         </section>
 
-        <!-- Vista: Gestión de Empleados (Solo Admins) -->
+        <!-- Vista: Gestión de Empleados -->
         <section id="view-empleados" class="hidden flex-col gap-4">
             <h2 class="text-lg font-medium text-on-surface">Gestión de Personal</h2>
             <div id="empleados-container" class="flex flex-col gap-3"></div>
@@ -139,33 +122,42 @@
 
     </main>
 
+    <!-- BLOQUE 4: MODAL DE DETALLES DE TAREA (VER MÁS) -->
+    <div id="modal-detalle-tarea" class="hidden fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+        <div class="bg-surface w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
+                <h3 class="font-medium text-on-surface text-lg">Detalles de la Tarea</h3>
+                <button type="button" id="btn-close-detalle" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
+            </div>
+            <div id="detalle-contenido" class="p-6 overflow-y-auto flex flex-col gap-4 text-on-surface">
+                <!-- Se inyecta por JS -->
+            </div>
+        </div>
+    </div>
 
-    <!-- BLOQUE 4: MODAL DE LA PIZARRA (Oculto por defecto) -->
+    <!-- BLOQUE 5: MODAL DE PIZARRA -->
     <div id="modal-canvas" class="hidden fixed inset-0 bg-black/60 z-50 flex flex-col justify-end sm:justify-center items-center pb-safe sm:p-4">
         <div class="bg-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant">
                 <h3 class="font-medium text-on-surface">Pizarra / Esquema</h3>
-                <button id="btn-close-canvas" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full transition-colors">close</button>
+                <button type="button" id="btn-close-canvas" class="material-symbols-outlined text-on-surface-variant p-2">close</button>
             </div>
-            
-            <!-- Lienzo de dibujo (touch-none evita que la pantalla haga scroll al dibujar en móviles) -->
             <div class="w-full bg-white relative" style="height: 60vh;">
                 <canvas id="drawing-canvas" class="w-full h-full cursor-crosshair touch-none"></canvas>
             </div>
-
-            <!-- Controles de la pizarra MD3 -->
             <div class="p-4 bg-surface-container flex justify-between items-center">
                 <div class="flex gap-3">
                     <button type="button" class="color-picker w-8 h-8 rounded-full bg-black ring-2 ring-offset-2 ring-primary border-2 border-white" data-color="#000000"></button>
                     <button type="button" class="color-picker w-8 h-8 rounded-full bg-red-600 border-2 border-white" data-color="#DC2626"></button>
                     <button type="button" class="color-picker w-8 h-8 rounded-full bg-blue-600 border-2 border-white" data-color="#2563EB"></button>
-                    <button type="button" id="btn-clear-canvas" class="material-symbols-outlined text-on-surface-variant ml-2 p-1 hover:bg-surface-variant rounded-full transition-colors">delete</button>
+                    <button type="button" id="btn-clear-canvas" class="material-symbols-outlined text-on-surface-variant ml-2 p-1">delete</button>
                 </div>
-                <button type="button" id="btn-save-canvas" class="bg-primary text-on-primary px-4 py-2 rounded-full font-medium text-sm hover:shadow-md transition-all">Adjuntar</button>
+                <button type="button" id="btn-save-canvas" class="bg-primary text-on-primary px-4 py-2 rounded-full font-medium text-sm">Adjuntar</button>
             </div>
         </div>
     </div>
-    <!-- BLOQUE 5: FAB Y NAVEGACIÓN INFERIOR -->
+
+    <!-- BLOQUE 6: FAB Y NAVEGACIÓN -->
     <button id="fab-new-task" class="hidden fixed bottom-20 right-4 sm:right-8 bg-primary-container text-on-primary-container p-4 rounded-2xl shadow-lg z-40 items-center justify-center"><span class="material-symbols-outlined">add</span></button>
 
     <nav id="bottom-nav" class="hidden w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center shrink-0 z-40 pb-safe">
@@ -173,7 +165,6 @@
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
             <span class="text-[11px] font-medium">Diario</span>
         </button>
-        <!-- Botón Empleados (Solo se mostrará a Admins por JS) -->
         <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span>
             <span class="text-[11px] font-medium">Empleados</span>
