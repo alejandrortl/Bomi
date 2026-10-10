@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const empleadosContainer = document.getElementById('empleados-container');
     const selectOperario = document.getElementById('select-operario');
     const searchInput = document.getElementById('search-tareas');
+    const filtroFechaDiario = document.getElementById('filtro-fecha-diario'); // Nuevo
 
     // Referencias Nueva Tarea (Fecha y Voz)
     const inputFecha = document.getElementById('input-fecha');
@@ -37,8 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let allTasks = [];
     let drawingBlob = null;
 
-    // Escuchar cuando el usuario inicie sesión
     window.addEventListener('userLoggedIn', () => {
+        // Al iniciar sesión, seteamos el calendario principal al día de hoy
+        if (filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
         loadTasks();
         if (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin') {
             loadEmpleados();
@@ -46,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Función auxiliar para obtener la fecha local de hoy en formato YYYY-MM-DD
     function getTodayLocalString() {
         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
         return (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
@@ -86,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
         hideAllViews();
         viewNewTask.classList.remove('hidden');
         viewNewTask.classList.add('flex');
-        // Al abrir el formulario, poner la fecha de hoy por defecto
         if (inputFecha) inputFecha.value = getTodayLocalString();
     });
 
@@ -95,19 +95,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES'; // Español
-            recognition.continuous = false; // Se detiene al hacer pausa
+            recognition.lang = 'es-ES';
+            recognition.continuous = false;
             recognition.interimResults = false;
 
             btnDictar.addEventListener('click', () => {
-                recognition.start();
-                // Animación visual MD3 para indicar que está escuchando
-                btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
+                try {
+                    recognition.start();
+                    btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
+                } catch (e) {
+                    console.log("El micrófono ya está escuchando o hubo un error de inicio.");
+                }
             });
 
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
-                // Añade al final dejando un espacio si ya hay texto
                 inputTarea.value += (inputTarea.value ? ' ' : '') + transcript;
             };
 
@@ -118,24 +120,37 @@ document.addEventListener('DOMContentLoaded', () => {
             recognition.onerror = (event) => {
                 console.error("Error en dictado: ", event.error);
                 btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
+                if (event.error === 'not-allowed') {
+                    alert("Debes darle permiso al navegador para usar el micrófono.");
+                }
             };
         } else {
-            // Si el navegador (como algunos Safari antiguos) no lo soporta, ocultamos el botón
-            btnDictar.style.display = 'none';
+            // Si no está soportado, al hacer clic mostramos un aviso en lugar de ocultarlo.
+            btnDictar.addEventListener('click', () => {
+                alert("Tu navegador actual no soporta el dictado por voz nativo. Por favor, usa el teclado o el micrófono del teclado de tu móvil.");
+            });
         }
     }
 
     // === 1. TAREAS ===
+    // Listener para cuando el usuario cambie la fecha en la pantalla principal
+    if (filtroFechaDiario) {
+        filtroFechaDiario.addEventListener('change', () => {
+            loadTasks();
+        });
+    }
+
     async function loadTasks() {
+        if (!tasksContainer || !filtroFechaDiario) return;
         tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
         
-        const today = getTodayLocalString();
+        // Lee la fecha seleccionada en el calendario principal
+        const selectedDate = filtroFechaDiario.value;
 
-        // Cargar SOLO las tareas programadas para HOY
         const { data, error } = await supabaseClient
             .from('tareas')
             .select('*')
-            .eq('fecha', today)
+            .eq('fecha', selectedDate)
             .order('completada', { ascending: true });
 
         if (error) {
@@ -149,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTasks(tasksToRender) {
         tasksContainer.innerHTML = '';
         if (tasksToRender.length === 0) {
-            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas programadas para hoy.</p>';
+            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas programadas para esta fecha.</p>';
             return;
         }
 
@@ -203,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
-        
         const { data, error } = await supabaseClient.from('perfiles').select('*').order('activo', { ascending: true });
         if (error) return;
         
@@ -236,26 +250,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectOperario) return;
         const { data, error } = await supabaseClient.from('perfiles').select('username').eq('activo', true);
         if (error) return;
-        
         selectOperario.innerHTML = '<option value="" disabled selected>Selecciona un operario...</option>';
         data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
     }
 
     // === 3. PIZARRA ===
     let isDrawing = false, currentColor = '#000000';
-
     function resizeCanvas() {
         if (!canvas) return;
         const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        canvas.width = rect.width; canvas.height = rect.height;
         ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-
     if (btnOpenCanvas) btnOpenCanvas.addEventListener('click', () => { modalCanvas.classList.remove('hidden'); setTimeout(resizeCanvas, 50); });
     if (btnCloseCanvas) btnCloseCanvas.addEventListener('click', () => modalCanvas.classList.add('hidden'));
-
     if (colorPickers) {
         colorPickers.forEach(btn => btn.addEventListener('click', (e) => {
             currentColor = e.target.dataset.color;
@@ -263,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.classList.add('ring-2', 'ring-offset-2', 'ring-primary');
         }));
     }
-
     function startDrawing(e) { isDrawing = true; draw(e); }
     function stopDrawing() { isDrawing = false; if (ctx) ctx.beginPath(); }
     function draw(e) {
@@ -276,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.strokeStyle = currentColor; ctx.lineTo(x, y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(x, y);
     }
-
     if (canvas) {
         canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
@@ -284,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stopDrawing);
     }
-
     if (btnClearCanvas) btnClearCanvas.addEventListener('click', resizeCanvas);
     if (btnSaveCanvas) {
         btnSaveCanvas.addEventListener('click', () => {
@@ -297,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 'image/jpeg', 0.8);
         });
     }
-
     if (btnRemoveDrawing) {
         btnRemoveDrawing.addEventListener('click', () => {
             drawingBlob = null; previewDrawing.src = '';
@@ -305,11 +310,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 4. GUARDAR TAREA ===
+    // === 4. GUARDAR TAREA (SISTEMA ANTI-ERRORES) ===
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            // Verificación profunda para evitar errores 'null'
+            const camposRequeridos = ['input-fecha', 'input-cliente', 'input-obra', 'input-direccion', 'input-localidad', 'select-operario', 'input-tarea'];
+            let faltaHTML = null;
+            
+            camposRequeridos.forEach(id => {
+                if (!document.getElementById(id)) faltaHTML = id;
+            });
+
+            if (faltaHTML) {
+                alert(`Error en el HTML: Falta el id "${faltaHTML}" en tu archivo index.html. Por favor revisa que copiaste todo el bloque correctamente.`);
+                return;
+            }
+
             const btnSubmit = e.target.querySelector('button[type="submit"]');
             btnSubmit.disabled = true; btnSubmit.textContent = "Guardando...";
 
@@ -323,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const nuevaTarea = {
-                fecha: document.getElementById('input-fecha').value, // Guardamos la fecha seleccionada
+                fecha: document.getElementById('input-fecha').value, 
                 cliente: document.getElementById('input-cliente').value,
                 obra: document.getElementById('input-obra').value,
                 direccion: document.getElementById('input-direccion').value,
@@ -335,8 +354,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const { error } = await supabaseClient.from('tareas').insert([nuevaTarea]);
-            if (error) alert("Error: " + error.message);
-            else { e.target.reset(); if (btnRemoveDrawing) btnRemoveDrawing.click(); navHome.click(); }
+            if (error) {
+                alert("Error base de datos: " + error.message);
+            } else { 
+                e.target.reset(); 
+                if (btnRemoveDrawing) btnRemoveDrawing.click(); 
+                // Restauramos el calendario de la vista principal al día actual para ver la tarea (si era de hoy)
+                if (filtroFechaDiario) filtroFechaDiario.value = document.getElementById('input-fecha').value;
+                navHome.click(); 
+            }
             btnSubmit.disabled = false; btnSubmit.textContent = "Guardar Tarea";
         });
     }
