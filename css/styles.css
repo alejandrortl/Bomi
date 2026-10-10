@@ -1,0 +1,33 @@
+/* Variables para colores base de Material Design 3 */
+:root {
+  --md-sys-color-primary: #6750a4;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-surface: #fef7ff;
+  --md-sys-color-on-surface: #1d1b20;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Soporte para el "notch" en iOS (Safe Area) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Ocultar scrollbars para un diseÃ±o mÃ¡s limpio estilo app nativa */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Animaciones bÃ¡sicas */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
