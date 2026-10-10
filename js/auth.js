@@ -1,4 +1,4 @@
-// js/auth.js
+//  js/auth.js
 document.addEventListener('DOMContentLoaded', () => {
     const formAuth = document.getElementById('form-auth');
     const btnToggleAuth = document.getElementById('btn-toggle-auth');
