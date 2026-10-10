@@ -11,18 +11,24 @@
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen flex flex-col overflow-hidden">
 
-    <!-- BLOQUE 1: HEADER -->
+    <!-- BLOQUE 1: HEADER (Con Selector de Tema Material Design 3) -->
     <header id="app-header" class="hidden w-full bg-surface-container shadow-sm px-4 py-3 justify-between items-center z-10 shrink-0">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">engineering</span>
             <h1 class="text-xl font-medium tracking-tight">Diario de Obra</h1>
         </div>
         <div class="flex items-center gap-3">
+            <!-- Selector de Tema MD3 -->
+            <select id="select-tema" class="text-xs bg-surface border border-outline-variant rounded-full px-3 py-1.5 text-on-surface focus:outline-none focus:border-primary">
+                <option value="auto">🌓 Sistema (Auto)</option>
+                <option value="claro">☀️ Claro</option>
+                <option value="oscuro">🌙 Oscuro</option>
+            </select>
+            
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium"></span>
-            <button id="btn-logout" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">logout</button>
+            <button id="btn-logout" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full" title="Cerrar sesión">logout</button>
         </div>
     </header>
-
     <!-- BLOQUE 2: AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
         <div class="bg-surface-container-low p-8 rounded-3xl shadow-md w-full flex flex-col gap-6">
