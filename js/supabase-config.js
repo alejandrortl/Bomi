@@ -1,10 +1,8 @@
 // js/supabase-config.js
-// 1. Reemplaza estas dos variables con tus datos reales de Supabase
-const supabaseUrl = 'TU_URL_DE_SUPABASE_AQUI'; 
-const supabaseAnonKey = 'TU_ANON_KEY_DE_SUPABASE_AQUI';
+const supabaseUrl = 'https://dejoetyaiwqloqeinfze.supabase.co/rest/v1/'; 
+const supabaseAnonKey = 'sb_publishable_4LVqnwoHy428agwAYTcESQ_3r4HwgLM';
 
-// 2. Inicializamos el cliente de Supabase
-const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+// Usamos el nombre 'supabaseClient' para no chocar con la librería externa
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-// 3. Verificamos la conexión en consola (puedes borrar esto en producción)
 console.log("Supabase inicializado correctamente.");
