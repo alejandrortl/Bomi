@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectOperario = document.getElementById('select-operario');
     const searchInput = document.getElementById('search-tareas');
     const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
+    const selectTema = document.getElementById('select-tema'); // Selector de Tema en Header
 
     const inputFecha = document.getElementById('input-fecha');
     const inputCliente = document.getElementById('input-cliente');
@@ -45,12 +46,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('userLoggedIn', () => {
         if (filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
+        aplicarTema(window.currentUserProfile.tema || 'auto');
+        if (selectTema) selectTema.value = window.currentUserProfile.tema || 'auto';
+        
         loadTasks();
         if (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin') {
             loadEmpleados();
             loadOperariosSelect();
         }
     });
+
+    // === GESTIÓN DEL TEMA (Claro / Oscuro / Auto) ===
+    function aplicarTema(modo) {
+        const root = document.documentElement;
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+        if (modo === 'oscuro') {
+            root.classList.add('dark');
+        } else if (modo === 'claro') {
+            root.classList.remove('dark');
+        } else {
+            // Modo Auto (Sistema)
+            if (prefersDark.matches) {
+                root.classList.add('dark');
+            } else {
+                root.classList.remove('dark');
+            }
+        }
+    }
+
+    // Escuchar cambios en el selector de tema de la barra superior
+    if (selectTema) {
+        selectTema.addEventListener('change', async () => {
+            const nuevoTema = selectTema.value;
+            aplicarTema(nuevoTema);
+            window.currentUserProfile.tema = nuevoTema;
+
+            // Guardar preferencia en Supabase para este usuario
+            await supabaseClient
+                .from('perfiles')
+                .update({ tema: nuevoTema })
+                .eq('id', window.currentUserProfile.id);
+        });
+    }
 
     function getTodayLocalString() {
         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
@@ -103,13 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === AUTOCOMPLETADO INTELIGENTE DE OBRA ===
+    // === AUTOCOMPLETADO DE OBRA ===
     if (inputObra) {
         inputObra.addEventListener('input', () => {
             const obraBuscada = inputObra.value.trim().toLowerCase();
             if (!obraBuscada) return;
-
-            // Buscamos en el array global de tareas si ya existe una obra con ese nombre
             const tareaExistente = allTasks.find(t => t.obra && t.obra.trim().toLowerCase() === obraBuscada);
             if (tareaExistente) {
                 if (inputCliente && !inputCliente.value) inputCliente.value = tareaExistente.cliente || '';
@@ -132,39 +168,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     recognition.start();
                     btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
-                } catch (e) {
-                    console.log("Reconocimiento ya activo.");
-                }
+                } catch (e) { console.log("Activo"); }
             });
 
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                inputTarea.value += (inputTarea.value ? ' ' : '') + transcript;
+                inputTarea.value += (inputTarea.value ? ' ' : '') + event.results[0][0].transcript;
             };
 
-            recognition.onend = () => {
-                btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
-            };
-
+            recognition.onend = () => { btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse'); };
             recognition.onerror = (event) => {
                 btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
-                if (event.error === 'network') {
-                    alert("Error de red: El dictado por voz requiere conexión estable a internet.");
-                } else if (event.error === 'not-allowed') {
-                    alert("Permiso de micrófono denegado.");
-                }
+                if (event.error === 'network') alert("Error de red en dictado por voz.");
             };
         } else {
-            btnDictar.addEventListener('click', () => {
-                alert("Tu navegador no soporta el dictado por voz nativo.");
-            });
+            btnDictar.addEventListener('click', () => alert("Navegador no soporta dictado por voz."));
         }
     }
 
-    // === 1. TAREAS Y BUSCADOR MULTICRITERIO ===
-    if (filtroFechaDiario) {
-        filtroFechaDiario.addEventListener('change', loadTasks);
-    }
+    // === 1. TAREAS Y BUSCADOR ===
+    if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
         if (!tasksContainer || !filtroFechaDiario) return;
@@ -204,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const card = document.createElement('div');
             card.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2 transition-all`;
-            
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-medium text-primary bg-primary-container px-2 py-1 rounded-md">${tarea.cliente} - ${tarea.obra}</span>
