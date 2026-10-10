@@ -103,6 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // === AUTOCOMPLETADO INTELIGENTE DE OBRA ===
+    if (inputObra) {
+        inputObra.addEventListener('input', () => {
+            const obraBuscada = inputObra.value.trim().toLowerCase();
+            if (!obraBuscada) return;
+
+            // Buscamos en el array global de tareas si ya existe una obra con ese nombre
+            const tareaExistente = allTasks.find(t => t.obra && t.obra.trim().toLowerCase() === obraBuscada);
+            if (tareaExistente) {
+                if (inputCliente && !inputCliente.value) inputCliente.value = tareaExistente.cliente || '';
+                if (inputDireccion && !inputDireccion.value) inputDireccion.value = tareaExistente.direccion || '';
+                if (inputLocalidad && !inputLocalidad.value) inputLocalidad.value = tareaExistente.localidad || '';
+            }
+        });
+    }
+
     // === DICTADO POR VOZ ===
     if (btnDictar && inputTarea) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -183,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const cardBg = isCompleted ? 'bg-surface-variant opacity-70' : 'bg-surface-container-low';
             const isMyTask = window.currentUserProfile && (tarea.operario_username === window.currentUserProfile.username);
 
-            // Generar enlace directo a Google Maps con la dirección y localidad
             const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
@@ -199,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 <div class="text-xs text-on-surface-variant flex justify-between items-center mt-1">
                     <span>👷 @${tarea.operario_username}</span>
-                    <!-- ACCESO DIRECTO A GOOGLE MAPS EN LA TARJETA PRINCIPAL -->
                     <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-primary font-medium hover:underline bg-surface px-2 py-1 rounded-md border border-outline-variant">
                         <span class="material-symbols-outlined text-[14px]">map</span> ${tarea.localidad}
                     </a>
