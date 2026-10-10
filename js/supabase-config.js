@@ -1,8 +1,12 @@
 // js/supabase-config.js
-const supabaseUrl = 'https://dejoetyaiwqloqeinfze.supabase.co/rest/v1/'; 
+
+// 1. URL base estricta (SIN /rest/v1/ al final)
+const supabaseUrl = 'https://dejoetyaiwqloqeinfze.supabase.co'; 
+
+// 2. Tu clave pública (Anon Key)
 const supabaseAnonKey = 'sb_publishable_4LVqnwoHy428agwAYTcESQ_3r4HwgLM';
 
-// Usamos el nombre 'supabaseClient' para no chocar con la librería externa
+// Inicialización
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
 console.log("Supabase inicializado correctamente.");
