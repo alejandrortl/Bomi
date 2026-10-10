@@ -1,4 +1,4 @@
-//  js/auth.js
+// js/auth.js
 document.addEventListener('DOMContentLoaded', () => {
     const formAuth = document.getElementById('form-auth');
     const btnToggleAuth = document.getElementById('btn-toggle-auth');
@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkSession();
 
-    // Cambiar entre Login y Registro
     btnToggleAuth.addEventListener('click', (e) => {
         e.preventDefault();
         isLoginMode = !isLoginMode;
@@ -46,30 +45,27 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAuthSubmit.textContent = "Cargando...";
 
         if (isLoginMode) {
-            // LOGIN
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            // LOGIN (Actualizado a supabaseClient)
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) {
                 showError("Correo o contraseña incorrectos.");
             } else {
                 await verifyProfileAndEnter(data.user);
             }
         } else {
-            // REGISTRO
+            // REGISTRO (Actualizado a supabaseClient)
             const nombre = document.getElementById('auth-nombre').value.trim();
             const apellido = document.getElementById('auth-apellido').value.trim();
             
-            // 1. Crear cuenta en Supabase Auth
-            const { data, error } = await supabase.auth.signUp({ email, password });
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
             if (error) {
                 showError(error.message);
                 return;
             }
 
-            // 2. Generar Username (ej. PedroLopez2)
             const username = await generarUsername(nombre, apellido);
 
-            // 3. Guardar perfil como INACTIVO y Operario
-            const { error: profileError } = await supabase.from('perfiles').insert([{
+            const { error: profileError } = await supabaseClient.from('perfiles').insert([{
                 id: data.user.id,
                 email: email,
                 nombre: nombre,
@@ -82,10 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (profileError) {
                 showError("Error al guardar el perfil: " + profileError.message);
             } else {
-                authSuccess.textContent = "Cuenta creada con éxito. Espera a que el Administrador te apruebe el acceso.";
+                authSuccess.textContent = "Cuenta creada con éxito. Espera a que el Administrador te apruebe.";
                 authSuccess.classList.remove('hidden');
                 formAuth.reset();
-                await supabase.auth.signOut(); // Cerramos la sesión automáticamente porque está inactivo
+                await supabaseClient.auth.signOut();
             }
         }
         btnAuthSubmit.disabled = false;
@@ -93,12 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-logout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
         window.location.reload();
     });
 
     async function checkSession() {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             await verifyProfileAndEnter(session.user);
         } else {
@@ -107,22 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function verifyProfileAndEnter(user) {
-        // Consultar el perfil del usuario
-        const { data: perfil, error } = await supabase.from('perfiles').select('*').eq('id', user.id).single();
+        const { data: perfil, error } = await supabaseClient.from('perfiles').select('*').eq('id', user.id).single();
         
         if (error || !perfil) {
             showError("No se encontró tu perfil. Contacta al administrador.");
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             return;
         }
 
         if (perfil.activo === false) {
             showError("Tu cuenta está pendiente de aprobación por el Administrador.");
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             return;
         }
 
-        // Si está activo, lo dejamos entrar
         window.currentUserProfile = perfil; 
         
         document.getElementById('view-auth').classList.add('hidden');
@@ -132,10 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('bottom-nav').classList.remove('hidden');
         document.getElementById('bottom-nav').classList.add('flex');
         
-        // Mostrar rol en cabecera
         document.getElementById('user-role-badge').textContent = perfil.rol;
 
-        // Si es Admin o SuperAdmin, le mostramos el botón de crear tareas y la pestaña empleados
         if (perfil.rol === 'Admin' || perfil.rol === 'SuperAdmin') {
             document.getElementById('fab-new-task').classList.remove('hidden');
             document.getElementById('fab-new-task').classList.add('flex');
@@ -147,14 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function generarUsername(nombre, apellido) {
-        // Quitar espacios y caracteres especiales básicos
         let base = (nombre + apellido).replace(/\s+/g, '');
         let usernameFinal = base;
         let contador = 2;
         let existe = true;
 
         while (existe) {
-            const { data } = await supabase.from('perfiles').select('username').eq('username', usernameFinal);
+            const { data } = await supabaseClient.from('perfiles').select('username').eq('username', usernameFinal);
             if (data.length === 0) {
                 existe = false;
             } else {
