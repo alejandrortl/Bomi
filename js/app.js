@@ -3,9 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewTaskList = document.getElementById('view-task-list');
     const viewNewTask = document.getElementById('view-new-task');
     const viewEmpleados = document.getElementById('view-empleados');
+    const viewPerfil = document.getElementById('view-perfil');
     
     const navHome = document.getElementById('nav-home');
     const navEmpleados = document.getElementById('nav-empleados');
+    const navPerfil = document.getElementById('nav-perfil');
     const fabNewTask = document.getElementById('fab-new-task');
     
     const tasksContainer = document.getElementById('tasks-container');
@@ -13,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectOperario = document.getElementById('select-operario');
     const searchInput = document.getElementById('search-tareas');
     const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
-    const selectTema = document.getElementById('select-tema'); // Selector de Tema en Header
+    const selectTema = document.getElementById('select-tema');
 
     const inputFecha = document.getElementById('input-fecha');
     const inputCliente = document.getElementById('input-cliente');
@@ -24,6 +26,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const editTaskId = document.getElementById('edit-task-id');
     const btnCancelTask = document.getElementById('btn-cancel-task');
     const btnDictar = document.getElementById('btn-dictar');
+
+    // Referencias Perfil
+    const formPerfil = document.getElementById('form-perfil');
+    const perfilNombre = document.getElementById('perfil-nombre');
+    const perfilApellido = document.getElementById('perfil-apellido');
+    const perfilTelefono = document.getElementById('perfil-telefono');
+    const perfilPassword = document.getElementById('perfil-password');
+    const perfilNombreHeader = document.getElementById('perfil-nombre-header');
+    const perfilEmailHeader = document.getElementById('perfil-email-header');
+    const perfilMensaje = document.getElementById('perfil-mensaje');
 
     const modalDetalle = document.getElementById('modal-detalle-tarea');
     const detalleContenido = document.getElementById('detalle-contenido');
@@ -49,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aplicarTema(window.currentUserProfile.tema || 'auto');
         if (selectTema) selectTema.value = window.currentUserProfile.tema || 'auto';
         
+        cargarDatosPerfil();
         loadTasks();
         if (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin') {
             loadEmpleados();
@@ -56,37 +69,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === GESTIÓN DEL TEMA (Claro / Oscuro / Auto) ===
+    // === GESTIÓN DEL TEMA ===
     function aplicarTema(modo) {
         const root = document.documentElement;
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-
-        if (modo === 'oscuro') {
-            root.classList.add('dark');
-        } else if (modo === 'claro') {
-            root.classList.remove('dark');
-        } else {
-            // Modo Auto (Sistema)
-            if (prefersDark.matches) {
-                root.classList.add('dark');
-            } else {
-                root.classList.remove('dark');
-            }
+        if (modo === 'oscuro') root.classList.add('dark');
+        else if (modo === 'claro') root.classList.remove('dark');
+        else {
+            if (prefersDark.matches) root.classList.add('dark');
+            else root.classList.remove('dark');
         }
     }
 
-    // Escuchar cambios en el selector de tema de la barra superior
     if (selectTema) {
         selectTema.addEventListener('change', async () => {
             const nuevoTema = selectTema.value;
             aplicarTema(nuevoTema);
             window.currentUserProfile.tema = nuevoTema;
-
-            // Guardar preferencia en Supabase para este usuario
-            await supabaseClient
-                .from('perfiles')
-                .update({ tema: nuevoTema })
-                .eq('id', window.currentUserProfile.id);
+            await supabaseClient.from('perfiles').update({ tema: nuevoTema }).eq('id', window.currentUserProfile.id);
         });
     }
 
@@ -100,12 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
         viewTaskList.classList.add('hidden');
         viewNewTask.classList.add('hidden');
         viewNewTask.classList.remove('flex');
-        if (viewEmpleados) {
-            viewEmpleados.classList.add('hidden');
-            viewEmpleados.classList.remove('flex');
-        }
+        if (viewEmpleados) { viewEmpleados.classList.add('hidden'); viewEmpleados.classList.remove('flex'); }
+        if (viewPerfil) { viewPerfil.classList.add('hidden'); viewPerfil.classList.remove('flex'); }
+        
         navHome.classList.remove('text-primary');
         if (navEmpleados) navEmpleados.classList.remove('text-primary');
+        if (navPerfil) navPerfil.classList.remove('text-primary');
     }
 
     navHome.addEventListener('click', () => {
@@ -114,6 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
         navHome.classList.add('text-primary');
         loadTasks();
     });
+
+    if (navPerfil) {
+        navPerfil.addEventListener('click', () => {
+            hideAllViews();
+            viewPerfil.classList.remove('hidden');
+            viewPerfil.classList.add('flex');
+            navPerfil.classList.add('text-primary');
+            cargarDatosPerfil();
+        });
+    }
 
     if (navEmpleados) {
         navEmpleados.addEventListener('click', () => {
@@ -135,9 +145,76 @@ document.addEventListener('DOMContentLoaded', () => {
         viewNewTask.classList.add('flex');
     });
 
-    if (btnCancelTask) {
-        btnCancelTask.addEventListener('click', () => {
-            navHome.click();
+    if (btnCancelTask) btnCancelTask.addEventListener('click', () => navHome.click());
+
+    // === GESTIÓN DE PERFIL PERSONAL ===
+    function cargarDatosPerfil() {
+        if (!window.currentUserProfile) return;
+        const p = window.currentUserProfile;
+        perfilNombre.value = p.nombre || '';
+        perfilApellido.value = p.apellido || '';
+        perfilTelefono.value = p.telefono || '';
+        perfilNombreHeader.textContent = `${p.nombre} ${p.apellido}`;
+        perfilEmailHeader.textContent = p.email;
+    }
+
+    if (formPerfil) {
+        formPerfil.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            perfilMensaje.classList.add('hidden');
+            const btn = formPerfil.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = "Guardando...";
+
+            const nuevoNombre = perfilNombre.value.trim();
+            const nuevoApellido = perfilApellido.value.trim();
+            const nuevoTelefono = perfilTelefono.value.trim();
+            const nuevaPassword = perfilpassword = perfilPassword.value;
+
+            // 1. Actualizar perfil en tabla 'perfiles'
+            const { error: perfilError } = await supabaseClient
+                .from('perfiles')
+                .update({ 
+                    nombre: nuevoNombre, 
+                    apellido: nuevoApellido, 
+                    telefono: nuevoTelefono 
+                })
+                .eq('id', window.currentUserProfile.id);
+
+            if (perfilError) {
+                perfilMensaje.textContent = "Error al actualizar perfil: " + perfilError.message;
+                perfilMensaje.className = "text-error text-sm text-center font-medium";
+                perfilMensaje.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = "Guardar Cambios";
+                return;
+            }
+
+            // Actualizar datos locales
+            window.currentUserProfile.nombre = nuevoNombre;
+            window.currentUserProfile.apellido = nuevoApellido;
+            window.currentUserProfile.telefono = nuevoTelefono;
+            cargarDatosPerfil();
+
+            // 2. Si introdujo contraseña nueva, actualizarla en Supabase Auth
+            if (nuevaPassword) {
+                const { error: passError } = await supabaseClient.auth.updateUser({ password: nuevaPassword });
+                if (passError) {
+                    perfilMensaje.textContent = "Datos guardados, pero hubo un error al cambiar contraseña: " + passError.message;
+                    perfilMensaje.className = "text-error text-sm text-center font-medium";
+                    perfilMensaje.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.textContent = "Guardar Cambios";
+                    return;
+                }
+                perfilPassword.value = '';
+            }
+
+            perfilMensaje.textContent = "¡Cambios guardados con éxito!";
+            perfilMensaje.className = "text-green-600 text-sm text-center font-medium";
+            perfilMensaje.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = "Guardar Cambios";
         });
     }
 
@@ -165,10 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
             recognition.interimResults = false;
 
             btnDictar.addEventListener('click', () => {
-                try {
-                    recognition.start();
-                    btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse');
-                } catch (e) { console.log("Activo"); }
+                try { recognition.start(); btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse'); } 
+                catch (e) { console.log("Activo"); }
             });
 
             recognition.onresult = (event) => {
@@ -439,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 6. GUARDAR O ACTUALIZAR ===
+    // === 6. GUARDAR O ACTUALIZAR TAREA ===
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
