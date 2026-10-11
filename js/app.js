@@ -7,9 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const navHome = document.getElementById('nav-home');
     const navEmpleados = document.getElementById('nav-empleados');
-    const navPerfil = document.getElementById('nav-perfil');
     const fabNewTask = document.getElementById('fab-new-task');
     
+    // Desplegable de Perfil en Header
+    const btnMenuPerfil = document.getElementById('btn-menu-perfil');
+    const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
+    const menuItemPerfil = document.getElementById('menu-item-perfil');
+    const headerUsernameLabel = document.getElementById('header-username-label');
+
     const tasksContainer = document.getElementById('tasks-container');
     const empleadosContainer = document.getElementById('empleados-container');
     const selectOperario = document.getElementById('select-operario');
@@ -69,6 +74,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // === GESTIÓN DEL MENÚ DESPLEGABLE DE PERFIL EN HEADER ===
+    if (btnMenuPerfil && dropdownMenuPerfil) {
+        btnMenuPerfil.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenuPerfil.classList.toggle('hidden');
+        });
+
+        // Cerrar menú al hacer clic fuera
+        document.addEventListener('click', () => {
+            dropdownMenuPerfil.classList.add('hidden');
+        });
+    }
+
+    if (menuItemPerfil) {
+        menuItemPerfil.addEventListener('click', () => {
+            hideAllViews();
+            if (viewPerfil) {
+                viewPerfil.classList.remove('hidden');
+                viewPerfil.classList.add('flex');
+            }
+            dropdownMenuPerfil.classList.add('hidden');
+            cargarDatosPerfil();
+        });
+    }
+
     // === GESTIÓN DEL TEMA ===
     function aplicarTema(modo) {
         const root = document.documentElement;
@@ -105,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         navHome.classList.remove('text-primary');
         if (navEmpleados) navEmpleados.classList.remove('text-primary');
-        if (navPerfil) navPerfil.classList.remove('text-primary');
     }
 
     navHome.addEventListener('click', () => {
@@ -114,16 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
         navHome.classList.add('text-primary');
         loadTasks();
     });
-
-    if (navPerfil) {
-        navPerfil.addEventListener('click', () => {
-            hideAllViews();
-            viewPerfil.classList.remove('hidden');
-            viewPerfil.classList.add('flex');
-            navPerfil.classList.add('text-primary');
-            cargarDatosPerfil();
-        });
-    }
 
     if (navEmpleados) {
         navEmpleados.addEventListener('click', () => {
@@ -156,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         perfilTelefono.value = p.telefono || '';
         perfilNombreHeader.textContent = `${p.nombre} ${p.apellido}`;
         perfilEmailHeader.textContent = p.email;
+        if (headerUsernameLabel) headerUsernameLabel.textContent = p.nombre || 'Cuenta';
     }
 
     if (formPerfil) {
@@ -169,9 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const nuevoNombre = perfilNombre.value.trim();
             const nuevoApellido = perfilApellido.value.trim();
             const nuevoTelefono = perfilTelefono.value.trim();
-            const nuevaPassword = perfilpassword = perfilPassword.value;
+            const nuevaPassword = perfilPassword.value;
 
-            // 1. Actualizar perfil en tabla 'perfiles'
             const { error: perfilError } = await supabaseClient
                 .from('perfiles')
                 .update({ 
@@ -190,17 +209,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Actualizar datos locales
             window.currentUserProfile.nombre = nuevoNombre;
             window.currentUserProfile.apellido = nuevoApellido;
             window.currentUserProfile.telefono = nuevoTelefono;
             cargarDatosPerfil();
 
-            // 2. Si introdujo contraseña nueva, actualizarla en Supabase Auth
             if (nuevaPassword) {
                 const { error: passError } = await supabaseClient.auth.updateUser({ password: nuevaPassword });
                 if (passError) {
-                    perfilMensaje.textContent = "Datos guardados, pero hubo un error al cambiar contraseña: " + passError.message;
+                    perfilMensaje.textContent = "Datos guardados, pero error al cambiar contraseña: " + passError.message;
                     perfilMensaje.className = "text-error text-sm text-center font-medium";
                     perfilMensaje.classList.remove('hidden');
                     btn.disabled = false;
