@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const empresaMensaje = document.getElementById('empresa-mensaje');
     let logoBlobToUpload = null;
 
-    // Referencias Modal Editar Empleado (Admin)
+    // Referencias Modal Editar Empleado
     const modalEditarEmpleado = document.getElementById('modal-editar-empleado');
     const formEditarEmpleado = document.getElementById('form-editar-empleado');
     const editEmpId = document.getElementById('edit-emp-id');
@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editEmpApellido = document.getElementById('edit-emp-apellido');
     const editEmpTelefono = document.getElementById('edit-emp-telefono');
     const editEmpRol = document.getElementById('edit-emp-rol');
+    const editEmpActivo = document.getElementById('edit-emp-activo');
     const editEmpPassword = document.getElementById('edit-emp-password');
     const btnCloseModalEmp = document.getElementById('btn-close-modal-emp');
     const btnCancelModalEmp = document.getElementById('btn-cancel-modal-emp');
@@ -177,12 +178,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         navHome.classList.remove('text-primary');
         if (navEmpleados) navEmpleados.classList.remove('text-primary');
+        if (fabNewTask) fabNewTask.classList.add('hidden');
     }
 
     navHome.addEventListener('click', () => {
         hideAllViews();
         viewTaskList.classList.remove('hidden');
         navHome.classList.add('text-primary');
+        if (fabNewTask) {
+            fabNewTask.classList.remove('hidden');
+            fabNewTask.classList.add('flex');
+        }
         loadTasks();
     });
 
@@ -196,15 +202,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    fabNewTask.addEventListener('click', () => {
-        hideAllViews();
-        document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea";
-        document.getElementById('form-new-task').reset();
-        editTaskId.value = "";
-        if (inputFecha) inputFecha.value = getTodayLocalString();
-        viewNewTask.classList.remove('hidden');
-        viewNewTask.classList.add('flex');
-    });
+    if (fabNewTask) {
+        fabNewTask.addEventListener('click', () => {
+            hideAllViews();
+            document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea";
+            document.getElementById('form-new-task').reset();
+            editTaskId.value = "";
+            if (inputFecha) inputFecha.value = getTodayLocalString();
+            viewNewTask.classList.remove('hidden');
+            viewNewTask.classList.add('flex');
+        });
+    }
 
     if (btnCancelTask) btnCancelTask.addEventListener('click', () => navHome.click());
 
@@ -314,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.disabled = false; btn.textContent = "Guardar Datos de Empresa";
                     return;
                 }
-                const { data: { publicUrl } } = supabaseClient.storage.from('empresa').getPublicUrl(fileName);
+                const { data: { publicUrl } } = await supabaseClient.storage.from('empresa').getPublicUrl(fileName);
                 logoUrl = publicUrl;
             }
 
@@ -378,18 +386,19 @@ document.addEventListener('DOMContentLoaded', () => {
         empleadosToRender.forEach(emp => {
             const telefonoLink = emp.telefono ? `tel:${emp.telefono}` : '#';
             const emailLink = emp.email ? `mailto:${emp.email}` : '#';
+            const isSuperAdmin = emp.rol === 'SuperAdmin';
             
             const card = document.createElement('div');
-            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'bg-red-50 dark:bg-red-950/30 border border-red-200'}`;
+            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'bg-amber-50 dark:bg-amber-950/35 border border-amber-300'}`;
             
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''}</h3>
+                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full ml-2">Pendiente aprobación</span>' : ''}</h3>
                         <p class="text-xs text-on-surface-variant">@${emp.username || 'sin_usuario'}</p>
                     </div>
                     ${isAdmin ? `
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium ${emp.rol === 'SuperAdmin' ? 'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'}">${emp.rol}</span>
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium ${isSuperAdmin ? 'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'}">${emp.rol}</span>
                     ` : ''}
                 </div>
 
@@ -403,13 +412,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 ${isAdmin ? `
-                    <div class="flex gap-2 mt-2 pt-2 border-t border-outline-variant justify-end">
+                    <div class="flex gap-2 mt-2 pt-2 border-t border-outline-variant justify-end items-center">
                         <button onclick="abrirModalEditarEmpleado('${emp.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:opacity-80">
-                            <span class="material-symbols-outlined text-[14px]">edit</span> Editar
+                            <span class="material-symbols-outlined text-[14px]">edit</span> Editar / Rol
                         </button>
-                        <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:opacity-80">
-                            <span class="material-symbols-outlined text-[14px]">delete</span> Eliminar
-                        </button>
+                        ${!isSuperAdmin ? `
+                            <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm">
+                                <span class="material-symbols-outlined text-[14px]">delete</span> Eliminar
+                            </button>
+                        ` : '<span class="text-[11px] text-on-surface-variant italic px-2">Protegido</span>'}
                     </div>
                 ` : ''}
             `;
@@ -432,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === MODAL DE EDICIÓN DE EMPLEADO (Admin) ===
+    // === MODAL DE EDICIÓN DE EMPLEADO Y ROL (Admin / SuperAdmin) ===
     window.abrirModalEditarEmpleado = function(id) {
         const emp = allEmpleados.find(e => e.id === id);
         if (!emp || !modalEditarEmpleado) return;
@@ -442,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editEmpApellido.value = emp.apellido || '';
         editEmpTelefono.value = emp.telefono || '';
         if (editEmpRol) editEmpRol.value = emp.rol || 'Operario';
+        if (editEmpActivo) editEmpActivo.checked = !!emp.activo;
         if (editEmpPassword) editEmpPassword.value = '';
         if (editEmpMensaje) editEmpMensaje.classList.add('hidden');
 
@@ -463,11 +475,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const updates = {
                 nombre: editEmpNombre.value.trim(),
                 apellido: editEmpApellido.value.trim(),
-                telefono: editEmpTelefono.value.trim()
+                telefono: editEmpTelefono.value.trim(),
+                rol: editEmpRol ? editEmpRol.value : 'Operario',
+                activo: editEmpActivo ? editEmpActivo.checked : true
             };
-            if (editEmpRol) updates.rol = editEmpRol.value;
 
-            // 1. Actualizar perfil en tabla 'perfiles'
             const { error: perfilError } = await supabaseClient
                 .from('perfiles')
                 .update(updates)
@@ -484,22 +496,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 2. Si el Admin introdujo una contraseña nueva, actualizarla (Nota: requiere permisos de service_role o función RPC en Supabase, o simulación de aviso)
-            const nuevaPass = editEmpPassword ? editEmpPassword.value.trim() : '';
-            if (nuevaPass) {
-                // Nota explicativa: Para cambiar la contraseña de OTRO usuario en Supabase Auth desde el cliente web estándar, 
-                // se requiere una función RPC segura en la base de datos o autenticación de Admin. 
-                // Informamos al admin que los datos de perfil se guardaron correctamente.
-            }
-
             modalEditarEmpleado.classList.add('hidden');
             btnSubmit.disabled = false;
             btnSubmit.textContent = "Guardar Cambios";
             loadEmpleados();
+            loadOperariosSelect();
         });
     }
 
     window.eliminarEmpleado = async function(id) {
+        const emp = allEmpleados.find(e => e.id === id);
+        if (emp && emp.rol === 'SuperAdmin') {
+            alert("Los usuarios SuperAdmin están protegidos y no pueden ser eliminados.");
+            return;
+        }
+
         if (confirm("¿Estás seguro de eliminar este empleado del sistema?")) {
             const { error } = await supabaseClient.from('perfiles').delete().eq('id', id);
             if (!error) loadEmpleados();
@@ -584,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button onclick="editarTarea('${tarea.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
                                 <span class="material-symbols-outlined text-[14px]">edit</span> Editar
                             </button>
-                            <button onclick="eliminarTarea('${tarea.id}')" class="text-xs bg-red-100 text-red-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                            <button onclick="eliminarTarea('${tarea.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm">
                                 <span class="material-symbols-outlined text-[14px]">delete</span>
                             </button>
                         ` : ''}
