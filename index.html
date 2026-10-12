@@ -11,14 +11,13 @@
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen flex flex-col overflow-hidden">
 
-    <!-- BLOQUE 1: HEADER (Con Menú Desplegable de Usuario / Perfil MD3) -->
+    <!-- BLOQUE 1: HEADER -->
     <header id="app-header" class="hidden w-full bg-surface-container shadow-sm px-4 py-3 justify-between items-center z-30 shrink-0 relative">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">engineering</span>
             <h1 class="text-xl font-medium tracking-tight">Diario de Obra</h1>
         </div>
         <div class="flex items-center gap-3">
-            <!-- Selector de Tema MD3 -->
             <select id="select-tema" class="text-xs bg-surface border border-outline-variant rounded-full px-3 py-1.5 text-on-surface focus:outline-none focus:border-primary">
                 <option value="auto">🌓 Auto</option>
                 <option value="claro">☀️ Claro</option>
@@ -27,7 +26,7 @@
             
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
-            <!-- CONTENEDOR DEL MENÚ DESPLEGABLE DE PERFIL -->
+            <!-- MENÚ DESPLEGABLE DE PERFIL -->
             <div class="relative">
                 <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/80 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
@@ -35,15 +34,14 @@
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
                 </button>
 
-                <!-- Menú desplegable oculto por defecto -->
                 <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-48 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl py-2 z-50 flex flex-col">
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil
                     </button>
-                    <div class="border-t border-outline-variant my-1"></div>
                     <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">business</span> Datos de Empresa
                     </button>
+                    <div class="border-t border-outline-variant my-1"></div>
                     <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-error hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">logout</span> Cerrar Sesión
                     </button>
@@ -51,9 +49,9 @@
             </div>
         </div>
     </header>
-    
+
     <!-- BLOQUE 2: AUTENTICACIÓN -->
-    <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
+    <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto overflow-y-auto">
         <div class="bg-surface-container-low p-8 rounded-3xl shadow-md w-full flex flex-col gap-6">
             <div class="text-center">
                 <span class="material-symbols-outlined text-5xl text-primary mb-2">lock</span>
@@ -79,140 +77,11 @@
         </div>
     </main>
 
-    <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
-    <main id="main-content" class="hidden w-full max-w-4xl mx-auto relative">
-        <!-- Aquí dentro van tus vistas (view-task-list, view-new-task, view-perfil, view-empresa, etc.) -->
-    </main>
-        
-<!-- Vista: Configuración de Empresa (Solo Admin / SuperAdmin) -->
-        <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa y Logotipo</h2>
-            <form id="form-empresa" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
-                
-                <div class="flex flex-col items-center gap-3 mb-2">
-                    <div class="w-24 h-24 rounded-2xl border border-outline-variant bg-surface flex items-center justify-center overflow-hidden relative shadow-inner">
-                        <img id="preview-logo" src="" class="w-full h-full object-contain hidden" alt="Logo Empresa">
-                        <span id="logo-placeholder" class="material-symbols-outlined text-4xl text-on-surface-variant">business</span>
-                    </div>
-                    <label class="cursor-pointer bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full text-xs font-medium hover:opacity-90 transition-opacity">
-                        Subir Logotipo
-                        <input type="file" id="input-logo-file" accept="image/*" class="hidden">
-                    </label>
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Nombre Fiscal / Empresa</label>
-                    <input type="text" id="emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>CIF / NIF</label>
-                    <input type="text" id="emp-cif" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Dirección Fiscal</label>
-                    <input type="text" id="emp-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="flex gap-4">
-                    <div class="md3-input-group flex-1">
-                        <label>Teléfono</label>
-                        <input type="tel" id="emp-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                    </div>
-                    <div class="md3-input-group flex-1">
-                        <label>Correo Electrónico</label>
-                        <input type="email" id="emp-email" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                    </div>
-                </div>
-
-                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md hover:shadow-lg transition-all mt-2">Guardar Datos de Empresa</button>
-                <p id="empresa-mensaje" class="text-sm text-center hidden font-medium"></p>
-            </form>
-        </section>
-
-        
-        <!-- Vista: Mi Perfil / Ajustes Personales -->
-        <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-medium text-on-surface">Mi Perfil y Ajustes</h2>
-            <form id="form-perfil" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
-                
-                <div class="flex items-center gap-4 mb-2">
-                    <span class="material-symbols-outlined text-4xl text-primary bg-primary-container p-3 rounded-full">account_circle</span>
-                    <div>
-                        <h3 id="perfil-nombre-header" class="font-medium text-lg">Cargando...</h3>
-                        <p id="perfil-email-header" class="text-xs text-on-surface-variant"></p>
-                    </div>
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Nombre</label>
-                    <input type="text" id="perfil-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Apellido</label>
-                    <input type="text" id="perfil-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Teléfono</label>
-                    <input type="tel" id="perfil-telefono" placeholder="Ej. +34 600 000 000" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Nueva Contraseña (Opcional)</label>
-                    <input type="password" id="perfil-password" placeholder="Déjalo en blanco si no deseas cambiarla" minlength="6" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md hover:shadow-lg transition-all mt-2">Guardar Cambios</button>
-                <p id="perfil-mensaje" class="text-sm text-center hidden font-medium"></p>
-            </form>
-        </section>
-
-        
-        <!-- Vista: Mi Perfil / Ajustes Personales -->
-        <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-medium text-on-surface">Mi Perfil y Ajustes</h2>
-            <form id="form-perfil" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
-                
-                <div class="flex items-center gap-4 mb-2">
-                    <span class="material-symbols-outlined text-4xl text-primary bg-primary-container p-3 rounded-full">account_circle</span>
-                    <div>
-                        <h3 id="perfil-nombre-header" class="font-medium text-lg">Cargando...</h3>
-                        <p id="perfil-email-header" class="text-xs text-on-surface-variant"></p>
-                    </div>
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Nombre</label>
-                    <input type="text" id="perfil-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Apellido</label>
-                    <input type="text" id="perfil-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Teléfono</label>
-                    <input type="tel" id="perfil-telefono" placeholder="Ej. +34 600 000 000" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Nueva Contraseña (Opcional)</label>
-                    <input type="password" id="perfil-password" placeholder="Déjalo en blanco si no deseas cambiarla" minlength="6" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md hover:shadow-lg transition-all mt-2">Guardar Cambios</button>
-                <p id="perfil-mensaje" class="text-sm text-center hidden font-medium"></p>
-            </form>
-        </section>
-
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL CON SCROLL PROPIO -->
+    <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-32 relative">
         
         <!-- Vista: Lista de Tareas -->
         <section id="view-task-list" class="flex flex-col gap-4">
-            <!-- Buscador Multicriterio -->
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
                 <input type="text" id="search-tareas" placeholder="Buscar por operario, fecha, cliente, obra..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant">
@@ -226,7 +95,7 @@
             <div id="tasks-container" class="flex flex-col gap-3"></div>
         </section>
 
-        <!-- Vista: Nueva Tarea (Con Botón Cancelar) -->
+        <!-- Vista: Nueva Tarea -->
         <section id="view-new-task" class="hidden flex-col gap-4">
             <h2 class="text-lg font-medium text-on-surface" id="form-task-title">Asignar Nueva Tarea</h2>
             <form id="form-new-task" class="flex flex-col gap-4 bg-surface-container-low p-4 rounded-2xl shadow-sm">
@@ -277,22 +146,65 @@
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
+        <!-- Vista: Mi Perfil -->
+        <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
+            <h2 class="text-lg font-medium text-on-surface">Mi Perfil y Ajustes</h2>
+            <form id="form-perfil" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
+                <div class="flex items-center gap-4 mb-2">
+                    <span class="material-symbols-outlined text-4xl text-primary bg-primary-container p-3 rounded-full">account_circle</span>
+                    <div>
+                        <h3 id="perfil-nombre-header" class="font-medium text-lg">Cargando...</h3>
+                        <p id="perfil-email-header" class="text-xs text-on-surface-variant"></p>
+                    </div>
+                </div>
+                <div class="md3-input-group"><label>Nombre</label><input type="text" id="perfil-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Apellido</label><input type="text" id="perfil-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Teléfono</label><input type="tel" id="perfil-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Nueva Contraseña (Opcional)</label><input type="password" id="perfil-password" placeholder="En blanco para no cambiar" minlength="6" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md mt-2">Guardar Cambios</button>
+                <p id="perfil-mensaje" class="text-sm text-center hidden font-medium"></p>
+            </form>
+        </section>
+
+        <!-- Vista: Configuración de Empresa -->
+        <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
+            <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa y Logotipo</h2>
+            <form id="form-empresa" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
+                <div class="flex flex-col items-center gap-3 mb-2">
+                    <div class="w-24 h-24 rounded-2xl border border-outline-variant bg-surface flex items-center justify-center overflow-hidden relative shadow-inner">
+                        <img id="preview-logo" src="" class="w-full h-full object-contain hidden" alt="Logo Empresa">
+                        <span id="logo-placeholder" class="material-symbols-outlined text-4xl text-on-surface-variant">business</span>
+                    </div>
+                    <label class="cursor-pointer bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full text-xs font-medium">
+                        Subir Logotipo
+                        <input type="file" id="input-logo-file" accept="image/*" class="hidden">
+                    </label>
+                </div>
+                <div class="md3-input-group"><label>Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>CIF / NIF</label><input type="text" id="emp-cif" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Dirección</label><input type="text" id="emp-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="flex gap-4">
+                    <div class="md3-input-group flex-1"><label>Teléfono</label><input type="tel" id="emp-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                    <div class="md3-input-group flex-1"><label>Correo</label><input type="email" id="emp-email" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                </div>
+                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md mt-2">Guardar Datos de Empresa</button>
+                <p id="empresa-mensaje" class="text-sm text-center hidden font-medium"></p>
+            </form>
+        </section>
+
     </main>
 
-    <!-- BLOQUE 4: MODAL DE DETALLES DE TAREA (VER MÁS) -->
+    <!-- BLOQUE 4: MODALES -->
     <div id="modal-detalle-tarea" class="hidden fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
         <div class="bg-surface w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
                 <h3 class="font-medium text-on-surface text-lg">Detalles de la Tarea</h3>
                 <button type="button" id="btn-close-detalle" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
             </div>
-            <div id="detalle-contenido" class="p-6 overflow-y-auto flex flex-col gap-4 text-on-surface">
-                <!-- Se inyecta por JS -->
-            </div>
+            <div id="detalle-contenido" class="p-6 overflow-y-auto flex flex-col gap-4 text-on-surface"></div>
         </div>
     </div>
 
-    <!-- BLOQUE 5: MODAL DE PIZARRA -->
     <div id="modal-canvas" class="hidden fixed inset-0 bg-black/60 z-50 flex flex-col justify-end sm:justify-center items-center pb-safe sm:p-4">
         <div class="bg-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant">
@@ -314,11 +226,10 @@
         </div>
     </div>
 
-    <!-- BLOQUE 6: FAB Y NAVEGACIÓN -->
+    <!-- BLOQUE 5: FAB Y NAVEGACIÓN INFERIOR FIJA -->
     <button id="fab-new-task" class="hidden fixed bottom-20 right-4 sm:right-8 bg-primary-container text-on-primary-container p-4 rounded-2xl shadow-lg z-40 items-center justify-center"><span class="material-symbols-outlined">add</span></button>
 
-   <!-- NAVEGACIÓN INFERIOR FIJA (Material Design 3 Bottom Navigation) -->
-    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
+    <nav id="bottom-nav" class="hidden w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center shrink-0 z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
             <span class="text-[11px] font-medium">Diario</span>
