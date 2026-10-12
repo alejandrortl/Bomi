@@ -138,20 +138,20 @@
         if (viewPerfil) { viewPerfil.classList.add('hidden'); viewPerfil.classList.remove('flex'); }
         if (viewEmpresa) { viewEmpresa.classList.add('hidden'); viewEmpresa.classList.remove('flex'); }
         
-        if (navHome) navHome.classList.remove('text-primary');
-        if (navBitacora) navBitacora.classList.remove('text-primary');
-        if (navClientes) navClientes.classList.remove('text-primary');
-        if (navEmpleados) navEmpleados.classList.remove('text-primary');
+        if (navHome) navHome.classList.remove('text-blue-600', 'dark:text-blue-400');
+        if (navBitacora) navBitacora.classList.remove('text-blue-600', 'dark:text-blue-400');
+        if (navClientes) navClientes.classList.remove('text-blue-600', 'dark:text-blue-400');
+        if (navEmpleados) navEmpleados.classList.remove('text-blue-600', 'dark:text-blue-400');
         if (fabNewTask) fabNewTask.classList.add('hidden');
         if (fabNewBitacora) fabNewBitacora.classList.add('hidden');
         if (fabNewCliente) fabNewCliente.classList.add('hidden');
     }
 
     // --- NAVEGACIÓN INFERIOR ---
-    if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); navHome.classList.add('text-primary'); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); loadTasks(); });
-    if (navBitacora) navBitacora.addEventListener('click', () => { hideAllViews(); viewBitacora.classList.remove('hidden'); viewBitacora.classList.add('flex'); navBitacora.classList.add('text-primary'); fabNewBitacora.classList.remove('hidden'); fabNewBitacora.classList.add('flex'); loadBitacora(); });
-    if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); navClientes.classList.add('text-primary'); fabNewCliente.classList.remove('hidden'); fabNewCliente.classList.add('flex'); loadClientes(); });
-    if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); navEmpleados.classList.add('text-primary'); loadEmpleados(); });
+    if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); navHome.classList.add('text-blue-600', 'dark:text-blue-400'); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); loadTasks(); });
+    if (navBitacora) navBitacora.addEventListener('click', () => { hideAllViews(); viewBitacora.classList.remove('hidden'); viewBitacora.classList.add('flex'); navBitacora.classList.add('text-blue-600', 'dark:text-blue-400'); fabNewBitacora.classList.remove('hidden'); fabNewBitacora.classList.add('flex'); loadBitacora(); });
+    if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); navClientes.classList.add('text-blue-600', 'dark:text-blue-400'); fabNewCliente.classList.remove('hidden'); fabNewCliente.classList.add('flex'); loadClientes(); });
+    if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); navEmpleados.classList.add('text-blue-600', 'dark:text-blue-400'); loadEmpleados(); });
 
     // --- FABs ---
     if (fabNewTask) fabNewTask.addEventListener('click', () => { hideAllViews(); document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea"; formNewTask.reset(); inputFecha.value = getTodayLocalString(); loadOperariosSelect(); viewNewTask.classList.remove('hidden'); viewNewTask.classList.add('flex'); });
@@ -194,11 +194,11 @@
 
     function agregarFilaContactoCliente(nombre = '', telefono = '') {
         const div = document.createElement('div');
-        div.className = "flex gap-2 items-center bg-surface p-2 rounded-xl border border-outline-variant";
+        div.className = "flex gap-2 items-center bg-slate-50 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700";
         div.innerHTML = `
             <input type="text" placeholder="Nombre contacto" value="${nombre}" class="contacto-cli-nombre flex-1 bg-transparent border-none outline-none text-sm p-1">
             <input type="tel" placeholder="Teléfono" value="${telefono}" class="contacto-cli-tel w-32 bg-transparent border-none outline-none text-sm p-1">
-            <button type="button" class="text-error material-symbols-outlined text-sm p-1 hover:bg-error/10 rounded" onclick="this.parentElement.remove()">delete</button>
+            <button type="button" class="text-red-600 material-symbols-outlined text-sm p-1 hover:bg-red-100 rounded" onclick="this.parentElement.remove()">delete</button>
         `;
         contactosClienteContainer.appendChild(div);
     }
@@ -206,23 +206,23 @@
     function agregarFilaObra(obraObj = null) {
         const obraIdUnica = 'obra_' + Math.random().toString(36).substring(2, 9);
         const div = document.createElement('div');
-        div.className = "obra-row flex flex-col gap-3 bg-surface p-3 rounded-2xl border border-outline-variant";
+        div.className = "obra-row flex flex-col gap-3 bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-200 dark:border-zinc-700";
         div.innerHTML = `
             <div class="flex justify-between items-center">
-                <span class="text-xs font-bold text-primary">Datos de la Obra</span>
-                <button type="button" class="text-error material-symbols-outlined text-sm p-1 hover:bg-error/10 rounded" onclick="this.closest('.obra-row').remove()">delete</button>
+                <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">Datos de la Obra</span>
+                <button type="button" class="text-red-600 material-symbols-outlined text-sm p-1 hover:bg-red-100 rounded" onclick="this.closest('.obra-row').remove()">delete</button>
             </div>
             <div class="flex gap-2">
-                <input type="text" placeholder="Nombre de la Obra" value="${obraObj ? obraObj.nombre_obra : ''}" class="obra-nombre flex-1 bg-surface-container border border-outline-variant rounded-lg p-2 text-sm" required>
+                <input type="text" placeholder="Nombre de la Obra" value="${obraObj ? obraObj.nombre_obra : ''}" class="obra-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
             </div>
             <div class="flex gap-2">
-                <input type="text" placeholder="Dirección" value="${obraObj ? obraObj.direccion : ''}" class="obra-dir flex-1 bg-surface-container border border-outline-variant rounded-lg p-2 text-sm" required>
-                <input type="text" placeholder="Localidad" value="${obraObj ? obraObj.localidad : ''}" class="obra-loc flex-1 bg-surface-container border border-outline-variant rounded-lg p-2 text-sm" required>
+                <input type="text" placeholder="Dirección" value="${obraObj ? obraObj.direccion : ''}" class="obra-dir flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
+                <input type="text" placeholder="Localidad" value="${obraObj ? obraObj.localidad : ''}" class="obra-loc flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
             </div>
-            <div class="flex flex-col gap-2 border-t border-outline-variant/50 pt-2">
+            <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-700 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-[11px] font-medium text-on-surface-variant">Personas de contacto en esta obra</span>
-                    <button type="button" class="text-xs bg-surface-variant text-on-surface px-2 py-1 rounded hover:bg-primary hover:text-on-primary" onclick="window.agregarFilaContactoObra('${obraIdUnica}')">+ Contacto Obra</button>
+                    <span class="text-[11px] font-medium text-slate-500">Personas de contacto en esta obra</span>
+                    <button type="button" class="text-xs bg-slate-200 dark:bg-zinc-700 px-2 py-1 rounded hover:bg-blue-600 hover:text-white" onclick="window.agregarFilaContactoObra('${obraIdUnica}')">+ Contacto Obra</button>
                 </div>
                 <div id="${obraIdUnica}" class="contactos-obra-subcontainer flex flex-col gap-2"></div>
             </div>
@@ -233,11 +233,11 @@
         if (obraObj && obraObj.contactos_obras && obraObj.contactos_obras.length > 0) {
             obraObj.contactos_obras.forEach(co => {
                 const cDiv = document.createElement('div');
-                cDiv.className = "flex gap-2 items-center bg-surface-container p-1.5 rounded-lg border border-outline-variant";
+                cDiv.className = "flex gap-2 items-center bg-white dark:bg-zinc-900 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700";
                 cDiv.innerHTML = `
                     <input type="text" placeholder="Nombre contacto obra" value="${co.nombre}" class="co-nombre flex-1 bg-transparent border-none outline-none text-xs p-1">
                     <input type="tel" placeholder="Teléfono" value="${co.telefono}" class="co-tel w-28 bg-transparent border-none outline-none text-xs p-1">
-                    <button type="button" class="text-error material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
+                    <button type="button" class="text-red-600 material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
                 `;
                 subContainer.appendChild(cDiv);
             });
@@ -248,11 +248,11 @@
         const container = document.getElementById(containerId);
         if (!container) return;
         const div = document.createElement('div');
-        div.className = "flex gap-2 items-center bg-surface-container p-1.5 rounded-lg border border-outline-variant";
+        div.className = "flex gap-2 items-center bg-white dark:bg-zinc-900 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700";
         div.innerHTML = `
             <input type="text" placeholder="Nombre contacto obra" value="${nombre}" class="co-nombre flex-1 bg-transparent border-none outline-none text-xs p-1">
             <input type="tel" placeholder="Teléfono" value="${telefono}" class="co-tel w-28 bg-transparent border-none outline-none text-xs p-1">
-            <button type="button" class="text-error material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
+            <button type="button" class="text-red-600 material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
         `;
         container.appendChild(div);
     };
@@ -315,14 +315,14 @@
             if (pass1 || pass2) {
                 if (pass1 !== pass2) {
                     perfilMensaje.textContent = "Las contraseñas no coinciden.";
-                    perfilMensaje.className = "text-error text-sm text-center font-medium";
+                    perfilMensaje.className = "text-red-600 text-sm text-center font-medium";
                     perfilMensaje.classList.remove('hidden');
                     return;
                 }
                 const { error: passError } = await supabaseClient.auth.updateUser({ password: pass1 });
                 if (passError) {
                     perfilMensaje.textContent = "Error al actualizar contraseña.";
-                    perfilMensaje.className = "text-error text-sm text-center font-medium";
+                    perfilMensaje.className = "text-red-600 text-sm text-center font-medium";
                     perfilMensaje.classList.remove('hidden');
                     return;
                 }
@@ -334,14 +334,14 @@
 
             if (error) {
                 perfilMensaje.textContent = "Error al actualizar perfil.";
-                perfilMensaje.className = "text-error text-sm text-center font-medium";
+                perfilMensaje.className = "text-red-600 text-sm text-center font-medium";
                 perfilMensaje.classList.remove('hidden');
             } else {
                 window.currentUserProfile.nombre = nuevoNombre;
                 window.currentUserProfile.apellido = nuevoApellido;
                 window.currentUserProfile.telefono = nuevoTelefono;
                 perfilMensaje.textContent = "¡Perfil actualizado con éxito!";
-                perfilMensaje.className = "text-green-600 text-sm text-center font-medium";
+                perfilMensaje.className = "text-emerald-600 text-sm text-center font-medium";
                 perfilMensaje.classList.remove('hidden');
                 perfilNewPass.value = ''; perfilConfirmPass.value = '';
             }
@@ -392,7 +392,7 @@
             recognition.interimResults = false;
             recognition.maxAlternatives = 1;
 
-            btnMicNotas.classList.add('bg-primary', 'text-on-primary');
+            btnMicNotas.classList.add('bg-blue-600', 'text-white');
             btnMicNotas.textContent = "Escuchando...";
             recognition.start();
 
@@ -402,7 +402,7 @@
             };
             recognition.onerror = () => alert("Error al capturar voz.");
             recognition.onend = () => {
-                btnMicNotas.classList.remove('bg-primary', 'text-on-primary');
+                btnMicNotas.classList.remove('bg-blue-600', 'text-white');
                 btnMicNotas.innerHTML = '<span class="material-symbols-outlined text-[16px]">mic</span> Dictar por Voz';
             };
         });
@@ -479,7 +479,7 @@
     async function loadClientes() {
         const { data: clientesData, error: cliError } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
         if (cliError) {
-            if (clientesContainer) clientesContainer.innerHTML = `<p class="text-error text-center mt-4">Error al cargar clientes: ${cliError.message}</p>`;
+            if (clientesContainer) clientesContainer.innerHTML = `<p class="text-red-600 text-center mt-4">Error al cargar clientes: ${cliError.message}</p>`;
             return;
         }
 
@@ -620,7 +620,7 @@
         clientesContainer.innerHTML = '';
         if (clientesCount) clientesCount.textContent = `${clientesToRender.length} clientes`;
         if (clientesToRender.length === 0) {
-            clientesContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay clientes registrados.</p>';
+            clientesContainer.innerHTML = '<p class="text-slate-500 text-center mt-4">No hay clientes registrados.</p>';
             return;
         }
 
@@ -629,52 +629,52 @@
 
         clientesToRender.forEach(cli => {
             const card = document.createElement('div');
-            card.className = "p-5 rounded-3xl shadow-sm bg-surface-container-low flex flex-col gap-4";
+            card.className = "p-5 rounded-3xl shadow-sm bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex flex-col gap-4";
             
             let contactosCliHtml = '';
             if (cli.contactos_clientes && cli.contactos_clientes.length > 0) {
-                contactosCliHtml = `<div class="flex flex-wrap gap-2 text-xs pt-1"><span class="font-medium text-on-surface-variant">Contactos Cliente:</span>` +
-                    cli.contactos_clientes.map(cc => `<a href="tel:${cc.telefono}" class="bg-surface px-2.5 py-1 rounded-lg border border-outline-variant text-primary font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">call</span> ${cc.nombre}: ${cc.telefono}</a>`).join('') +
+                contactosCliHtml = `<div class="flex flex-wrap gap-2 text-xs pt-1"><span class="font-medium text-slate-500">Contactos Cliente:</span>` +
+                    cli.contactos_clientes.map(cc => `<a href="tel:${cc.telefono}" class="bg-slate-50 dark:bg-zinc-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-zinc-700 text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">call</span> ${cc.nombre}: ${cc.telefono}</a>`).join('') +
                     `</div>`;
             }
 
             let obrasHtml = '';
             if (cli.obras && cli.obras.length > 0) {
-                obrasHtml = `<div class="flex flex-col gap-3 mt-2 border-t border-outline-variant pt-3"><span class="text-xs font-bold text-primary uppercase tracking-wider">Obras (${cli.obras.length})</span>` +
+                obrasHtml = `<div class="flex flex-col gap-3 mt-2 border-t border-slate-200 dark:border-zinc-800 pt-3"><span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Obras (${cli.obras.length})</span>` +
                     cli.obras.map(ob => {
                         const mapsQuery = encodeURIComponent(`${ob.direccion}, ${ob.localidad}`);
                         const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
                         
                         let contactosObraHtml = '';
                         if (ob.contactos_obras && ob.contactos_obras.length > 0) {
-                            contactosObraHtml = `<div class="flex flex-wrap gap-2 text-xs mt-1"><span class="text-on-surface-variant">Contacto Obra:</span>` +
-                                ob.contactos_obras.map(co => `<a href="tel:${co.telefono}" class="bg-surface-container px-2 py-0.5 rounded border border-outline-variant text-primary font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">call</span> ${co.nombre} (${co.telefono})</a>`).join('') +
+                            contactosObraHtml = `<div class="flex flex-wrap gap-2 text-xs mt-1"><span class="text-slate-500">Contacto Obra:</span>` +
+                                ob.contactos_obras.map(co => `<a href="tel:${co.telefono}" class="bg-slate-50 dark:bg-zinc-800 px-2 py-0.5 rounded border border-slate-200 dark:border-zinc-700 text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">call</span> ${co.nombre} (${co.telefono})</a>`).join('') +
                                 `</div>`;
                         }
 
                         return `
-                            <div class="bg-surface p-3.5 rounded-2xl border border-outline-variant flex flex-col gap-2">
+                            <div class="bg-slate-50 dark:bg-zinc-800/50 p-3.5 rounded-2xl border border-slate-200 dark:border-zinc-700 flex flex-col gap-2">
                                 <div class="flex justify-between items-start">
-                                    <h4 class="font-medium text-sm text-on-surface">🏗️ ${ob.nombre_obra}</h4>
-                                    <a href="${mapsUrl}" target="_blank" class="text-xs bg-primary text-on-primary px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-xs hover:opacity-90">
+                                    <h4 class="font-medium text-sm">🏗️ ${ob.nombre_obra}</h4>
+                                    <a href="${mapsUrl}" target="_blank" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-xs transition-colors">
                                         <span class="material-symbols-outlined text-[14px]">map</span> Google Maps
                                     </a>
                                 </div>
-                                <p class="text-xs text-on-surface-variant">📍 ${ob.direccion}, ${ob.localidad}</p>
+                                <p class="text-xs text-slate-500">📍 ${ob.direccion}, ${ob.localidad}</p>
                                 ${contactosObraHtml}
                             </div>
                         `;
                     }).join('') + `</div>`;
             } else {
-                obrasHtml = `<p class="text-xs text-on-surface-variant italic mt-1">Este cliente aún no tiene obras registradas.</p>`;
+                obrasHtml = `<p class="text-xs text-slate-500 italic mt-1">Este cliente aún no tiene obras registradas.</p>`;
             }
 
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="font-bold text-lg text-on-surface">${cli.nombre_cliente}</h3>
+                        <h3 class="font-bold text-lg">${cli.nombre_cliente}</h3>
                     </div>
-                    ${isAdmin ? `<button onclick="window.editarCliente('${cli.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium">Modificar / Añadir Obra</button>` : ''}
+                    ${isAdmin ? `<button onclick="window.editarCliente('${cli.id}')" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium">Modificar / Añadir Obra</button>` : ''}
                 </div>
                 ${contactosCliHtml}
                 ${obrasHtml}
@@ -728,10 +728,10 @@
     // --- BITÁCORA ---
     async function loadBitacora() {
         if (!bitacoraContainer) return;
-        bitacoraContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
+        bitacoraContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
         const { data, error } = await supabaseClient.from('bitacora').select('*').order('created_at', { ascending: false });
         if (error) {
-            bitacoraContainer.innerHTML = '<p class="text-error text-center">Error al cargar bitácora.</p>';
+            bitacoraContainer.innerHTML = '<p class="text-red-600 text-center">Error al cargar bitácora.</p>';
             return;
         }
         allBitacora = data || [];
@@ -742,25 +742,25 @@
         bitacoraContainer.innerHTML = '';
         if (bitacoraCount) bitacoraCount.textContent = `${items.length} registros`;
         if (items.length === 0) {
-            bitacoraContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay registros en la bitácora.</p>';
+            bitacoraContainer.innerHTML = '<p class="text-slate-500 text-center mt-4">No hay registros en la bitácora.</p>';
             return;
         }
 
         items.forEach(item => {
             const fecha = new Date(item.created_at).toLocaleString();
             const card = document.createElement('div');
-            card.className = "p-4 rounded-2xl shadow-sm bg-surface-container-low flex flex-col gap-3";
+            card.className = "p-4 rounded-2xl shadow-sm bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex flex-col gap-3";
             card.innerHTML = `
                 <div class="flex justify-between items-start">
-                    <span class="text-xs font-medium text-primary bg-primary-container px-2.5 py-1 rounded-md">${item.cliente} - ${item.obra}</span>
-                    <span class="text-[11px] text-on-surface-variant">${fecha}</span>
+                    <span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-md">${item.cliente} - ${item.obra}</span>
+                    <span class="text-[11px] text-slate-500">${fecha}</span>
                 </div>
-                <p class="text-sm text-on-surface line-clamp-2">${item.notas || 'Sin notas'}</p>
-                <div class="flex justify-between items-center text-xs text-on-surface-variant pt-2 border-t border-outline-variant">
+                <p class="text-sm line-clamp-2">${item.notas || 'Sin notas'}</p>
+                <div class="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-200 dark:border-zinc-800">
                     <span>✏️ Creado por: <strong>${item.created_by || 'Desconocido'}</strong></span>
                     <div class="flex gap-2">
-                        <button onclick="window.verDetalleBitacora('${item.id}')" class="bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium">Ver</button>
-                        <button onclick="window.editarBitacora('${item.id}')" class="bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium">Modificar</button>
+                        <button onclick="window.verDetalleBitacora('${item.id}')" class="bg-slate-50 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 font-medium">Ver</button>
+                        <button onclick="window.editarBitacora('${item.id}')" class="bg-slate-100 dark:bg-zinc-700 px-3 py-1.5 rounded-lg font-medium">Modificar</button>
                     </div>
                 </div>
             `;
@@ -868,11 +868,11 @@
 
         const mapsQuery = encodeURIComponent(`${item.direccion}, ${item.localidad}`);
         detalleBitacoraContent.innerHTML = `
-            <div><span class="text-xs text-on-surface-variant">Cliente / Obra:</span><p class="font-medium text-lg">${item.cliente} - ${item.obra}</p></div>
-            <div><span class="text-xs text-on-surface-variant">Dirección:</span><p class="font-medium"><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" class="text-primary underline">${item.direccion}, ${item.localidad}</a></p></div>
-            <div><span class="text-xs text-on-surface-variant">Notas y Observaciones:</span><p class="bg-surface-container p-3 rounded-xl mt-1 whitespace-pre-line">${item.notas || 'Sin notas'}</p></div>
-            ${item.pizarra_data ? `<div><span class="text-xs text-on-surface-variant">Croquis / Pizarra:</span><div class="mt-1 border border-outline-variant rounded-xl p-2 bg-surface inline-block"><img src="${item.pizarra_data}" class="max-h-48 rounded-lg"/></div></div>` : ''}
-            <div class="text-xs text-on-surface-variant pt-3 border-t border-outline-variant flex justify-between">
+            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${item.cliente} - ${item.obra}</p></div>
+            <div><span class="text-xs text-slate-500">Dirección:</span><p class="font-medium"><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" class="text-blue-600 dark:text-blue-400 underline">${item.direccion}, ${item.localidad}</a></p></div>
+            <div><span class="text-xs text-slate-500">Notas y Observaciones:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-line">${item.notas || 'Sin notas'}</p></div>
+            ${item.pizarra_data ? `<div><span class="text-xs text-slate-500">Croquis / Pizarra:</span><div class="mt-1 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 bg-white inline-block"><img src="${item.pizarra_data}" class="max-h-48 rounded-lg"/></div></div>` : ''}
+            <div class="text-xs text-slate-500 pt-3 border-t border-slate-200 dark:border-zinc-800 flex justify-between">
                 <span>Creado por: <strong>${item.created_by || 'Desconocido'}</strong> (${new Date(item.created_at).toLocaleString()})</span>
                 <span>Última modif: <strong>${item.updated_by || 'N/D'}</strong></span>
             </div>
@@ -932,12 +932,12 @@
 
     async function loadTasks() {
         if (!tasksContainer || !filtroFechaDiario) return;
-        tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
+        tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
         const selectedDate = filtroFechaDiario.value || getTodayLocalString();
         const { data, error } = await supabaseClient.from('tareas').select('*').eq('fecha', selectedDate).order('completada', { ascending: true });
         
         if (error) {
-            tasksContainer.innerHTML = '<p class="text-error text-center mt-4">Error al cargar tareas.</p>';
+            tasksContainer.innerHTML = '<p class="text-red-600 text-center mt-4">Error al cargar tareas.</p>';
             return;
         }
         allTasks = data || [];
@@ -947,13 +947,13 @@
     function renderTasks(tasksToRender) {
         tasksContainer.innerHTML = '';
         if (tasksToRender.length === 0) {
-            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas para esta fecha.</p>';
+            tasksContainer.innerHTML = '<p class="text-slate-500 text-center mt-4">No hay tareas para esta fecha.</p>';
             return;
         }
 
         tasksToRender.forEach(tarea => {
             const isCompleted = tarea.completada;
-            const cardBg = isCompleted ? 'bg-surface-variant opacity-70' : 'bg-surface-container-low';
+            const cardBg = isCompleted ? 'bg-slate-100 dark:bg-zinc-800 opacity-70' : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
             const isMyTask = window.currentUserProfile && (tarea.operario_username === window.currentUserProfile.username);
             const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
@@ -962,19 +962,19 @@
             card.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2`;
             card.innerHTML = `
                 <div class="flex justify-between items-start">
-                    <span class="text-xs font-medium text-primary bg-primary-container px-2 py-1 rounded-md">${tarea.cliente} - ${tarea.obra}</span>
-                    ${isCompleted ? '<span class="material-symbols-outlined text-green-600">check_circle</span>' : ''}
+                    <span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded-md">${tarea.cliente} - ${tarea.obra}</span>
+                    ${isCompleted ? '<span class="material-symbols-outlined text-emerald-600">check_circle</span>' : ''}
                 </div>
-                <h3 class="font-medium text-base ${isCompleted ? 'line-through text-on-surface-variant' : 'text-on-surface'}">${tarea.tarea}</h3>
-                <div class="text-xs text-on-surface-variant flex justify-between items-center mt-1">
+                <h3 class="font-medium text-base ${isCompleted ? 'line-through text-slate-500' : ''}">${tarea.tarea}</h3>
+                <div class="text-xs text-slate-500 flex justify-between items-center mt-1">
                     <span>👷 @${tarea.operario_username}</span>
-                    <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-primary font-medium hover:underline bg-surface px-2 py-1 rounded-md border border-outline-variant">
+                    <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium hover:underline bg-slate-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-slate-200 dark:border-zinc-700">
                         <span class="material-symbols-outlined text-[14px]">map</span> ${tarea.localidad}
                     </a>
                 </div>
-                <div class="flex gap-2 mt-3 pt-2 border-t border-outline-variant items-center justify-between">
-                    <button onclick="window.verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium">Ver</button>
-                    ${(!isCompleted && isMyTask) ? `<button onclick="window.marcarCompletada('${tarea.id}')" class="text-xs bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg font-medium">Realizada</button>` : ''}
+                <div class="flex gap-2 mt-3 pt-2 border-t border-slate-200 dark:border-zinc-800 items-center justify-between">
+                    <button onclick="window.verDetalles('${tarea.id}')" class="text-xs bg-slate-50 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 font-medium">Ver</button>
+                    ${(!isCompleted && isMyTask) ? `<button onclick="window.marcarCompletada('${tarea.id}')" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1.5 rounded-lg font-medium">Realizada</button>` : ''}
                 </div>
             `;
             tasksContainer.appendChild(card);
@@ -1000,10 +1000,10 @@
         if (!tarea) return;
         const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
         detalleContenido.innerHTML = `
-            <div><span class="text-xs text-on-surface-variant">Cliente / Obra:</span><p class="font-medium text-lg">${tarea.cliente} - ${tarea.obra}</p></div>
-            <div><span class="text-xs text-on-surface-variant">Dirección:</span><p class="font-medium"><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" class="text-primary underline">${tarea.direccion}, ${tarea.localidad}</a></p></div>
-            <div><span class="text-xs text-on-surface-variant">Operario:</span><p class="font-medium">@${tarea.operario_username}</p></div>
-            <div><span class="text-xs text-on-surface-variant">Descripción:</span><p class="bg-surface-container p-3 rounded-xl mt-1">${tarea.tarea}</p></div>
+            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${tarea.cliente} - ${tarea.obra}</p></div>
+            <div><span class="text-xs text-slate-500">Dirección:</span><p class="font-medium"><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" class="text-blue-600 dark:text-blue-400 underline">${tarea.direccion}, ${tarea.localidad}</a></p></div>
+            <div><span class="text-xs text-slate-500">Operario:</span><p class="font-medium">@${tarea.operario_username}</p></div>
+            <div><span class="text-xs text-slate-500">Descripción:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1">${tarea.tarea}</p></div>
         `;
         modalDetalle.classList.remove('hidden');
     };
@@ -1046,10 +1046,10 @@
 
     async function loadEmpleados() {
         if (!empleadosContainer) return;
-        empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
+        empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
         const { data, error } = await supabaseClient.from('perfiles').select('*').order('nombre', { ascending: true });
         if (error) {
-            empleadosContainer.innerHTML = '<p class="text-error text-center">Error al cargar empleados.</p>';
+            empleadosContainer.innerHTML = '<p class="text-red-600 text-center">Error al cargar empleados.</p>';
             return;
         }
         allEmpleados = data || [];
@@ -1061,16 +1061,16 @@
         if (empleadosCount) empleadosCount.textContent = `${empleadosToRender.length} empleados`;
         empleadosToRender.forEach(emp => {
             const card = document.createElement('div');
-            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'card-pendiente'}`;
+            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800' : 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200'}`;
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold ml-2">Pendiente</span>' : ''}</h3>
-                        <p class="text-xs opacity-80">@${emp.username || 'sin_usuario'}</p>
+                        <h3 class="font-medium text-base">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold ml-2">Pendiente</span>' : ''}</h3>
+                        <p class="text-xs text-slate-500">@${emp.username || 'sin_usuario'}</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2 items-center text-sm pt-1">
-                    <a href="tel:${emp.telefono || ''}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium">
+                    <a href="tel:${emp.telefono || ''}" class="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-blue-600 dark:text-blue-400 font-medium">
                         <span class="material-symbols-outlined text-[16px]">call</span> ${emp.telefono || 'Sin teléfono'}
                     </a>
                 </div>
