@@ -55,12 +55,11 @@
     const btnBackBitacoraList = document.getElementById('btn-back-bitacora-list');
     const detalleBitacoraContent = document.getElementById('detalle-bitacora-content');
     const btnMicNotas = document.getElementById('btn-mic-notas');
+    const btnExportPdf = document.getElementById('btn-export-pdf');
 
     // Pizarra Canvas
     const canvas = document.getElementById('pizarra-canvas');
     const ctx = canvas ? canvas.getContext('2d') : null;
-    let isDrawing = false;
-    let currentPizarraColor = 'currentColor';
 
     // Clientes
     const clientesContainer = document.getElementById('clientes-container');
@@ -79,11 +78,12 @@
     const btnCancelModalCliente = document.getElementById('btn-cancel-modal-cliente');
     const datalistClientes = document.getElementById('clientes-datalist');
 
-    // Perfil Form Passwords
+    // Perfil y Empresa
     const formPerfil = document.getElementById('form-perfil');
     const perfilNewPass = document.getElementById('perfil-new-pass');
     const perfilConfirmPass = document.getElementById('perfil-confirm-pass');
     const perfilMensaje = document.getElementById('perfil-mensaje');
+    const formEmpresa = document.getElementById('form-empresa');
 
     // Empleados
     const empleadosContainer = document.getElementById('empleados-container');
@@ -99,6 +99,7 @@
     let allBitacora = [];
     let allClientes = [];
     let allEmpleados = [];
+    let currentBitacoraItem = null;
 
     function getTodayLocalString() {
         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
@@ -165,7 +166,7 @@
         });
     }
 
-    // --- FAB DIARIO ---
+    // --- FABs ---
     if (fabNewTask) {
         fabNewTask.addEventListener('click', () => {
             hideAllViews();
@@ -178,7 +179,6 @@
     }
     if (btnCancelTask) btnCancelTask.addEventListener('click', () => navHome.click());
 
-    // --- FAB BITÁCORA ---
     if (fabNewBitacora) {
         fabNewBitacora.addEventListener('click', () => {
             hideAllViews();
@@ -192,7 +192,6 @@
     if (btnCancelBitacora) btnCancelBitacora.addEventListener('click', () => navBitacora.click());
     if (btnBackBitacoraList) btnBackBitacoraList.addEventListener('click', () => navBitacora.click());
 
-    // --- FAB CLIENTES ---
     if (fabNewCliente) {
         fabNewCliente.addEventListener('click', () => {
             if (modalClienteTitle) modalClienteTitle.textContent = "Nuevo Cliente / Obra";
@@ -280,7 +279,7 @@
                 }
                 const { error: passError } = await supabaseClient.auth.updateUser({ password: pass1 });
                 if (passError) {
-                    perfilMensaje.textContent = "Error al actualizar contraseña: " + passError.message;
+                    perfilMensaje.textContent = "Error al actualizar contraseña.";
                     perfilMensaje.className = "text-error text-sm text-center font-medium";
                     perfilMensaje.classList.remove('hidden');
                     return;
@@ -316,11 +315,31 @@
                 document.getElementById('emp-nombre').value = data.nombre_fiscal || '';
                 document.getElementById('emp-cif').value = data.cif || '';
                 document.getElementById('emp-direccion').value = data.direccion || '';
+                document.getElementById('emp-logo').value = data.logo_url || '';
             }
         });
     }
 
-    // --- DICTADO POR VOZ (MICRÓFONO) ---
+    if (formEmpresa) {
+        formEmpresa.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const empresaData = {
+                nombre_fiscal: document.getElementById('emp-nombre').value.trim(),
+                cif: document.getElementById('emp-cif').value.trim(),
+                direccion: document.getElementById('emp-direccion').value.trim(),
+                logo_url: document.getElementById('emp-logo').value.trim()
+            };
+            const { data: existing } = await supabaseClient.from('configuracion_empresa').select('id').limit(1).single();
+            if (existing) {
+                await supabaseClient.from('configuracion_empresa').update(empresaData).eq('id', existing.id);
+            } else {
+                await supabaseClient.from('configuracion_empresa').insert([empresaData]);
+            }
+            alert("¡Datos de empresa guardados con éxito!");
+        });
+    }
+
+    // --- DICTADO POR VOZ ---
     if (btnMicNotas && bitNotas) {
         btnMicNotas.addEventListener('click', () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -335,18 +354,13 @@
 
             btnMicNotas.classList.add('bg-primary', 'text-on-primary');
             btnMicNotas.textContent = "Escuchando...";
-
             recognition.start();
 
             recognition.onresult = (event) => {
                 const speechToText = event.results[0][0].transcript;
                 bitNotas.value = bitNotas.value ? bitNotas.value + " " + speechToText : speechToText;
             };
-
-            recognition.onerror = () => {
-                alert("Error al capturar voz.");
-            };
-
+            recognition.onerror = () => alert("Error al capturar voz.");
             recognition.onend = () => {
                 btnMicNotas.classList.remove('bg-primary', 'text-on-primary');
                 btnMicNotas.innerHTML = '<span class="material-symbols-outlined text-[16px]">mic</span> Dictar por Voz';
@@ -354,30 +368,25 @@
         });
     }
 
-    // --- PIZBARRA CANVAS ---
+    // --- PIZARRA CANVAS ---
     function configurarPizarra() {
         if (!canvas || !ctx) return;
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
-
         let drawing = false;
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.clientX || (e.touches && e.touches[0].clientX);
             const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
         canvas.onmousedown = (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
         canvas.onmousemove = (e) => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
         canvas.onmouseup = () => { drawing = false; };
         canvas.onmouseleave = () => { drawing = false; };
-
         canvas.ontouchstart = (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
         canvas.ontouchmove = (e) => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
         canvas.ontouchend = () => { drawing = false; };
@@ -395,19 +404,15 @@
         btn.addEventListener('click', (e) => {
             const color = e.target.getAttribute('data-color');
             if (ctx) {
-                if (color === 'current') {
-                    ctx.strokeStyle = document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000';
-                } else {
-                    ctx.strokeStyle = color;
-                }
+                ctx.strokeStyle = (color === 'current') ? (document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000') : color;
             }
         });
     });
 
-    // --- GESTIÓN DE CLIENTES & AUTOCOMPLETADO ---
+    // --- CLIENTES & AUTOCOMPLETADO ---
     async function loadClientes() {
-        const { data, error } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
-        if (!error && data) {
+        const { data } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
+        if (data) {
             allClientes = data;
             actualizarDatalistClientes();
             if (clientesContainer) renderClientes(allClientes);
@@ -425,7 +430,6 @@
         });
     }
 
-    // Autocompletar Dirección y Localidad en Bitácora y Tareas
     if (bitCliente) {
         bitCliente.addEventListener('input', (e) => {
             const val = e.target.value.trim().toLowerCase();
@@ -450,7 +454,7 @@
         });
     }
 
-    // --- MÓDULO BITÁCORA ---
+    // --- BITÁCORA ---
     async function loadBitacora() {
         if (!bitacoraContainer) return;
         bitacoraContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
@@ -547,11 +551,27 @@
         });
     }
 
-    window.verDetalleBitacora = function(id) {
+    window.verDetalleBitacora = async function(id) {
         const item = allBitacora.find(b => b.id === id);
         if (!item) return;
+        currentBitacoraItem = item;
         hideAllViews();
         if (viewDetalleBitacora) { viewDetalleBitacora.classList.remove('hidden'); viewDetalleBitacora.classList.add('flex'); }
+
+        // Cargar datos de empresa en la cabecera PDF
+        const { data: emp } = await supabaseClient.from('configuracion_empresa').select('*').limit(1).single();
+        const logoImg = document.getElementById('pdf-emp-logo');
+        if (emp) {
+            document.getElementById('pdf-emp-nombre').textContent = emp.nombre_fiscal || 'Diario de Obra';
+            document.getElementById('pdf-emp-cif').textContent = emp.cif ? `CIF: ${emp.cif}` : '';
+            document.getElementById('pdf-emp-dir').textContent = emp.direccion || '';
+            if (emp.logo_url && logoImg) {
+                logoImg.src = emp.logo_url;
+                logoImg.classList.remove('hidden');
+            } else if (logoImg) {
+                logoImg.classList.add('hidden');
+            }
+        }
 
         const mapsQuery = encodeURIComponent(`${item.direccion}, ${item.localidad}`);
         detalleBitacoraContent.innerHTML = `
@@ -565,6 +585,21 @@
             </div>
         `;
     };
+
+    // Exportar a PDF con html2pdf
+    if (btnExportPdf) {
+        btnExportPdf.addEventListener('click', () => {
+            const element = document.getElementById('pdf-export-container');
+            const opt = {
+                margin:        10,
+                filename:      `Bitacora_${currentBitacoraItem ? currentBitacoraItem.cliente : 'registro'}.pdf`,
+                image:         { type: 'jpeg', quality: 0.98 },
+                html2canvas:   { scale: 2, useCORS: true },
+                jsPDF:         { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().from(element).set(opt).save();
+        });
+    }
 
     window.editarBitacora = function(id) {
         const item = allBitacora.find(b => b.id === id);
@@ -588,7 +623,7 @@
         if (viewFormBitacora) { viewFormBitacora.classList.remove('hidden'); viewFormBitacora.classList.add('flex'); }
     };
 
-    // --- GESTIÓN DE TAREAS ---
+    // --- TAREAS Y CLIENTES ---
     if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
@@ -705,7 +740,16 @@
         });
     }
 
-    // --- GESTIÓN DE CLIENTES ---
+    // --- GESTIÓN DE CLIENTES Y EMPLEADOS ---
+    async function loadClientes() {
+        const { data } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
+        if (data) {
+            allClientes = data;
+            actualizarDatalistClientes();
+            if (clientesContainer) renderClientes(allClientes);
+        }
+    }
+
     if (formCliente) {
         formCliente.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -799,7 +843,6 @@
         modalCliente.classList.remove('hidden');
     };
 
-    // --- GESTIÓN DE EMPLEADOS ---
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
@@ -838,13 +881,13 @@
     if (searchEmpleadosInput) {
         searchEmpleadosInput.addEventListener('input', (e) => {
             const q = e.target.value.toLowerCase();
-            const filtradas = allEmpleados.filter(emp => 
+            const filtrados = allEmpleados.filter(emp => 
                 (emp.nombre && emp.nombre.toLowerCase().includes(q)) || 
                 (emp.apellido && emp.apellido.toLowerCase().includes(q)) || 
                 (emp.email && emp.email.toLowerCase().includes(q)) || 
                 (emp.telefono && emp.telefono.toLowerCase().includes(q))
             );
-            renderEmpleados(filtradas);
+            renderEmpleados(filtrados);
         });
     }
 
