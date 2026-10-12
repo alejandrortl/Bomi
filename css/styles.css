@@ -125,3 +125,19 @@ body {
     border-radius: 4px; padding: 12px 16px; color: var(--md-sys-color-on-surface); font-size: 16px;
 }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+
+/* Forzar opacidad total en todas las ventanas modales y pizarras */
+#modal-editar-empleado, 
+#modal-detalle-tarea, 
+#modal-canvas {
+    background-color: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(4px);
+}
+
+#modal-editar-empleado > div,
+#modal-detalle-tarea > div,
+#modal-canvas > div {
+    background-color: var(--md-sys-color-surface) !important;
+    opacity: 1 !important;
+}
