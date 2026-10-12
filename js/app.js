@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewNewTask = document.getElementById('view-new-task');
     const viewEmpleados = document.getElementById('view-empleados');
     const viewPerfil = document.getElementById('view-perfil');
+    const viewEmpresa = document.getElementById('view-empresa'); // Nueva vista
     
     const navHome = document.getElementById('nav-home');
     const navEmpleados = document.getElementById('nav-empleados');
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnMenuPerfil = document.getElementById('btn-menu-perfil');
     const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
     const menuItemPerfil = document.getElementById('menu-item-perfil');
+    const menuItemEmpresa = document.getElementById('menu-item-empresa'); // Nuevo botón menú
     const headerUsernameLabel = document.getElementById('header-username-label');
 
     const tasksContainer = document.getElementById('tasks-container');
@@ -42,6 +44,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const perfilEmailHeader = document.getElementById('perfil-email-header');
     const perfilMensaje = document.getElementById('perfil-mensaje');
 
+    // Referencias Empresa
+    const formEmpresa = document.getElementById('form-empresa');
+    const empNombre = document.getElementById('emp-nombre');
+    const empCif = document.getElementById('emp-cif');
+    const empDireccion = document.getElementById('emp-direccion');
+    const empTelefono = document.getElementById('emp-telefono');
+    const empEmail = document.getElementById('emp-email');
+    const inputLogoFile = document.getElementById('input-logo-file');
+    const previewLogo = document.getElementById('preview-logo');
+    const logoPlaceholder = document.getElementById('logo-placeholder');
+    const empresaMensaje = document.getElementById('empresa-mensaje');
+    let logoBlobToUpload = null;
+
     const modalDetalle = document.getElementById('modal-detalle-tarea');
     const detalleContenido = document.getElementById('detalle-contenido');
     const btnCloseDetalle = document.getElementById('btn-close-detalle');
@@ -67,35 +82,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectTema) selectTema.value = window.currentUserProfile.tema || 'auto';
         
         cargarDatosPerfil();
+        cargarDatosEmpresa();
         loadTasks();
-        if (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin') {
+
+        const isAdmin = window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin';
+        if (isAdmin) {
             loadEmpleados();
             loadOperariosSelect();
+            if (menuItemEmpresa) menuItemEmpresa.classList.remove('hidden');
+            menuItemEmpresa.classList.add('flex');
         }
     });
 
-    // === GESTIÓN DEL MENÚ DESPLEGABLE DE PERFIL EN HEADER ===
+    // === MENÚ DESPLEGABLE DE PERFIL ===
     if (btnMenuPerfil && dropdownMenuPerfil) {
         btnMenuPerfil.addEventListener('click', (e) => {
             e.stopPropagation();
             dropdownMenuPerfil.classList.toggle('hidden');
         });
-
-        // Cerrar menú al hacer clic fuera
-        document.addEventListener('click', () => {
-            dropdownMenuPerfil.classList.add('hidden');
-        });
+        document.addEventListener('click', () => dropdownMenuPerfil.classList.add('hidden'));
     }
 
     if (menuItemPerfil) {
         menuItemPerfil.addEventListener('click', () => {
             hideAllViews();
-            if (viewPerfil) {
-                viewPerfil.classList.remove('hidden');
-                viewPerfil.classList.add('flex');
-            }
+            if (viewPerfil) { viewPerfil.classList.remove('hidden'); viewPerfil.classList.add('flex'); }
             dropdownMenuPerfil.classList.add('hidden');
             cargarDatosPerfil();
+        });
+    }
+
+    if (menuItemEmpresa) {
+        menuItemEmpresa.addEventListener('click', () => {
+            hideAllViews();
+            if (viewEmpresa) { viewEmpresa.classList.remove('hidden'); viewEmpresa.classList.add('flex'); }
+            dropdownMenuPerfil.classList.add('hidden');
+            cargarDatosEmpresa();
         });
     }
 
@@ -132,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         viewNewTask.classList.remove('flex');
         if (viewEmpleados) { viewEmpleados.classList.add('hidden'); viewEmpleados.classList.remove('flex'); }
         if (viewPerfil) { viewPerfil.classList.add('hidden'); viewPerfil.classList.remove('flex'); }
+        if (viewEmpresa) { viewEmpresa.classList.add('hidden'); viewEmpresa.classList.remove('flex'); }
         
         navHome.classList.remove('text-primary');
         if (navEmpleados) navEmpleados.classList.remove('text-primary');
@@ -183,8 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             perfilMensaje.classList.add('hidden');
             const btn = formPerfil.querySelector('button[type="submit"]');
-            btn.disabled = true;
-            btn.textContent = "Guardando...";
+            btn.disabled = true; btn.textContent = "Guardando...";
 
             const nuevoNombre = perfilNombre.value.trim();
             const nuevoApellido = perfilApellido.value.trim();
@@ -193,19 +215,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { error: perfilError } = await supabaseClient
                 .from('perfiles')
-                .update({ 
-                    nombre: nuevoNombre, 
-                    apellido: nuevoApellido, 
-                    telefono: nuevoTelefono 
-                })
+                .update({ nombre: nuevoNombre, apellido: nuevoApellido, telefono: nuevoTelefono })
                 .eq('id', window.currentUserProfile.id);
 
             if (perfilError) {
                 perfilMensaje.textContent = "Error al actualizar perfil: " + perfilError.message;
                 perfilMensaje.className = "text-error text-sm text-center font-medium";
                 perfilMensaje.classList.remove('hidden');
-                btn.disabled = false;
-                btn.textContent = "Guardar Cambios";
+                btn.disabled = false; btn.textContent = "Guardar Cambios";
                 return;
             }
 
@@ -217,11 +234,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (nuevaPassword) {
                 const { error: passError } = await supabaseClient.auth.updateUser({ password: nuevaPassword });
                 if (passError) {
-                    perfilMensaje.textContent = "Datos guardados, pero error al cambiar contraseña: " + passError.message;
+                    perfilMensaje.textContent = "Error al cambiar contraseña: " + passError.message;
                     perfilMensaje.className = "text-error text-sm text-center font-medium";
                     perfilMensaje.classList.remove('hidden');
-                    btn.disabled = false;
-                    btn.textContent = "Guardar Cambios";
+                    btn.disabled = false; btn.textContent = "Guardar Cambios";
                     return;
                 }
                 perfilPassword.value = '';
@@ -230,8 +246,92 @@ document.addEventListener('DOMContentLoaded', () => {
             perfilMensaje.textContent = "¡Cambios guardados con éxito!";
             perfilMensaje.className = "text-green-600 text-sm text-center font-medium";
             perfilMensaje.classList.remove('hidden');
-            btn.disabled = false;
-            btn.textContent = "Guardar Cambios";
+            btn.disabled = false; btn.textContent = "Guardar Cambios";
+        });
+    }
+
+    // === GESTIÓN DE EMPRESA Y LOGOTIPO ===
+    async function cargarDatosEmpresa() {
+        const { data, error } = await supabaseClient.from('configuracion_empresa').select('*').limit(1).single();
+        if (data) {
+            empNombre.value = data.nombre_fiscal || '';
+            empCif.value = data.cif || '';
+            empDireccion.value = data.direccion || '';
+            empTelefono.value = data.telefono || '';
+            empEmail.value = data.email || '';
+            if (data.logo_url) {
+                previewLogo.src = data.logo_url;
+                previewLogo.classList.remove('hidden');
+                logoPlaceholder.classList.add('hidden');
+            }
+        }
+    }
+
+    if (inputLogoFile) {
+        inputLogoFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                logoBlobToUpload = file;
+                previewLogo.src = URL.createObjectURL(file);
+                previewLogo.classList.remove('hidden');
+                logoPlaceholder.classList.add('hidden');
+            }
+        });
+    }
+
+    if (formEmpresa) {
+        formEmpresa.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            empresaMensaje.classList.add('hidden');
+            const btn = formEmpresa.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.textContent = "Guardando...";
+
+            let logoUrl = previewLogo.src;
+
+            // Si seleccionó un nuevo logo, subirlo a Supabase Storage (bucket 'empresa')
+            if (logoBlobToUpload) {
+                const fileName = `logo_${Date.now()}.jpg`;
+                const { error: uploadError } = await supabaseClient.storage.from('empresa').upload(fileName, logoBlobToUpload);
+                if (uploadError) {
+                    alert("Error al subir el logotipo: " + uploadError.message);
+                    btn.disabled = false; btn.textContent = "Guardar Datos de Empresa";
+                    return;
+                }
+                const { data: { publicUrl } } = supabaseClient.storage.from('empresa').getPublicUrl(fileName);
+                logoUrl = publicUrl;
+            }
+
+            const empresaData = {
+                nombre_fiscal: empNombre.value.trim(),
+                cif: empCif.value.trim(),
+                direccion: empDireccion.value.trim(),
+                telefono: empTelefono.value.trim(),
+                email: empEmail.value.trim(),
+                logo_url: logoUrl
+            };
+
+            // Comprobar si ya existe registro en configuracion_empresa
+            const { data: existing } = await supabaseClient.from('configuracion_empresa').select('id').limit(1).single();
+
+            let error;
+            if (existing) {
+                const res = await supabaseClient.from('configuracion_empresa').update(empresaData).eq('id', existing.id);
+                error = res.error;
+            } else {
+                const res = await supabaseClient.from('configuracion_empresa').insert([empresaData]);
+                error = res.error;
+            }
+
+            if (error) {
+                empresaMensaje.textContent = "Error al guardar empresa: " + error.message;
+                empresaMensaje.className = "text-error text-sm text-center font-medium";
+            } else {
+                empresaMensaje.textContent = "¡Datos de empresa actualizados con éxito!";
+                empresaMensaje.className = "text-green-600 text-sm text-center font-medium";
+                logoBlobToUpload = null;
+            }
+            empresaMensaje.classList.remove('hidden');
+            btn.disabled = false; btn.textContent = "Guardar Datos de Empresa";
         });
     }
 
