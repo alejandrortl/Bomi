@@ -1,165 +1,202 @@
 // js/auth.js
 document.addEventListener('DOMContentLoaded', () => {
+    const viewAuth = document.getElementById('view-auth');
+    const mainContent = document.getElementById('main-content');
+    const appHeader = document.getElementById('app-header');
+    const bottomNav = document.getElementById('bottom-nav');
+    
     const formAuth = document.getElementById('form-auth');
+    const authTitle = document.getElementById('auth-title');
+    const authSubtitle = document.getElementById('auth-subtitle');
+    const btnAuthSubmit = document.getElementById('btn-auth-submit');
     const btnToggleAuth = document.getElementById('btn-toggle-auth');
     const registerFields = document.getElementById('register-fields');
-    const authTitle = document.getElementById('auth-title');
-    const btnAuthSubmit = document.getElementById('btn-auth-submit');
     const authError = document.getElementById('auth-error');
     const authSuccess = document.getElementById('auth-success');
     
-    let isLoginMode = true;
+    const authEmail = document.getElementById('auth-email');
+    const authPassword = document.getElementById('auth-password');
+    const authNombre = document.getElementById('auth-nombre');
+    const authApellido = document.getElementById('auth-apellido');
+    
+    const userRoleBadge = document.getElementById('user-role-badge');
+    const btnLogout = document.getElementById('btn-logout');
 
-    checkSession();
+    let isRegistering = false;
 
-    btnToggleAuth.addEventListener('click', (e) => {
-        e.preventDefault();
-        isLoginMode = !isLoginMode;
-        if(isLoginMode) {
-            registerFields.classList.add('hidden');
-            authTitle.textContent = "Iniciar Sesión";
+    if (btnToggleAuth) {
+        btnToggleAuth.addEventListener('click', () => {
+            isRegistering = !isRegistering;
+            authError.classList.add('hidden');
+            authSuccess.classList.add('hidden');
+            if (isRegistering) {
+                authTitle.textContent = "Registro de Operario";
+                authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
+                btnAuthSubmit.textContent = "Registrarse";
+                btnToggleAuth.textContent = "¿Ya tienes cuenta? Inicia sesión";
+                registerFields.classList.remove('hidden');
+                registerFields.classList.add('flex');
+                authNombre.required = true;
+                authApellido.required = true;
+            } else {
+                authTitle.textContent = "Iniciar Sesión";
+                authSubtitle.textContent = "Acceso para operarios";
+                btnAuthSubmit.textContent = "Ingresar";
+                btnToggleAuth.textContent = "¿No tienes cuenta? Regístrate aquí";
+                registerFields.classList.add('hidden');
+                registerFields.classList.remove('flex');
+                authNombre.required = false;
+                authApellido.required = false;
+            }
+        });
+    }
+
+    if (formAuth) {
+        formAuth.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            authError.classList.add('hidden');
+            authSuccess.classList.add('hidden');
+            btnAuthSubmit.disabled = true;
+
+            const email = authEmail.value.trim();
+            const password = authPassword.value;
+
+            if (isRegistering) {
+                const nombre = authNombre.value.trim();
+                const apellido = authApellido.value.trim();
+                const username = email.split('@')[0].toLowerCase();
+
+                btnAuthSubmit.textContent = "Registrando...";
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                
+                if (error) {
+                    authError.textContent = error.message;
+                    authError.classList.remove('hidden');
+                    btnAuthSubmit.disabled = false;
+                    btnAuthSubmit.textContent = "Registrarse";
+                    return;
+                }
+
+                if (data && data.user) {
+                    const { error: profileError } = await supabaseClient.from('perfiles').insert([{
+                        id: data.user.id,
+                        email: email,
+                        nombre: nombre,
+                        apellido: apellido,
+                        username: username,
+                        rol: 'Operario',
+                        activo: false
+                    }]);
+
+                    if (profileError) {
+                        authError.textContent = "Error al crear perfil: " + profileError.message;
+                        authError.classList.remove('hidden');
+                        btnAuthSubmit.disabled = false;
+                        btnAuthSubmit.textContent = "Registrarse";
+                        return;
+                    }
+
+                    const { data: admins } = await supabaseClient
+                        .from('perfiles')
+                        .select('id')
+                        .in('rol', ['Admin', 'SuperAdmin']);
+
+                    if (admins && admins.length > 0) {
+                        const notifInserts = admins.map(adm => ({
+                            user_id: adm.id,
+                            titulo: 'Nuevo Registro Pendiente',
+                            mensaje: `${nombre} ${apellido} (@${username}) se ha registrado y requiere aprobación.`
+                        }));
+                        await supabaseClient.from('notificaciones').insert(notifInserts);
+                    }
+
+                    authSuccess.textContent = "¡Registro exitoso! Tu cuenta está pendiente de aprobación.";
+                    authSuccess.classList.remove('hidden');
+                    formAuth.reset();
+                    btnAuthSubmit.disabled = false;
+                    btnAuthSubmit.textContent = "Registrarse";
+                }
+            } else {
+                btnAuthSubmit.textContent = "Ingresando...";
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                
+                if (error) {
+                    authError.textContent = error.message;
+                    authError.classList.remove('hidden');
+                    btnAuthSubmit.disabled = false;
+                    btnAuthSubmit.textContent = "Ingresar";
+                    return;
+                }
+
+                if (data && data.user) {
+                    await checkUserProfileAndLogin(data.user.id);
+                }
+            }
+        });
+    }
+
+    async function checkUserProfileAndLogin(userId) {
+        const { data: profile, error } = await supabaseClient
+            .from('perfiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error || !profile) {
+            authError.textContent = "No se encontró el perfil de usuario.";
+            authError.classList.remove('hidden');
+            await supabaseClient.auth.signOut();
+            btnAuthSubmit.disabled = false;
             btnAuthSubmit.textContent = "Ingresar";
-            btnToggleAuth.textContent = "¿No tienes cuenta? Regístrate aquí";
-            document.getElementById('auth-nombre').removeAttribute('required');
-            document.getElementById('auth-apellido').removeAttribute('required');
-        } else {
-            registerFields.classList.remove('hidden');
-            registerFields.classList.add('flex');
-            authTitle.textContent = "Registrar Operario";
-            btnAuthSubmit.textContent = "Crear Cuenta";
-            btnToggleAuth.textContent = "Ya tengo cuenta, iniciar sesión";
-            document.getElementById('auth-nombre').setAttribute('required', 'true');
-            document.getElementById('auth-apellido').setAttribute('required', 'true');
+            return;
         }
-        authError.classList.add('hidden');
-        authSuccess.classList.add('hidden');
-    });
 
-    formAuth.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
-        authError.classList.add('hidden');
-        authSuccess.classList.add('hidden');
-        btnAuthSubmit.disabled = true;
-        btnAuthSubmit.textContent = "Cargando...";
-
-        if (isLoginMode) {
-            // LOGIN (Actualizado a supabaseClient)
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) {
-                showError("Correo o contraseña incorrectos.");
-            } else {
-                await verifyProfileAndEnter(data.user);
-            }
-        } else {
-            // REGISTRO (Actualizado a supabaseClient)
-            const nombre = document.getElementById('auth-nombre').value.trim();
-            const apellido = document.getElementById('auth-apellido').value.trim();
-            
-            const { data, error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) {
-                showError(error.message);
-                return;
-            }
-
-            const username = await generarUsername(nombre, apellido);
-
-            const { error: profileError } = await supabaseClient.from('perfiles').insert([{
-                id: data.user.id,
-                email: email,
-                nombre: nombre,
-                apellido: apellido,
-                username: username,
-                rol: 'Operario',
-                activo: false
-            }]);
-
-            if (profileError) {
-                showError("Error al guardar el perfil: " + profileError.message);
-            } else {
-                authSuccess.textContent = "Cuenta creada con éxito. Espera a que el Administrador te apruebe.";
-                authSuccess.classList.remove('hidden');
-                formAuth.reset();
-                await supabaseClient.auth.signOut();
-            }
+        if (!profile.activo) {
+            authError.textContent = "Tu cuenta está pendiente de aprobación por un administrador.";
+            authError.classList.remove('hidden');
+            await supabaseClient.auth.signOut();
+            btnAuthSubmit.disabled = false;
+            btnAuthSubmit.textContent = "Ingresar";
+            return;
         }
-        btnAuthSubmit.disabled = false;
-        btnAuthSubmit.textContent = isLoginMode ? "Ingresar" : "Crear Cuenta";
-    });
 
-    document.getElementById('btn-logout').addEventListener('click', async () => {
-        await supabaseClient.auth.signOut();
-        window.location.reload();
-    });
+        window.currentUserProfile = profile;
+        showAppInterface();
+    }
 
-    async function checkSession() {
+    function showAppInterface() {
+        if (viewAuth) viewAuth.classList.add('hidden');
+        if (appHeader) {
+            appHeader.classList.remove('hidden');
+            appHeader.classList.add('flex');
+        }
+        if (mainContent) mainContent.classList.remove('hidden');
+        if (bottomNav) {
+            bottomNav.classList.remove('hidden');
+            bottomNav.classList.add('flex');
+        }
+
+        if (userRoleBadge && window.currentUserProfile) {
+            userRoleBadge.textContent = window.currentUserProfile.rol;
+        }
+
+        window.dispatchEvent(new CustomEvent('userLoggedIn'));
+    }
+
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            await supabaseClient.auth.signOut();
+            window.currentUserProfile = null;
+            location.reload();
+        });
+    }
+
+    async function checkExistingSession() {
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) {
-            await verifyProfileAndEnter(session.user);
-        } else {
-            document.getElementById('view-auth').classList.remove('hidden');
+        if (session && session.user) {
+            await checkUserProfileAndLogin(session.user.id);
         }
     }
 
-    async function verifyProfileAndEnter(user) {
-        const { data: perfil, error } = await supabaseClient.from('perfiles').select('*').eq('id', user.id).single();
-        
-        if (error || !perfil) {
-            showError("No se encontró tu perfil. Contacta al administrador.");
-            await supabaseClient.auth.signOut();
-            return;
-        }
-
-        if (perfil.activo === false) {
-            showError("Tu cuenta está pendiente de aprobación por el Administrador.");
-            await supabaseClient.auth.signOut();
-            return;
-        }
-
-        window.currentUserProfile = perfil; 
-        
-        document.getElementById('view-auth').classList.add('hidden');
-        document.getElementById('main-content').classList.remove('hidden');
-        document.getElementById('app-header').classList.remove('hidden');
-        document.getElementById('app-header').classList.add('flex');
-        document.getElementById('bottom-nav').classList.remove('hidden');
-        document.getElementById('bottom-nav').classList.add('flex');
-        
-        document.getElementById('user-role-badge').textContent = perfil.rol;
-
-        if (perfil.rol === 'Admin' || perfil.rol === 'SuperAdmin') {
-            document.getElementById('fab-new-task').classList.remove('hidden');
-            document.getElementById('fab-new-task').classList.add('flex');
-            document.getElementById('nav-empleados').classList.remove('hidden');
-            document.getElementById('nav-empleados').classList.add('flex');
-        }
-
-        window.dispatchEvent(new Event('userLoggedIn'));
-    }
-
-    async function generarUsername(nombre, apellido) {
-        let base = (nombre + apellido).replace(/\s+/g, '');
-        let usernameFinal = base;
-        let contador = 2;
-        let existe = true;
-
-        while (existe) {
-            const { data } = await supabaseClient.from('perfiles').select('username').eq('username', usernameFinal);
-            if (data.length === 0) {
-                existe = false;
-            } else {
-                usernameFinal = base + contador;
-                contador++;
-            }
-        }
-        return usernameFinal;
-    }
-
-    function showError(msg) {
-        authError.textContent = msg;
-        authError.classList.remove('hidden');
-        btnAuthSubmit.disabled = false;
-        btnAuthSubmit.textContent = isLoginMode ? "Ingresar" : "Crear Cuenta";
-    }
+    checkExistingSession();
 });
