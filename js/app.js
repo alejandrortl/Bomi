@@ -64,11 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const empDireccion = document.getElementById('emp-direccion');
     const empTelefono = document.getElementById('emp-telefono');
     const empEmail = document.getElementById('emp-email');
-    const inputLogoFile = document.getElementById('input-logo-file');
     const previewLogo = document.getElementById('preview-logo');
     const logoPlaceholder = document.getElementById('logo-placeholder');
     const empresaMensaje = document.getElementById('empresa-mensaje');
-    let logoBlobToUpload = null;
 
     // Modales Empleado
     const modalEditarEmpleado = document.getElementById('modal-editar-empleado');
@@ -79,10 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editEmpTelefono = document.getElementById('edit-emp-telefono');
     const editEmpRol = document.getElementById('edit-emp-rol');
     const editEmpActivo = document.getElementById('edit-emp-activo');
-    const editEmpPassword = document.getElementById('edit-emp-password');
     const btnCloseModalEmp = document.getElementById('btn-close-modal-emp');
     const btnCancelModalEmp = document.getElementById('btn-cancel-modal-emp');
-    const editEmpMensaje = document.getElementById('edit-emp-mensaje');
 
     const modalDetalle = document.getElementById('modal-detalle-tarea');
     const detalleContenido = document.getElementById('detalle-contenido');
@@ -90,9 +86,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let allTasks = [];
     let allEmpleados = [];
+    let cacheClientesList = [];
 
-    // Inicializar módulo de clientes
-    initClientesModule(supabaseClient);
+    // Inicializar módulo de clientes y obtener su lista para autocompletar
+    initClientesModule(supabaseClient, (clientesList) => {
+        cacheClientesList = clientesList;
+        actualizarDatalistClientes();
+    });
+
+    // Crear datalist dinámico para autocompletar clientes y obras en Nueva Tarea
+    let datalistClientes = document.getElementById('clientes-datalist');
+    if (!datalistClientes) {
+        datalistClientes = document.createElement('datalist');
+        datalistClientes.id = 'clientes-datalist';
+        document.body.appendChild(datalistClientes);
+        if (inputCliente) inputCliente.setAttribute('list', 'clientes-datalist');
+    }
+
+    function actualizarDatalistClientes() {
+        if (!datalistClientes) return;
+        datalistClientes.innerHTML = '';
+        cacheClientesList.forEach(cli => {
+            const opt = document.createElement('option');
+            opt.value = cli.nombre_cliente;
+            opt.textContent = `Obra: ${cli.obra} (${cli.localidad})`;
+            datalistClientes.appendChild(opt);
+        });
+    }
+
+    // Al escribir o seleccionar un cliente existente, autocompletar Obra, Dirección y Localidad
+    if (inputCliente) {
+        inputCliente.addEventListener('input', (e) => {
+            const val = e.target.value.trim().toLowerCase();
+            const encontrado = cacheClientesList.find(c => c.nombre_cliente.toLowerCase() === val);
+            if (encontrado) {
+                if (inputObra) inputObra.value = encontrado.obra || '';
+                if (inputDireccion) inputDireccion.value = encontrado.direccion || '';
+                if (inputLocalidad) inputLocalidad.value = encontrado.localidad || '';
+            }
+        });
+    }
 
     window.hideAllViews = function() {
         if (viewTaskList) viewTaskList.classList.add('hidden');
