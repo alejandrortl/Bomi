@@ -19,9 +19,9 @@
         </div>
         <div class="flex items-center gap-3">
             <select id="select-tema" class="text-xs bg-surface border border-outline-variant rounded-full px-3 py-1.5 text-on-surface focus:outline-none focus:border-primary">
-                <option value="auto">🌓 Auto</option>
-                <option value="claro">☀️ Claro</option>
-                <option value="oscuro">🌙 Oscuro</option>
+                <option value="auto">🌓 </option>
+                <option value="claro">☀️ </option>
+                <option value="oscuro">🌙 </option>
             </select>
             
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
@@ -229,7 +229,8 @@
     <!-- BLOQUE 5: FAB Y NAVEGACIÓN INFERIOR FIJA -->
     <button id="fab-new-task" class="hidden fixed bottom-20 right-4 sm:right-8 bg-primary-container text-on-primary-container p-4 rounded-2xl shadow-lg z-40 items-center justify-center"><span class="material-symbols-outlined">add</span></button>
 
-    <nav id="bottom-nav" class="hidden w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center shrink-0 z-40 pb-safe shadow-lg">
+    <!-- NAVEGACIÓN INFERIOR FIJA -->
+    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-50 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
             <span class="text-[11px] font-medium">Diario</span>
