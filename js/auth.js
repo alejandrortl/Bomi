@@ -24,31 +24,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isRegistering = false;
 
+    // Crear dinámicamente el botón de "Volver atrás" dentro del formulario de registro
+    const backButtonContainer = document.createElement('div');
+    backButtonContainer.id = 'back-login-container';
+    backButtonContainer.className = 'hidden flex flex-col gap-2 mt-1';
+    backButtonContainer.innerHTML = `
+        <button type="button" id="btn-back-login" class="w-full py-2.5 rounded-full font-medium text-sm border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver a Iniciar Sesión
+        </button>
+    `;
+    formAuth.insertBefore(backButtonContainer, btnAuthSubmit);
+
+    const btnBackLogin = document.getElementById('btn-back-login');
+
     if (btnToggleAuth) {
         btnToggleAuth.addEventListener('click', () => {
-            isRegistering = !isRegistering;
-            authError.classList.add('hidden');
-            authSuccess.classList.add('hidden');
-            if (isRegistering) {
-                authTitle.textContent = "Registro de Operario";
-                authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
-                btnAuthSubmit.textContent = "Registrarse";
-                btnToggleAuth.textContent = "¿Ya tienes cuenta? Inicia sesión";
-                registerFields.classList.remove('hidden');
-                registerFields.classList.add('flex');
-                authNombre.required = true;
-                authApellido.required = true;
-            } else {
-                authTitle.textContent = "Iniciar Sesión";
-                authSubtitle.textContent = "Acceso para operarios";
-                btnAuthSubmit.textContent = "Ingresar";
-                btnToggleAuth.textContent = "¿No tienes cuenta? Regístrate aquí";
-                registerFields.classList.add('hidden');
-                registerFields.classList.remove('flex');
-                authNombre.required = false;
-                authApellido.required = false;
-            }
+            toggleAuthMode(true);
         });
+    }
+
+    if (btnBackLogin) {
+        btnBackLogin.addEventListener('click', () => {
+            toggleAuthMode(false);
+        });
+    }
+
+    function toggleAuthMode(registering) {
+        isRegistering = registering;
+        authError.classList.add('hidden');
+        authSuccess.classList.add('hidden');
+        formAuth.reset();
+
+        if (isRegistering) {
+            authTitle.textContent = "Registro de Operario";
+            authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
+            btnAuthSubmit.textContent = "Registrarse";
+            btnToggleAuth.classList.add('hidden'); // Ocultar el texto inferior para evitar redundancia
+            registerFields.classList.remove('hidden');
+            registerFields.classList.add('flex');
+            backButtonContainer.classList.remove('hidden');
+            backButtonContainer.classList.add('flex');
+            authNombre.required = true;
+            authApellido.required = true;
+        } else {
+            authTitle.textContent = "Iniciar Sesión";
+            authSubtitle.textContent = "Acceso para operarios";
+            btnAuthSubmit.textContent = "Ingresar";
+            btnToggleAuth.classList.remove('hidden');
+            registerFields.classList.add('hidden');
+            registerFields.classList.remove('flex');
+            backButtonContainer.classList.add('hidden');
+            backButtonContainer.classList.remove('flex');
+            authNombre.required = false;
+            authApellido.required = false;
+        }
     }
 
     if (formAuth) {
