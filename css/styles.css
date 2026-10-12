@@ -1,4 +1,4 @@
-/* css/styles.css - Estructura MD3 Definitiva */
+/* css/styles.css - Estructura MD3 y Menú Desplegable Opaco */
 
 :root {
     --md-sys-color-primary: #0061a4;
@@ -17,6 +17,7 @@
     --md-sys-color-surface-container: #f1f0f4;
     --md-sys-color-surface-container-low: #f7f6fa;
     --md-sys-color-surface-container-high: #ecebef;
+    --md-sys-color-surface-container-highest: #e2e1e5;
     
     --md-sys-color-outline: #73777f;
     --md-sys-color-outline-variant: #c3c7cf;
@@ -40,6 +41,7 @@
     --md-sys-color-surface-container: #1e1f22;
     --md-sys-color-surface-container-low: #1a1b1e;
     --md-sys-color-surface-container-high: #28292c;
+    --md-sys-color-surface-container-highest: #333438;
     
     --md-sys-color-outline: #8d9199;
     --md-sys-color-outline-variant: #43474e;
@@ -61,15 +63,24 @@ body {
     flex-direction: column;
 }
 
-/* Contenedor principal con scroll fluido y margen inferior muy amplio para formularios grandes */
+/* Contenedor principal con scroll fluido y margen inferior amplio */
 #main-content {
     flex: 1;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 160px !important; 
+    padding-bottom: 140px !important; 
 }
 
-/* Forzar colores en inputs, selects y calendarios para modo oscuro */
+/* MENÚ DESPLEGABLE SUPERIOR TOTALMENTE SÓLIDO Y OPACO */
+#dropdown-menu-perfil {
+    background-color: var(--md-sys-color-surface-container-highest) !important;
+    color: var(--md-sys-color-on-surface) !important;
+    border: 1px solid var(--md-sys-color-outline-variant) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
+    opacity: 1 !important;
+}
+
+/* Forzar colores de inputs, selects y calendarios para modo oscuro */
 .dark input, 
 .dark select, 
 .dark textarea {
