@@ -1,4 +1,4 @@
-/* css/styles.css - Estructura MD3 Empresarial con Contraste Absoluto */
+/* css/styles.css - Estructura MD3 con Contraste Absoluto */
 
 :root {
     --md-sys-color-primary: #005fb8;
@@ -74,7 +74,7 @@ body {
     padding-bottom: 200px !important; 
 }
 
-/* MENÚ DESPLEGABLE SUPERIOR 100% OPACO */
+/* MENÚ DESPLEGABLE SUPERIOR */
 #dropdown-menu-perfil {
     background-color: var(--md-sys-color-surface-container-highest) !important;
     color: var(--md-sys-color-on-surface) !important;
@@ -82,17 +82,37 @@ body {
     box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.35) !important;
 }
 
-/* BOTÓN ELIMINAR EMPLEADO CON ALTO CONTRASTE (Fondo Rojo, Letra Blanca) */
+/* MODALES CON FONDO DE SUPERFICIE CLARO/OSCURO ADECUADO Y TEXTO VISIBLE */
+#modal-editar-empleado > div,
+#modal-detalle-tarea > div,
+#modal-canvas > div {
+    background-color: var(--md-sys-color-surface) !important;
+    color: var(--md-sys-color-on-surface) !important;
+    border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* FORZAR QUE LOS TEXTOS INTERNOS DE LOS MODALES NO HEREDEN OSCURIDAD EN MODO CLARO */
+#modal-editar-empleado, 
+#modal-detalle-tarea, 
+#modal-canvas {
+    background-color: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(4px);
+}
+
+/* BOTONES DE ELIMINAR CON FONDO ROJO SÓLIDO Y TEXTO BLANCO OBLIGATORIO */
+button[onclick*="eliminar"], 
 .btn-eliminar-empleado {
     background-color: #ba1a1a !important;
     color: #ffffff !important;
 }
+
+.dark button[onclick*="eliminar"], 
 .dark .btn-eliminar-empleado {
     background-color: #93000a !important;
     color: #ffffff !important;
 }
 
-/* FORZAR CONTRASTE PERFECTO EN INPUTS Y MODALES */
+/* INPUTS Y SELECTS CON CONTRASTE */
 input, select, textarea {
     background-color: var(--md-sys-color-surface) !important;
     color: var(--md-sys-color-on-surface) !important;
