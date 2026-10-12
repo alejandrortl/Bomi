@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authSubtitle = document.getElementById('auth-subtitle');
     const btnAuthSubmit = document.getElementById('btn-auth-submit');
     const btnToggleAuth = document.getElementById('btn-toggle-auth');
+    const btnBackLogin = document.getElementById('btn-back-login');
     const registerFields = document.getElementById('register-fields');
     const authError = document.getElementById('auth-error');
     const authSuccess = document.getElementById('auth-success');
@@ -23,19 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLogout = document.getElementById('btn-logout');
 
     let isRegistering = false;
-
-    // Crear dinámicamente el botón de "Volver atrás" dentro del formulario de registro
-    const backButtonContainer = document.createElement('div');
-    backButtonContainer.id = 'back-login-container';
-    backButtonContainer.className = 'hidden flex flex-col gap-2 mt-1';
-    backButtonContainer.innerHTML = `
-        <button type="button" id="btn-back-login" class="w-full py-2.5 rounded-full font-medium text-sm border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver a Iniciar Sesión
-        </button>
-    `;
-    formAuth.insertBefore(backButtonContainer, btnAuthSubmit);
-
-    const btnBackLogin = document.getElementById('btn-back-login');
 
     if (btnToggleAuth) {
         btnToggleAuth.addEventListener('click', () => {
@@ -59,11 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
             authTitle.textContent = "Registro de Operario";
             authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
             btnAuthSubmit.textContent = "Registrarse";
-            btnToggleAuth.classList.add('hidden'); // Ocultar el texto inferior para evitar redundancia
+            btnToggleAuth.classList.add('hidden'); 
             registerFields.classList.remove('hidden');
             registerFields.classList.add('flex');
-            backButtonContainer.classList.remove('hidden');
-            backButtonContainer.classList.add('flex');
+            btnBackLogin.classList.remove('hidden');
+            btnBackLogin.classList.add('flex');
             authNombre.required = true;
             authApellido.required = true;
         } else {
@@ -73,8 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
             btnToggleAuth.classList.remove('hidden');
             registerFields.classList.add('hidden');
             registerFields.classList.remove('flex');
-            backButtonContainer.classList.add('hidden');
-            backButtonContainer.classList.remove('flex');
+            btnBackLogin.classList.add('hidden');
+            btnBackLogin.classList.remove('flex');
             authNombre.required = false;
             authApellido.required = false;
         }
