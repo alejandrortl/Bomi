@@ -88,13 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let allEmpleados = [];
     let cacheClientesList = [];
 
-    // Inicializar módulo de clientes y obtener su lista para autocompletar
+    // Inicializar módulo de clientes y autocompletado
     initClientesModule(supabaseClient, (clientesList) => {
         cacheClientesList = clientesList;
         actualizarDatalistClientes();
     });
 
-    // Crear datalist dinámico para autocompletar clientes y obras en Nueva Tarea
     let datalistClientes = document.getElementById('clientes-datalist');
     if (!datalistClientes) {
         datalistClientes = document.createElement('datalist');
@@ -114,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Al escribir o seleccionar un cliente existente, autocompletar Obra, Dirección y Localidad
     if (inputCliente) {
         inputCliente.addEventListener('input', (e) => {
             const val = e.target.value.trim().toLowerCase();
@@ -127,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // CONTROL GLOBAL DE VISTAS (Navegación robusta)
     window.hideAllViews = function() {
         if (viewTaskList) viewTaskList.classList.add('hidden');
         if (viewNewTask) { viewNewTask.classList.add('hidden'); viewNewTask.classList.remove('flex'); }
@@ -140,6 +139,54 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navEmpleados) navEmpleados.classList.remove('text-primary');
         if (fabNewTask) fabNewTask.classList.add('hidden');
         if (fabNewCliente) fabNewCliente.classList.add('hidden');
+    };
+
+    // Eventos de Navegación Inferior (Garantizados para Admin y Operarios)
+    if (navHome) {
+        navHome.addEventListener('click', () => {
+            window.hideAllViews();
+            viewTaskList.classList.remove('hidden');
+            navHome.classList.add('text-primary');
+            if (fabNewTask) {
+                fabNewTask.classList.remove('hidden');
+                fabNewTask.classList.add('flex');
+            }
+            loadTasks();
+        });
+    }
+
+    if (navEmpleados) {
+        navEmpleados.addEventListener('click', () => {
+            window.hideAllViews();
+            if (viewEmpleados) {
+                viewEmpleados.classList.remove('hidden');
+                viewEmpleados.classList.add('flex');
+            }
+            navEmpleados.classList.add('text-primary');
+            loadEmpleados();
+        });
+    }
+
+    if (fabNewTask) {
+        fabNewTask.addEventListener('click', () => {
+            window.hideAllViews();
+            document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea";
+            const formNewTask = document.getElementById('form-new-task');
+            if (formNewTask) formNewTask.reset();
+            if (editTaskId) editTaskId.value = "";
+            if (inputFecha) inputFecha.value = getTodayLocalString();
+            loadOperariosSelect();
+            if (viewNewTask) {
+                viewNewTask.classList.remove('hidden');
+                viewNewTask.classList.add('flex');
+            }
+        });
+    }
+
+    if (btnCancelTask) {
+        btnCancelTask.addEventListener('click', () => {
+            if (navHome) navHome.click();
+        });
     }
 
     window.addEventListener('userLoggedIn', () => {
@@ -154,14 +201,20 @@ document.addEventListener('DOMContentLoaded', () => {
         sincronizarEstadoPushUI();
 
         const isAdmin = window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin';
-        if (isAdmin) {
-            loadEmpleados();
-            loadOperariosSelect();
-            if (navEmpleados) navEmpleados.classList.remove('hidden');
-            if (menuItemEmpresa) {
-                menuItemEmpresa.classList.remove('hidden');
-                menuItemEmpresa.classList.add('flex');
+        
+        // Mostrar siempre el botón de empleados en el menú inferior para Admin
+        if (navEmpleados) {
+            if (isAdmin) {
+                navEmpleados.classList.remove('hidden');
+                navEmpleados.classList.add('flex');
+            } else {
+                navEmpleados.classList.add('hidden');
             }
+        }
+
+        if (isAdmin && menuItemEmpresa) {
+            menuItemEmpresa.classList.remove('hidden');
+            menuItemEmpresa.classList.add('flex');
         }
     });
 
@@ -189,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (menuItemPerfil) {
         menuItemPerfil.addEventListener('click', () => {
-            hideAllViews();
+            window.hideAllViews();
             if (viewPerfil) { viewPerfil.classList.remove('hidden'); viewPerfil.classList.add('flex'); }
             cargarDatosPerfil();
         });
@@ -197,13 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (menuItemEmpresa) {
         menuItemEmpresa.addEventListener('click', () => {
-            hideAllViews();
+            window.hideAllViews();
             if (viewEmpresa) { viewEmpresa.classList.remove('hidden'); viewEmpresa.classList.add('flex'); }
             cargarDatosEmpresa();
         });
     }
 
-    // Notificaciones Push
     function sincronizarEstadoPushUI() {
         if (!btnRequestPush || !window.currentUserProfile) return;
         if (window.currentUserProfile.notificaciones_activas && Notification.permission === 'granted') {
@@ -289,43 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
         return (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
     }
-
-    if (navHome) {
-        navHome.addEventListener('click', () => {
-            hideAllViews();
-            viewTaskList.classList.remove('hidden');
-            navHome.classList.add('text-primary');
-            if (fabNewTask) {
-                fabNewTask.classList.remove('hidden');
-                fabNewTask.classList.add('flex');
-            }
-            loadTasks();
-        });
-    }
-
-    if (navEmpleados) {
-        navEmpleados.addEventListener('click', () => {
-            hideAllViews();
-            viewEmpleados.classList.remove('hidden');
-            viewEmpleados.classList.add('flex');
-            navEmpleados.classList.add('text-primary');
-            loadEmpleados();
-        });
-    }
-
-    if (fabNewTask) {
-        fabNewTask.addEventListener('click', () => {
-            hideAllViews();
-            document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea";
-            document.getElementById('form-new-task').reset();
-            editTaskId.value = "";
-            if (inputFecha) inputFecha.value = getTodayLocalString();
-            viewNewTask.classList.remove('hidden');
-            viewNewTask.classList.add('flex');
-        });
-    }
-
-    if (btnCancelTask) btnCancelTask.addEventListener('click', () => navHome.click());
 
     function cargarDatosPerfil() {
         if (!window.currentUserProfile) return;
@@ -418,7 +433,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
         const { data, error } = await supabaseClient.from('perfiles').select('*').order('nombre', { ascending: true });
-        if (error) return;
+        if (error) {
+            empleadosContainer.innerHTML = '<p class="text-error text-center">Error al cargar empleados.</p>';
+            return;
+        }
         allEmpleados = data || [];
         renderEmpleados(allEmpleados);
     }
@@ -427,6 +445,11 @@ document.addEventListener('DOMContentLoaded', () => {
         empleadosContainer.innerHTML = '';
         if (empleadosCount) empleadosCount.textContent = `${empleadosToRender.length} empleados`;
         const isAdmin = window.currentUserProfile && (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin');
+
+        if (empleadosToRender.length === 0) {
+            empleadosContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No se encontraron empleados.</p>';
+            return;
+        }
 
         empleadosToRender.forEach(emp => {
             const card = document.createElement('div');
@@ -437,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold ml-2">Pendiente</span>' : ''}</h3>
                         <p class="text-xs opacity-80">@${emp.username || 'sin_usuario'}</p>
                     </div>
+                    ${isAdmin ? `<span class="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">${emp.rol}</span>` : ''}
                 </div>
                 <div class="flex flex-wrap gap-2 items-center text-sm pt-1">
                     <a href="tel:${emp.telefono || ''}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium">
@@ -445,13 +469,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 ${isAdmin ? `
                     <div class="flex gap-2 mt-2 pt-2 border-t border-outline-variant justify-end items-center">
-                        <button onclick="abrirModalEditarEmpleado('${emp.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
+                        <button onclick="window.abrirModalEditarEmpleado('${emp.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">edit</span> Editar / Rol
                         </button>
                     </div>
                 ` : ''}
             `;
             empleadosContainer.appendChild(card);
+        });
+    }
+
+    if (searchEmpleadosInput) {
+        searchEmpleadosInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtradas = allEmpleados.filter(emp => 
+                (emp.nombre && emp.nombre.toLowerCase().includes(q)) || 
+                (emp.apellido && emp.apellido.toLowerCase().includes(q)) || 
+                (emp.email && emp.email.toLowerCase().includes(q)) || 
+                (emp.telefono && emp.telefono.toLowerCase().includes(q)) || 
+                (emp.username && emp.username.toLowerCase().includes(q))
+            );
+            renderEmpleados(filtradas);
         });
     }
 
@@ -495,15 +533,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Tareas
+    // Tareas (Diario)
     if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
         if (!tasksContainer || !filtroFechaDiario) return;
         tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
-        const selectedDate = filtroFechaDiario.value;
+        const selectedDate = filtroFechaDiario.value || getTodayLocalString();
         const { data, error } = await supabaseClient.from('tareas').select('*').eq('fecha', selectedDate).order('completada', { ascending: true });
-        if (error) return;
+        
+        if (error) {
+            tasksContainer.innerHTML = '<p class="text-error text-center mt-4">Error al cargar tareas.</p>';
+            return;
+        }
         allTasks = data || [];
         renderTasks(allTasks);
     }
@@ -511,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTasks(tasksToRender) {
         tasksContainer.innerHTML = '';
         if (tasksToRender.length === 0) {
-            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas para esta fecha.</p>';
+            tasksContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay tareas programadas para esta fecha.</p>';
             return;
         }
 
@@ -539,11 +581,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     </a>
                 </div>
                 <div class="flex gap-2 mt-3 pt-2 border-t border-outline-variant items-center justify-between">
-                    <button onclick="verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium">Ver</button>
-                    ${(!isCompleted && isMyTask) ? `<button onclick="marcarCompletada('${tarea.id}')" class="text-xs bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg font-medium">Realizada</button>` : ''}
+                    <button onclick="window.verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium">Ver</button>
+                    ${(!isCompleted && isMyTask) ? `<button onclick="window.marcarCompletada('${tarea.id}')" class="text-xs bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg font-medium">Realizada</button>` : ''}
                 </div>
             `;
             tasksContainer.appendChild(card);
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtradas = allTasks.filter(t => 
+                (t.operario_username && t.operario_username.toLowerCase().includes(q)) || 
+                (t.cliente && t.cliente.toLowerCase().includes(q)) ||
+                (t.obra && t.obra.toLowerCase().includes(q)) ||
+                (t.localidad && t.localidad.toLowerCase().includes(q)) ||
+                (t.tarea && t.tarea.toLowerCase().includes(q))
+            );
+            renderTasks(filtradas);
         });
     }
 
@@ -554,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
         detalleContenido.innerHTML = `
             <div><span class="text-xs text-on-surface-variant">Cliente / Obra:</span><p class="font-medium text-lg">${tarea.cliente} - ${tarea.obra}</p></div>
             <div><span class="text-xs text-on-surface-variant">Dirección:</span><p class="font-medium"><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" class="text-primary underline">${tarea.direccion}, ${tarea.localidad}</a></p></div>
+            <div><span class="text-xs text-on-surface-variant">Operario:</span><p class="font-medium">@${tarea.operario_username}</p></div>
             <div><span class="text-xs text-on-surface-variant">Descripción:</span><p class="bg-surface-container p-3 rounded-xl mt-1">${tarea.tarea}</p></div>
         `;
         modalDetalle.classList.remove('hidden');
@@ -584,10 +641,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 user_id: window.currentUserProfile.id
             };
 
-            await supabaseClient.from('tareas').insert([tareaData]);
-            formNewTask.reset();
-            if (filtroFechaDiario) filtroFechaDiario.value = inputFecha.value;
-            navHome.click();
+            const { error } = await supabaseClient.from('tareas').insert([tareaData]);
+            if (error) {
+                alert("Error al guardar tarea: " + error.message);
+            } else {
+                formNewTask.reset();
+                if (filtroFechaDiario) filtroFechaDiario.value = inputFecha.value;
+                navHome.click();
+            }
             btnSubmit.disabled = false;
         });
     }
