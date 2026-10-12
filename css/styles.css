@@ -1,4 +1,4 @@
-/* css/styles.css - Añadimos soporte para Modo Oscuro MD3 */
+/* css/styles.css - Estructura MD3 y Corrección de Scroll */
 
 :root {
     --md-sys-color-primary: #0061a4;
@@ -23,7 +23,6 @@
     --md-sys-color-error: #ba1a1a;
 }
 
-/* Variables de Material Design 3 para el Modo Oscuro */
 .dark {
     --md-sys-color-primary: #9cb4ff;
     --md-sys-color-on-primary: #002e67;
@@ -47,29 +46,28 @@
     --md-sys-color-error: #ffb4ab;
 }
 
-@layer base {
-    body { background-color: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); }
-    .bg-primary { background-color: var(--md-sys-color-primary); }
-    .text-primary { color: var(--md-sys-color-primary); }
-    .bg-primary-container { background-color: var(--md-sys-color-primary-container); }
-    .text-on-primary-container { color: var(--md-sys-color-on-primary-container); }
-    .text-on-primary { color: var(--md-sys-color-on-primary); }
-    
-    .bg-surface { background-color: var(--md-sys-color-surface); }
-    .text-on-surface { color: var(--md-sys-color-on-surface); }
-    .bg-surface-container { background-color: var(--md-sys-color-surface-container); }
-    .bg-surface-container-low { background-color: var(--md-sys-color-surface-container-low); }
-    .bg-surface-container-high { background-color: var(--md-sys-color-surface-container-high); }
-    
-    .text-on-surface-variant { color: var(--md-sys-color-on-surface-variant); }
-    .bg-surface-variant { background-color: var(--md-sys-color-surface-variant); }
-    
-    .border-outline-variant { border-color: var(--md-sys-color-outline-variant); }
-    .border-outline { border-color: var(--md-sys-color-outline); }
-    
-    .bg-secondary-container { background-color: var(--md-sys-color-secondary-container); }
-    .text-on-secondary-container { color: var(--md-sys-color-on-secondary-container); }
-    .text-error { color: var(--md-sys-color-error); }
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Contenedor principal con scroll nativo optimizado para móviles */
+#main-content {
+    flex: 1;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    padding-bottom: 110px; /* Espacio para que el menú inferior flotante no tape contenido */
+    box-sizing: border-box;
 }
 
 .md3-input-group { display: flex; flex-direction: column; gap: 4px; }
@@ -80,16 +78,3 @@
     border-radius: 4px; padding: 12px 16px; color: var(--md-sys-color-on-surface); font-size: 16px;
 }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-
-
-/* Corrección definitiva para scroll y botones en móviles */
-#main-content {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 120px !important; /* Espacio extra generoso para que el scroll baje holgadamente */
-}
-
-/* Asegurar que los formularios tengan margen inferior en móviles */
-form {
-    margin-bottom: 40px;
-}
