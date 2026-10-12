@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewNewTask = document.getElementById('view-new-task');
     const viewEmpleados = document.getElementById('view-empleados');
     const viewPerfil = document.getElementById('view-perfil');
-    const viewEmpresa = document.getElementById('view-empresa'); // Nueva vista
+    const viewEmpresa = document.getElementById('view-empresa');
     
     const navHome = document.getElementById('nav-home');
     const navEmpleados = document.getElementById('nav-empleados');
@@ -14,11 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnMenuPerfil = document.getElementById('btn-menu-perfil');
     const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
     const menuItemPerfil = document.getElementById('menu-item-perfil');
-    const menuItemEmpresa = document.getElementById('menu-item-empresa'); // Nuevo botón menú
+    const menuItemEmpresa = document.getElementById('menu-item-empresa');
     const headerUsernameLabel = document.getElementById('header-username-label');
 
     const tasksContainer = document.getElementById('tasks-container');
     const empleadosContainer = document.getElementById('empleados-container');
+    const empleadosCount = document.getElementById('empleados-count');
+    const searchEmpleadosInput = document.getElementById('search-empleados');
     const selectOperario = document.getElementById('select-operario');
     const searchInput = document.getElementById('search-tareas');
     const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
@@ -74,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRemoveDrawing = document.getElementById('btn-remove-drawing');
 
     let allTasks = [];
+    let allEmpleados = [];
     let drawingBlob = null;
 
     window.addEventListener('userLoggedIn', () => {
@@ -89,8 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAdmin) {
             loadEmpleados();
             loadOperariosSelect();
-            if (menuItemEmpresa) menuItemEmpresa.classList.remove('hidden');
-            menuItemEmpresa.classList.add('flex');
+            if (navEmpleados) navEmpleados.classList.remove('hidden');
+            if (menuItemEmpresa) {
+                menuItemEmpresa.classList.remove('hidden');
+                menuItemEmpresa.classList.add('flex');
+            }
         }
     });
 
@@ -252,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === GESTIÓN DE EMPRESA Y LOGOTIPO ===
     async function cargarDatosEmpresa() {
-        const { data, error } = await supabaseClient.from('configuracion_empresa').select('*').limit(1).single();
+        const { data } = await supabaseClient.from('configuracion_empresa').select('*').limit(1).single();
         if (data) {
             empNombre.value = data.nombre_fiscal || '';
             empCif.value = data.cif || '';
@@ -287,8 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true; btn.textContent = "Guardando...";
 
             let logoUrl = previewLogo.src;
-
-            // Si seleccionó un nuevo logo, subirlo a Supabase Storage (bucket 'empresa')
             if (logoBlobToUpload) {
                 const fileName = `logo_${Date.now()}.jpg`;
                 const { error: uploadError } = await supabaseClient.storage.from('empresa').upload(fileName, logoBlobToUpload);
@@ -310,9 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 logo_url: logoUrl
             };
 
-            // Comprobar si ya existe registro en configuracion_empresa
             const { data: existing } = await supabaseClient.from('configuracion_empresa').select('id').limit(1).single();
-
             let error;
             if (existing) {
                 const res = await supabaseClient.from('configuracion_empresa').update(empresaData).eq('id', existing.id);
@@ -323,10 +325,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (error) {
-                empresaMensaje.textContent = "Error al guardar empresa: " + error.message;
+                empresaMensaje.textContent = "Error: " + error.message;
                 empresaMensaje.className = "text-error text-sm text-center font-medium";
             } else {
-                empresaMensaje.textContent = "¡Datos de empresa actualizados con éxito!";
+                empresaMensaje.textContent = "¡Datos de empresa actualizados!";
                 empresaMensaje.className = "text-green-600 text-sm text-center font-medium";
                 logoBlobToUpload = null;
             }
@@ -335,49 +337,126 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === AUTOCOMPLETADO DE OBRA ===
-    if (inputObra) {
-        inputObra.addEventListener('input', () => {
-            const obraBuscada = inputObra.value.trim().toLowerCase();
-            if (!obraBuscada) return;
-            const tareaExistente = allTasks.find(t => t.obra && t.obra.trim().toLowerCase() === obraBuscada);
-            if (tareaExistente) {
-                if (inputCliente && !inputCliente.value) inputCliente.value = tareaExistente.cliente || '';
-                if (inputDireccion && !inputDireccion.value) inputDireccion.value = tareaExistente.direccion || '';
-                if (inputLocalidad && !inputLocalidad.value) inputLocalidad.value = tareaExistente.localidad || '';
-            }
+    // === AGENDA DE EMPLEADOS (Solo Admins / SuperAdmins) ===
+    async function loadEmpleados() {
+        if (!empleadosContainer) return;
+        empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
+        
+        const { data, error } = await supabaseClient.from('perfiles').select('*').order('nombre', { ascending: true });
+        if (error) {
+            empleadosContainer.innerHTML = '<p class="text-error text-center">Error al cargar empleados.</p>';
+            return;
+        }
+        allEmpleados = data;
+        renderEmpleados(allEmpleados);
+    }
+
+    function renderEmpleados(empleadosToRender) {
+        empleadosContainer.innerHTML = '';
+        if (empleadosCount) empleadosCount.textContent = `${empleadosToRender.length} empleados`;
+
+        if (empleadosToRender.length === 0) {
+            empleadosContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No se encontraron empleados.</p>';
+            return;
+        }
+
+        const isAdmin = window.currentUserProfile && (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin');
+
+        empleadosToRender.forEach(emp => {
+            const telefonoLink = emp.telefono ? `tel:${emp.telefono}` : '#';
+            const emailLink = emp.email ? `mailto:${emp.email}` : '#';
+            
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'bg-red-50 dark:bg-red-950/30 border border-red-200'}`;
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''}</h3>
+                        <p class="text-xs text-on-surface-variant">@${emp.username || 'sin_usuario'}</p>
+                    </div>
+                    ${isAdmin ? `
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium ${emp.rol === 'SuperAdmin' ? 'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'}">${emp.rol}</span>
+                    ` : ''}
+                </div>
+
+                <div class="flex flex-wrap gap-2 items-center text-sm pt-1">
+                    <a href="${telefonoLink}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium hover:bg-surface-variant transition-colors shadow-xs">
+                        <span class="material-symbols-outlined text-[16px]">call</span> ${emp.telefono || 'Sin teléfono'}
+                    </a>
+                    <a href="${emailLink}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium hover:bg-surface-variant transition-colors shadow-xs truncate max-w-[220px]">
+                        <span class="material-symbols-outlined text-[16px]">mail</span> ${emp.email}
+                    </a>
+                </div>
+
+                ${isAdmin ? `
+                    <div class="flex gap-2 mt-2 pt-2 border-t border-outline-variant justify-end">
+                        <button onclick="editarEmpleadoModal('${emp.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:opacity-80">
+                            <span class="material-symbols-outlined text-[14px]">edit</span> Editar
+                        </button>
+                        <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:opacity-80">
+                            <span class="material-symbols-outlined text-[14px]">delete</span> Eliminar
+                        </button>
+                    </div>
+                ` : ''}
+            `;
+            empleadosContainer.appendChild(card);
         });
     }
 
-    // === DICTADO POR VOZ ===
-    if (btnDictar && inputTarea) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
-            recognition.continuous = false;
-            recognition.interimResults = false;
-
-            btnDictar.addEventListener('click', () => {
-                try { recognition.start(); btnDictar.classList.add('bg-red-100', 'text-red-600', 'animate-pulse'); } 
-                catch (e) { console.log("Activo"); }
-            });
-
-            recognition.onresult = (event) => {
-                inputTarea.value += (inputTarea.value ? ' ' : '') + event.results[0][0].transcript;
-            };
-
-            recognition.onend = () => { btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse'); };
-            recognition.onerror = (event) => {
-                btnDictar.classList.remove('bg-red-100', 'text-red-600', 'animate-pulse');
-                if (event.error === 'network') alert("Error de red en dictado por voz.");
-            };
-        } else {
-            btnDictar.addEventListener('click', () => alert("Navegador no soporta dictado por voz."));
-        }
+    if (searchEmpleadosInput) {
+        searchEmpleadosInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtrados = allEmpleados.filter(emp => 
+                (emp.nombre && emp.nombre.toLowerCase().includes(q)) || 
+                (emp.apellido && emp.apellido.toLowerCase().includes(q)) || 
+                (emp.email && emp.email.toLowerCase().includes(q)) || 
+                (emp.telefono && emp.telefono.toLowerCase().includes(q)) || 
+                (emp.username && emp.username.toLowerCase().includes(q)) ||
+                (emp.rol && emp.rol.toLowerCase().includes(q))
+            );
+            renderEmpleados(filtrados);
+        });
     }
 
-    // === 1. TAREAS Y BUSCADOR ===
+    // Funciones globales para Admin (Editar/Eliminar Empleado)
+    window.editarEmpleadoModal = function(id) {
+        const emp = allEmpleados.find(e => e.id === id);
+        if (!emp) return;
+
+        const nuevoNombre = prompt("Editar Nombre:", emp.nombre || '');
+        if (nuevoNombre === null) return;
+        const nuevoApellido = prompt("Editar Apellido:", emp.apellido || '');
+        if (nuevoApellido === null) return;
+        const nuevoTelefono = prompt("Editar Teléfono:", emp.telefono || '');
+        if (nuevoTelefono === null) return;
+
+        supabaseClient.from('perfiles')
+            .update({ nombre: nuevoNombre.trim(), apellido: nuevoApellido.trim(), telefono: nuevoTelefono.trim() })
+            .eq('id', id)
+            .then(({ error }) => {
+                if (error) alert("Error al actualizar: " + error.message);
+                else loadEmpleados();
+            });
+    };
+
+    window.eliminarEmpleado = async function(id) {
+        if (confirm("¿Estás seguro de eliminar este empleado del sistema?")) {
+            const { error } = await supabaseClient.from('perfiles').delete().eq('id', id);
+            if (!error) loadEmpleados();
+            else alert("Error al eliminar: " + error.message);
+        }
+    };
+
+    async function loadOperariosSelect() {
+        if (!selectOperario) return;
+        const { data, error } = await supabaseClient.from('perfiles').select('username').eq('activo', true);
+        if (error) return;
+        selectOperario.innerHTML = '<option value="" disabled selected>Selecciona un operario...</option>';
+        data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
+    }
+
+    // === TAREAS Y BUSCADOR ===
     if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
@@ -473,7 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 2. VER DETALLES ===
     window.verDetalles = function(id) {
         const tarea = allTasks.find(t => t.id === id);
         if (!tarea) return;
@@ -502,7 +580,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnCloseDetalle) btnCloseDetalle.addEventListener('click', () => modalDetalle.classList.add('hidden'));
 
-    // === 3. EDITAR Y ELIMINAR ===
     window.editarTarea = function(id) {
         const tarea = allTasks.find(t => t.id === id);
         if (!tarea) return;
@@ -535,47 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!error) loadTasks();
     };
 
-    // === 4. EMPLEADOS ===
-    async function loadEmpleados() {
-        if (!empleadosContainer) return;
-        empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
-        const { data, error } = await supabaseClient.from('perfiles').select('*').order('activo', { ascending: true });
-        if (error) return;
-        
-        empleadosContainer.innerHTML = '';
-        data.forEach(emp => {
-            const card = document.createElement('div');
-            card.className = `p-4 rounded-xl shadow-sm flex flex-col gap-2 ${emp.activo ? 'bg-surface-container' : 'bg-red-50 border border-red-200'}`;
-            card.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h3 class="font-medium text-on-surface">${emp.nombre} ${emp.apellido}</h3>
-                        <p class="text-xs text-on-surface-variant">@${emp.username} | ${emp.email}</p>
-                    </div>
-                    <span class="text-xs px-2 py-1 rounded-full ${emp.rol === 'SuperAdmin' ? 'bg-purple-200 text-purple-900' : 'bg-blue-100 text-blue-800'}">${emp.rol}</span>
-                </div>
-                ${!emp.activo ? `<button onclick="activarEmpleado('${emp.id}')" class="mt-2 bg-primary text-on-primary py-2 rounded-lg text-sm font-medium">Aprobar Acceso</button>` : ''}
-            `;
-            empleadosContainer.appendChild(card);
-        });
-    }
-
-    window.activarEmpleado = async function(id) {
-        if (confirm("¿Aprobar a este operario?")) {
-            const { error } = await supabaseClient.from('perfiles').update({ activo: true }).eq('id', id);
-            if (!error) { loadEmpleados(); loadOperariosSelect(); }
-        }
-    };
-
-    async function loadOperariosSelect() {
-        if (!selectOperario) return;
-        const { data, error } = await supabaseClient.from('perfiles').select('username').eq('activo', true);
-        if (error) return;
-        selectOperario.innerHTML = '<option value="" disabled selected>Selecciona un operario...</option>';
-        data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
-    }
-
-    // === 5. PIZARRA ===
+    // PIZARRA
     let isDrawing = false, currentColor = '#000000';
     function resizeCanvas() {
         if (!canvas) return;
@@ -631,7 +668,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === 6. GUARDAR O ACTUALIZAR TAREA ===
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
@@ -662,7 +698,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const taskId = editTaskId.value;
             let error;
-
             if (taskId) {
                 const res = await supabaseClient.from('tareas').update(tareaData).eq('id', taskId);
                 error = res.error;
