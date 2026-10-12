@@ -80,3 +80,16 @@
     border-radius: 4px; padding: 12px 16px; color: var(--md-sys-color-on-surface); font-size: 16px;
 }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+
+/* Corrección definitiva para scroll y botones en móviles */
+#main-content {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 120px !important; /* Espacio extra generoso para que el scroll baje holgadamente */
+}
+
+/* Asegurar que los formularios tengan margen inferior en móviles */
+form {
+    margin-bottom: 40px;
+}
