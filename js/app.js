@@ -64,7 +64,7 @@
     const canvas = document.getElementById('pizarra-canvas');
     const ctx = canvas ? canvas.getContext('2d') : null;
 
-    // Clientes y Datalists
+    // Clientes y Modales Relacionales
     const clientesContainer = document.getElementById('clientes-container');
     const clientesCount = document.getElementById('clientes-count');
     const searchClientesInput = document.getElementById('search-clientes');
@@ -73,10 +73,10 @@
     const modalClienteTitle = document.getElementById('modal-cliente-title');
     const editClienteId = document.getElementById('edit-cliente-id');
     const cliNombre = document.getElementById('cli-nombre');
-    const cliObra = document.getElementById('cli-obra');
-    const cliDireccion = document.getElementById('cli-direccion');
-    const cliLocalidad = document.getElementById('cli-localidad');
-    const cliTelefono = document.getElementById('cli-telefono');
+    const contactosClienteContainer = document.getElementById('contactos-cliente-container');
+    const btnAddContactoCliente = document.getElementById('btn-add-contacto-cliente');
+    const obrasContainer = document.getElementById('obras-container');
+    const btnAddObra = document.getElementById('btn-add-obra');
     const btnCloseModalCliente = document.getElementById('btn-close-modal-cliente');
     const btnCancelModalCliente = document.getElementById('btn-cancel-modal-cliente');
     const datalistClientes = document.getElementById('clientes-datalist');
@@ -99,7 +99,7 @@
 
     let allTasks = [];
     let allBitacora = [];
-    let allClientes = [];
+    let allClientesCompletos = [];
     let allEmpleados = [];
     let currentBitacoraItem = null;
 
@@ -173,16 +173,89 @@
     if (btnCancelBitacora) btnCancelBitacora.addEventListener('click', () => navBitacora.click());
     if (btnBackBitacoraList) btnBackBitacoraList.addEventListener('click', () => navBitacora.click());
 
+    // --- GESTIÓN MODAL CLIENTE / OBRAS / CONTACTOS ---
     if (fabNewCliente) {
         fabNewCliente.addEventListener('click', () => {
-            modalClienteTitle.textContent = "Nuevo Cliente / Obra";
+            modalClienteTitle.textContent = "Nuevo Cliente, Obras y Contactos";
             formCliente.reset();
             editClienteId.value = "";
+            if (contactosClienteContainer) contactosClienteContainer.innerHTML = '';
+            if (obrasContainer) obrasContainer.innerHTML = '';
+            agregarFilaContactoCliente();
+            agregarFilaObra();
             modalCliente.classList.remove('hidden');
         });
     }
     if (btnCloseModalCliente) btnCloseModalCliente.addEventListener('click', () => modalCliente.classList.add('hidden'));
     if (btnCancelModalCliente) btnCancelModalCliente.addEventListener('click', () => modalCliente.classList.add('hidden'));
+
+    if (btnAddContactoCliente) btnAddContactoCliente.addEventListener('click', () => agregarFilaContactoCliente());
+    if (btnAddObra) btnAddObra.addEventListener('click', () => agregarFilaObra());
+
+    function agregarFilaContactoCliente(nombre = '', telefono = '') {
+        const div = document.createElement('div');
+        div.className = "flex gap-2 items-center bg-surface p-2 rounded-xl border border-outline-variant";
+        div.innerHTML = `
+            <input type="text" placeholder="Nombre contacto" value="${nombre}" class="contacto-cli-nombre flex-1 bg-transparent border-none outline-none text-sm p-1">
+            <input type="tel" placeholder="Teléfono" value="${telefono}" class="contacto-cli-tel w-32 bg-transparent border-none outline-none text-sm p-1">
+            <button type="button" class="text-error material-symbols-outlined text-sm p-1 hover:bg-error/10 rounded" onclick="this.parentElement.remove()">delete</button>
+        `;
+        contactosClienteContainer.appendChild(div);
+    }
+
+    function agregarFilaObra(obraObj = null) {
+        const obraIdUnica = 'obra_' + Math.random().toString(36.substring(2, 9));
+        const div = document.createElement('div');
+        div.className = "obra-row flex flex-col gap-3 bg-surface p-3 rounded-2xl border border-outline-variant";
+        div.innerHTML = `
+            <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-primary">Datos de la Obra</span>
+                <button type="button" class="text-error material-symbols-outlined text-sm p-1 hover:bg-error/10 rounded" onclick="this.closest('.obra-row').remove()">delete</button>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" placeholder="Nombre de la Obra" value="${obraObj ? obraObj.nombre_obra : ''}" class="obra-nombre flex-1 bg-surface-container border border-outline-variant rounded-lg p-2 text-sm" required>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" placeholder="Dirección" value="${obraObj ? obraObj.direccion : ''}" class="obra-dir flex-1 bg-surface-container border border-outline-variant rounded-lg p-2 text-sm" required>
+                <input type="text" placeholder="Localidad" value="${obraObj ? obraObj.localidad : ''}" class="obra-loc flex-1 bg-surface-container border border-outline-variant rounded-lg p-2 text-sm" required>
+            </div>
+            <div class="flex flex-col gap-2 border-t border-outline-variant/50 pt-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-medium text-on-surface-variant">Personas de contacto en esta obra</span>
+                    <button type="button" class="text-xs bg-surface-variant text-on-surface px-2 py-1 rounded hover:bg-primary hover:text-on-primary" onclick="window.agregarFilaContactoObra('${obraIdUnica}')">+ Contacto Obra</button>
+                </div>
+                <div id="${obraIdUnica}" class="contactos-obra-subcontainer flex flex-col gap-2"></div>
+            </div>
+        `;
+        obrasContainer.appendChild(div);
+
+        const subContainer = document.getElementById(obraIdUnica);
+        if (obraObj && obraObj.contactos_obras && obraObj.contactos_obras.length > 0) {
+            obraObj.contactos_obras.forEach(co => {
+                const cDiv = document.createElement('div');
+                cDiv.className = "flex gap-2 items-center bg-surface-container p-1.5 rounded-lg border border-outline-variant";
+                cDiv.innerHTML = `
+                    <input type="text" placeholder="Nombre contacto obra" value="${co.nombre}" class="co-nombre flex-1 bg-transparent border-none outline-none text-xs p-1">
+                    <input type="tel" placeholder="Teléfono" value="${co.telefono}" class="co-tel w-28 bg-transparent border-none outline-none text-xs p-1">
+                    <button type="button" class="text-error material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
+                `;
+                subContainer.appendChild(cDiv);
+            });
+        }
+    }
+
+    window.agregarFilaContactoObra = function(containerId, nombre = '', telefono = '') {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = "flex gap-2 items-center bg-surface-container p-1.5 rounded-lg border border-outline-variant";
+        div.innerHTML = `
+            <input type="text" placeholder="Nombre contacto obra" value="${nombre}" class="co-nombre flex-1 bg-transparent border-none outline-none text-xs p-1">
+            <input type="tel" placeholder="Teléfono" value="${telefono}" class="co-tel w-28 bg-transparent border-none outline-none text-xs p-1">
+            <button type="button" class="text-error material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
+        `;
+        container.appendChild(div);
+    };
 
     // --- INICIALIZACIÓN LOGIN ---
     function initAppAfterLogin() {
@@ -402,38 +475,60 @@
         });
     });
 
-    // --- CLIENTES Y OBRAS INTELIGENTES ---
+    // --- CARGAR Y GUARDAR CLIENTES, OBRAS Y CONTACTOS ---
     async function loadClientes() {
-        const { data, error } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
-        if (!error && data) {
-            allClientes = data;
-            actualizarDatalists();
-            if (clientesContainer) renderClientes(allClientes);
-        } else if (error) {
-            if (clientesContainer) clientesContainer.innerHTML = `<p class="text-error text-center mt-4">Error al cargar clientes: ${error.message}</p>`;
+        // Cargar clientes con sus contactos y obras con sus contactos en paralelo
+        const { data: clientesData, error: cliError } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
+        if (cliError) {
+            if (clientesContainer) clientesContainer.innerHTML = `<p class="text-error text-center mt-4">Error al cargar clientes: ${cliError.message}</p>`;
+            return;
         }
+
+        allClientesCompletos = [];
+        for (const cli of (clientesData || [])) {
+            // Cargar contactos del cliente
+            const { data: cCli } = await supabaseClient.from('contactos_clientes').select('*').eq('cliente_id', cli.id);
+            // Cargar obras del cliente
+            const { data: obrasCli } = await supabaseClient.from('obras').select('*').eq('cliente_id', cli.id);
+            
+            const obrasCompletas = [];
+            for (const ob of (obrasCli || [])) {
+                const { data: cOb } = await supabaseClient.from('contactos_obras').select('*').eq('obra_id', ob.id);
+                obrasCompletas.push({ ...ob, contactos_obras: cOb || [] });
+            }
+
+            allClientesCompletos.push({
+                ...cli,
+                contactos_clientes: cCli || [],
+                obras: obrasCompletas
+            });
+        }
+
+        actualizarDatalists();
+        if (clientesContainer) renderClientes(allClientesCompletos);
     }
 
     function actualizarDatalists() {
         if (datalistClientes) {
             datalistClientes.innerHTML = '';
-            const unicosClientes = [...new Set(allClientes.map(c => c.nombre_cliente))];
-            unicosClientes.forEach(nombre => {
+            allClientesCompletos.forEach(cli => {
                 const opt = document.createElement('option');
-                opt.value = nombre;
+                opt.value = cli.nombre_cliente;
                 datalistClientes.appendChild(opt);
             });
         }
         if (datalistObras && bitCliente) {
             datalistObras.innerHTML = '';
             const clienteSel = bitCliente.value.trim().toLowerCase();
-            const obrasDelCliente = allClientes.filter(c => c.nombre_cliente.toLowerCase() === clienteSel);
-            obrasDelCliente.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.obra;
-                opt.textContent = `${c.direccion}, ${c.localidad}`;
-                datalistObras.appendChild(opt);
-            });
+            const clienteEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === clienteSel);
+            if (clienteEncontrado && clienteEncontrado.obras) {
+                clienteEncontrado.obras.forEach(ob => {
+                    const opt = document.createElement('option');
+                    opt.value = ob.nombre_obra;
+                    opt.textContent = `${ob.direccion}, ${ob.localidad}`;
+                    datalistObras.appendChild(opt);
+                });
+            }
         }
     }
 
@@ -441,11 +536,11 @@
         bitCliente.addEventListener('input', () => {
             actualizarDatalists();
             const clienteSel = bitCliente.value.trim().toLowerCase();
-            const encontrado = allClientes.find(c => c.nombre_cliente.toLowerCase() === clienteSel);
-            if (encontrado) {
-                if (bitObra) bitObra.value = encontrado.obra || '';
-                if (bitDireccion) bitDireccion.value = encontrado.direccion || '';
-                if (bitLocalidad) bitLocalidad.value = encontrado.localidad || '';
+            const encontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === clienteSel);
+            if (encontrado && encontrado.obras && encontrado.obras.length > 0) {
+                if (bitObra) bitObra.value = encontrado.obras[0].nombre_obra || '';
+                if (bitDireccion) bitDireccion.value = encontrado.obras[0].direccion || '';
+                if (bitLocalidad) bitLocalidad.value = encontrado.obras[0].localidad || '';
             }
         });
     }
@@ -454,27 +549,187 @@
         bitObra.addEventListener('input', () => {
             const clienteSel = bitCliente.value.trim().toLowerCase();
             const obraSel = bitObra.value.trim().toLowerCase();
-            const encontrado = allClientes.find(c => c.nombre_cliente.toLowerCase() === clienteSel && c.obra.toLowerCase() === obraSel);
-            if (encontrado) {
-                if (bitDireccion) bitDireccion.value = encontrado.direccion || '';
-                if (bitLocalidad) bitLocalidad.value = encontrado.localidad || '';
+            const clienteEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === clienteSel);
+            if (clienteEncontrado && clienteEncontrado.obras) {
+                const obraEncontrada = clienteEncontrado.obras.find(o => o.nombre_obra.toLowerCase() === obraSel);
+                if (obraEncontrada) {
+                    if (bitDireccion) bitDireccion.value = obraEncontrada.direccion || '';
+                    if (bitLocalidad) bitLocalidad.value = obraEncontrada.localidad || '';
+                }
             }
         });
     }
 
-    if (inputCliente) {
-        inputCliente.addEventListener('input', (e) => {
-            const val = e.target.value.trim().toLowerCase();
-            const encontrado = allClientes.find(c => c.nombre_cliente.toLowerCase() === val);
-            if (encontrado && inputObra) {
-                inputObra.value = encontrado.obra || '';
-                if (inputDireccion) inputDireccion.value = encontrado.direccion || '';
-                if (inputLocalidad) inputLocalidad.value = encontrado.localidad || '';
+    if (formCliente) {
+        formCliente.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const cName = cliNombre.value.trim();
+            const editId = editClienteId.value;
+
+            let clienteId = editId;
+            if (editId) {
+                await supabaseClient.from('clientes').update({ nombre_cliente: cName }).eq('id', editId);
+                // Borrar relaciones antiguas para reinsertar limpias
+                await supabaseClient.from('contactos_clientes').delete().eq('cliente_id', editId);
+                await supabaseClient.from('obras').delete().eq('cliente_id', editId);
+            } else {
+                const { data: newCli, error } = await supabaseClient.from('clientes').insert([{ nombre_cliente: cName }]).select().single();
+                if (error) { alert("Error al guardar cliente: " + error.message); return; }
+                clienteId = newCli.id;
             }
+
+            // Guardar Contactos del Cliente
+            const filasCC = contactosClienteContainer.querySelectorAll('.flex.gap-2.items-center');
+            for (const fila of filasCC) {
+                const nombre = fila.querySelector('.contacto-cli-nombre').value.trim();
+                const telefono = fila.querySelector('.contacto-cli-tel').value.trim();
+                if (nombre) {
+                    await supabaseClient.from('contactos_clientes').insert([{ cliente_id: clienteId, nombre, telefono }]);
+                }
+            }
+
+            // Guardar Obras y sus contactos
+            const filasObras = obrasContainer.querySelectorAll('.obra-row');
+            for (const fObra of filasObras) {
+                const nombre_obra = fObra.querySelector('.obra-nombre').value.trim();
+                const direccion = fObra.querySelector('.obra-dir').value.trim();
+                const localidad = fObra.querySelector('.obra-loc').value.trim();
+                if (nombre_obra) {
+                    const { data: newOb, error: obError } = await supabaseClient.from('obras').insert([{
+                        cliente_id: clienteId, nombre_obra, direccion, localidad
+                    }]).select().single();
+
+                    if (!obError && newOb) {
+                        const subContainer = fObra.querySelector('.contactos-obra-subcontainer');
+                        const filasCO = subContainer.querySelectorAll('.flex.gap-2.items-center');
+                        for (const fCo of filasCO) {
+                            const coNombre = fCo.querySelector('.co-nombre').value.trim();
+                            const coTel = fCo.querySelector('.co-tel').value.trim();
+                            if (coNombre) {
+                                await supabaseClient.from('contactos_obras').insert([{ obra_id: newOb.id, nombre: coNombre, telefono: coTel }]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            modalCliente.classList.add('hidden');
+            loadClientes();
         });
     }
 
-    // --- BITÁCORA ---
+    function renderClientes(clientesToRender) {
+        clientesContainer.innerHTML = '';
+        if (clientesCount) clientesCount.textContent = `${clientesToRender.length} clientes`;
+        if (clientesToRender.length === 0) {
+            clientesContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay clientes registrados.</p>';
+            return;
+        }
+
+        const rol = window.currentUserProfile ? (window.currentUserProfile.rol || '').trim().toLowerCase() : '';
+        const isAdmin = rol === 'admin' || rol === 'superadmin';
+
+        clientesToRender.forEach(cli => {
+            const card = document.createElement('div');
+            card.className = "p-5 rounded-3xl shadow-sm bg-surface-container-low flex flex-col gap-4";
+            
+            // HTML de contactos del cliente
+            let contactosCliHtml = '';
+            if (cli.contactos_clientes && cli.contactos_clientes.length > 0) {
+                contactosCliHtml = `<div class="flex flex-wrap gap-2 text-xs pt-1"><span class="font-medium text-on-surface-variant">Contactos Cliente:</span>` +
+                    cli.contactos_clientes.map(cc => `<a href="tel:${cc.telefono}" class="bg-surface px-2.5 py-1 rounded-lg border border-outline-variant text-primary font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">call</span> ${cc.nombre}: ${cc.telefono}</a>`).join('') +
+                    `</div>`;
+            }
+
+            // HTML de Obras
+            let obrasHtml = '';
+            if (cli.obras && cli.obras.length > 0) {
+                obrasHtml = `<div class="flex flex-col gap-3 mt-2 border-t border-outline-variant pt-3"><span class="text-xs font-bold text-primary uppercase tracking-wider">Obras (${cli.obras.length})</span>` +
+                    cli.obras.map(ob => {
+                        const mapsQuery = encodeURIComponent(`${ob.direccion}, ${ob.localidad}`);
+                        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+                        
+                        let contactosObraHtml = '';
+                        if (ob.contactos_obras && ob.contactos_obras.length > 0) {
+                            contactosObraHtml = `<div class="flex flex-wrap gap-2 text-xs mt-1"><span class="text-on-surface-variant">Contacto Obra:</span>` +
+                                ob.contactos_obras.map(co => `<a href="tel:${co.telefono}" class="bg-surface-container px-2 py-0.5 rounded border border-outline-variant text-primary font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">call</span> ${co.nombre} (${co.telefono})</a>`).join('') +
+                                `</div>`;
+                        }
+
+                        return `
+                            <div class="bg-surface p-3.5 rounded-2xl border border-outline-variant flex flex-col gap-2">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-medium text-sm text-on-surface">🏗️ ${ob.nombre_obra}</h4>
+                                    <a href="${mapsUrl}" target="_blank" class="text-xs bg-primary text-on-primary px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-xs hover:opacity-90">
+                                        <span class="material-symbols-outlined text-[14px]">map</span> Google Maps
+                                    </a>
+                                </div>
+                                <p class="text-xs text-on-surface-variant">📍 ${ob.direccion}, ${ob.localidad}</p>
+                                ${contactosObraHtml}
+                            </div>
+                        `;
+                    }).join('') + `</div>`;
+            } else {
+                obrasHtml = `<p class="text-xs text-on-surface-variant italic mt-1">Este cliente aún no tiene obras registradas.</p>`;
+            }
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-lg text-on-surface">${cli.nombre_cliente}</h3>
+                    </div>
+                    ${isAdmin ? `<button onclick="window.editarCliente('${cli.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium">Modificar / Añadir Obra</button>` : ''}
+                </div>
+                ${contactosCliHtml}
+                ${obrasHtml}
+            `;
+            clientesContainer.appendChild(card);
+        });
+    }
+
+    if (searchClientesInput) {
+        searchClientesInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            const filtrados = allClientesCompletos.filter(cli => {
+                const matchCli = (cli.nombre_cliente && cli.nombre_cliente.toLowerCase().includes(q));
+                const matchContactosCli = cli.contactos_clientes.some(cc => cc.nombre.toLowerCase().includes(q) || cc.telefono.includes(q));
+                const matchObras = cli.obras.some(ob => 
+                    ob.nombre_obra.toLowerCase().includes(q) || 
+                    ob.direccion.toLowerCase().includes(q) || 
+                    ob.localidad.toLowerCase().includes(q) ||
+                    ob.contactos_obras.some(co => co.nombre.toLowerCase().includes(q) || co.telefono.includes(q))
+                );
+                return matchCli || matchContactosCli || matchObras;
+            });
+            renderClientes(filtrados);
+        });
+    }
+
+    window.editarCliente = function(id) {
+        const cli = allClientesCompletos.find(c => c.id === id);
+        if (!cli) return;
+        modalClienteTitle.textContent = "Editar Cliente, Obras y Contactos";
+        editClienteId.value = cli.id;
+        cliNombre.value = cli.nombre_cliente || '';
+        
+        if (contactosClienteContainer) contactosClienteContainer.innerHTML = '';
+        if (cli.contactos_clientes && cli.contactos_clientes.length > 0) {
+            cli.contactos_clientes.forEach(cc => agregarFilaContactoCliente(cc.nombre, cc.telefono));
+        } else {
+            agregarFilaContactoCliente();
+        }
+
+        if (obrasContainer) obrasContainer.innerHTML = '';
+        if (cli.obras && cli.obras.length > 0) {
+            cli.obras.forEach(ob => agregarFilaObra(ob));
+        } else {
+            agregarFilaObra();
+        }
+
+        modalCliente.classList.remove('hidden');
+    };
+
+    // --- BITÁCORA Y TAREAS ---
     async function loadBitacora() {
         if (!bitacoraContainer) return;
         bitacoraContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
@@ -541,13 +796,20 @@
             const dName = bitDireccion.value.trim();
             const lName = bitLocalidad.value.trim();
 
-            const existeClienteObra = allClientes.find(c => c.nombre_cliente.toLowerCase() === cName.toLowerCase() && c.obra.toLowerCase() === oName.toLowerCase());
-            if (!existeClienteObra) {
-                await supabaseClient.from('clientes').insert([{
-                    nombre_cliente: cName,
-                    obra: oName,
-                    direccion: dName,
-                    localidad: lName
+            // Sincronizar automáticamente en la tabla relacional si no existe
+            let cliEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === cName.toLowerCase());
+            let clienteId;
+            if (!cliEncontrado) {
+                const { data: newC } = await supabaseClient.from('clientes').insert([{ nombre_cliente: cName }]).select().single();
+                clienteId = newC.id;
+            } else {
+                clienteId = cliEncontrado.id;
+            }
+
+            const obraEncontrada = allClientesCompletos.find(c => c.id === clienteId)?.obras?.find(o => o.nombre_obra.toLowerCase() === oName.toLowerCase());
+            if (!obraEncontrada) {
+                await supabaseClient.from('obras').insert([{
+                    cliente_id: clienteId, nombre_obra: oName, direccion: dName, localidad: lName
                 }]);
                 loadClientes();
             }
@@ -670,7 +932,7 @@
         viewFormBitacora.classList.add('flex');
     };
 
-    // --- TAREAS Y CLIENTES ---
+    // --- TAREAS ---
     if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
@@ -786,99 +1048,6 @@
             btnSubmit.disabled = false;
         });
     }
-
-    if (formCliente) {
-        formCliente.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const clienteData = {
-                nombre_cliente: cliNombre.value.trim(),
-                obra: cliObra.value.trim(),
-                direccion: cliDireccion.value.trim(),
-                localidad: cliLocalidad.value.trim(),
-                telefono: cliTelefono.value.trim()
-            };
-            const id = editClienteId.value;
-            let error;
-            if (id) {
-                const res = await supabaseClient.from('clientes').update(clienteData).eq('id', id);
-                error = res.error;
-            } else {
-                const res = await supabaseClient.from('clientes').insert([clienteData]);
-                error = res.error;
-            }
-            if (error) {
-                alert("Error al guardar cliente: " + error.message);
-            } else {
-                modalCliente.classList.add('hidden');
-                loadClientes();
-            }
-        });
-    }
-
-    function renderClientes(clientesToRender) {
-        clientesContainer.innerHTML = '';
-        if (clientesCount) clientesCount.textContent = `${clientesToRender.length} registros`;
-        if (clientesToRender.length === 0) {
-            clientesContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No hay clientes registrados.</p>';
-            return;
-        }
-
-        const rol = window.currentUserProfile ? (window.currentUserProfile.rol || '').trim().toLowerCase() : '';
-        const isAdmin = rol === 'admin' || rol === 'superadmin';
-
-        clientesToRender.forEach(cli => {
-            const telefonoLink = cli.telefono ? `tel:${cli.telefono}` : '#';
-            const mapsQuery = encodeURIComponent(`${cli.direccion}, ${cli.localidad}`);
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
-            const card = document.createElement('div');
-            card.className = "p-4 rounded-2xl shadow-sm bg-surface-container-low flex flex-col gap-3";
-            card.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="font-medium text-base text-on-surface">${cli.nombre_cliente}</h3>
-                        <p class="text-xs text-primary font-medium bg-primary-container/40 px-2 py-0.5 rounded-md inline-block mt-1">Obra: ${cli.obra}</p>
-                    </div>
-                    ${isAdmin ? `<button onclick="window.abrirModalEditarCliente('${cli.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium">Editar</button>` : ''}
-                </div>
-                <div class="flex flex-wrap gap-2 items-center text-sm pt-1">
-                    <a href="${telefonoLink}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium">
-                        <span class="material-symbols-outlined text-[16px]">call</span> ${cli.telefono || 'Sin teléfono'}
-                    </a>
-                    <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium">
-                        <span class="material-symbols-outlined text-[16px]">map</span> ${cli.direccion}, ${cli.localidad}
-                    </a>
-                </div>
-            `;
-            clientesContainer.appendChild(card);
-        });
-    }
-
-    if (searchClientesInput) {
-        searchClientesInput.addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            const filtrados = allClientes.filter(cli => 
-                (cli.nombre_cliente && cli.nombre_cliente.toLowerCase().includes(q)) || 
-                (cli.obra && cli.obra.toLowerCase().includes(q)) || 
-                (cli.direccion && cli.direccion.toLowerCase().includes(q)) || 
-                (cli.localidad && cli.localidad.toLowerCase().includes(q))
-            );
-            renderClientes(filtrados);
-        });
-    }
-
-    window.abrirModalEditarCliente = function(id) {
-        const cli = allClientes.find(c => c.id === id);
-        if (!cli) return;
-        modalClienteTitle.textContent = "Editar Cliente / Obra";
-        editClienteId.value = cli.id;
-        cliNombre.value = cli.nombre_cliente || '';
-        cliObra.value = cli.obra || '';
-        cliDireccion.value = cli.direccion || '';
-        cliLocalidad.value = cli.localidad || '';
-        cliTelefono.value = cli.telefono || '';
-        modalCliente.classList.remove('hidden');
-    };
 
     async function loadEmpleados() {
         if (!empleadosContainer) return;
