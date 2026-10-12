@@ -24,7 +24,7 @@
                 <option value="oscuro">🌙 Oscuro</option>
             </select>
             
-            <!-- Botón de Notificaciones -->
+            <!-- Notificaciones -->
             <div class="relative">
                 <button id="btn-menu-notificaciones" class="relative flex items-center justify-center bg-surface-variant text-on-surface w-9 h-9 rounded-full hover:bg-surface-variant/85 transition-colors" title="Notificaciones">
                     <span class="material-symbols-outlined text-[20px]">notifications</span>
@@ -44,7 +44,7 @@
 
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
-            <!-- Menú Perfil -->
+            <!-- Perfil -->
             <div class="relative">
                 <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/85 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
@@ -224,8 +224,6 @@
     </main>
 
     <!-- BLOQUE 4: MODALES -->
-    
-    <!-- Modal Detalles Tarea -->
     <div id="modal-detalle-tarea" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -236,7 +234,6 @@
         </div>
     </div>
 
-    <!-- Modal Pizarra -->
     <div id="modal-canvas" class="hidden fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center pb-safe sm:p-4">
         <div class="bg-surface text-on-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -258,7 +255,6 @@
         </div>
     </div>
 
-    <!-- Modal Editar Empleado -->
     <div id="modal-editar-empleado" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -298,7 +294,7 @@
         </div>
     </div>
 
-    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
+    <!-- BLOQUE 5: NAVEGACIÓN -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
@@ -312,7 +308,6 @@
 
     <!-- SCRIPTS -->
     <script>
-        // Registro del Service Worker para PWA y Notificaciones Push
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error: ', err));
@@ -322,6 +317,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Cargamos app.js como Módulo Principal -->
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
