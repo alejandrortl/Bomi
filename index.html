@@ -11,7 +11,7 @@
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- BLOQUE 1: HEADER (Barra Superior y Menú de Usuario) -->
+    <!-- BLOQUE 1: HEADER -->
     <header id="app-header" class="hidden w-full bg-surface-container shadow-sm px-4 py-3 justify-between items-center z-30 shrink-0 relative">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">engineering</span>
@@ -26,7 +26,6 @@
             
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
-            <!-- Menú Desplegable de Perfil -->
             <div class="relative">
                 <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/80 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
@@ -50,7 +49,7 @@
         </div>
     </header>
 
-    <!-- BLOQUE 2: AUTENTICACIÓN (Login / Registro) -->
+    <!-- BLOQUE 2: AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto overflow-y-auto">
         <div class="bg-surface-container-low p-8 rounded-3xl shadow-md w-full flex flex-col gap-6">
             <div class="text-center">
@@ -77,11 +76,11 @@
         </div>
     </main>
 
-    <!-- BLOQUE 3: CONTENIDO PRINCIPAL (Contenedor con scroll para las vistas) -->
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
-        <!-- Vista: Lista de Tareas (Diario) -->
-        <section id="view-task-list" class="flex flex-col gap-4">
+        <!-- Vista: Lista de Tareas (Diario) - Incluye su propio botón flotante contextual -->
+        <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
                 <input type="text" id="search-tareas" placeholder="Buscar por operario, fecha, cliente, obra..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant">
@@ -93,6 +92,11 @@
             </div>
             
             <div id="tasks-container" class="flex flex-col gap-3"></div>
+
+            <!-- Botón flotante contextual exclusivo del Diario para añadir tarea -->
+            <button id="fab-new-task" class="fixed bottom-20 right-4 sm:right-8 bg-primary text-on-primary p-4 rounded-2xl shadow-xl z-30 flex items-center justify-center hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined">add</span>
+            </button>
         </section>
 
         <!-- Vista: Nueva Tarea / Editar Tarea -->
@@ -140,7 +144,7 @@
             </form>
         </section>
 
-        <!-- Vista: Gestión de Empleados / Agenda -->
+        <!-- Vista: Gestión de Empleados / Agenda (Sin botón flotante) -->
         <section id="view-empleados" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-medium text-on-surface">Agenda de Empleados</h2>
@@ -201,7 +205,7 @@
 
     </main>
 
-    <!-- BLOQUE 4: MODALES (100% OPACOS CON ALTO CONTRASTE) -->
+    <!-- BLOQUE 4: MODALES 100% OPACOS Y DE ALTO CONTRASTE -->
     
     <!-- Modal Detalles de Tarea -->
     <div id="modal-detalle-tarea" class="hidden fixed inset-0 bg-black/85 z-50 flex justify-center items-center p-4">
@@ -236,7 +240,7 @@
         </div>
     </div>
 
-    <!-- Modal Editar Empleado (100% Opaco y Oculto por defecto) -->
+    <!-- Modal Editar Empleado (100% Opaco y Contraste Alto) -->
     <div id="modal-editar-empleado" class="hidden fixed inset-0 bg-black/85 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -249,22 +253,22 @@
                 
                 <div class="md3-input-group">
                     <label>Nombre</label>
-                    <input type="text" id="edit-emp-nombre" required class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface">
+                    <input type="text" id="edit-emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
                 </div>
 
                 <div class="md3-input-group">
                     <label>Apellido</label>
-                    <input type="text" id="edit-emp-apellido" required class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface">
+                    <input type="text" id="edit-emp-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
                 </div>
 
                 <div class="md3-input-group">
                     <label>Teléfono</label>
-                    <input type="tel" id="edit-emp-telefono" class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface" placeholder="Ej. +34 600 000 000">
+                    <input type="tel" id="edit-emp-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Ej. +34 600 000 000">
                 </div>
 
                 <div class="md3-input-group">
                     <label>Nueva Contraseña (Opcional)</label>
-                    <input type="password" id="edit-emp-password" class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface" placeholder="Dejar en blanco para no cambiar" minlength="6">
+                    <input type="password" id="edit-emp-password" class="bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Dejar en blanco para no cambiar" minlength="6">
                 </div>
 
                 <div class="flex justify-end gap-3 mt-4 pt-3 border-t border-outline-variant">
@@ -276,9 +280,7 @@
         </div>
     </div>
 
-    <!-- BLOQUE 5: FAB (Botón flotante Nueva Tarea) Y NAVEGACIÓN INFERIOR FIJA -->
-    <button id="fab-new-task" class="hidden fixed bottom-20 right-4 sm:right-8 bg-primary-container text-on-primary-container p-4 rounded-2xl shadow-lg z-40 items-center justify-center"><span class="material-symbols-outlined">add</span></button>
-
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR FIJA -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
