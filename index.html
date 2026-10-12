@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
-    <!-- Librería para generar PDFs profesionales -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
@@ -110,7 +109,7 @@
             </div>
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-bitacora" placeholder="Buscar por cliente, obra, autor o notas..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+                <input type="text" id="search-bitacora" placeholder="Buscar cliente, obra, autor o notas..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
             </div>
             
             <div id="bitacora-container" class="flex flex-col gap-3"></div>
@@ -128,11 +127,11 @@
                 
                 <div class="md3-input-group">
                     <label>Cliente</label>
-                    <input type="text" id="bit-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe cliente">
+                    <input type="text" id="bit-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe nuevo cliente">
                 </div>
                 <div class="md3-input-group">
                     <label>Obra</label>
-                    <input type="text" id="bit-obra" required placeholder="Nombre de la obra">
+                    <input type="text" id="bit-obra" list="obras-datalist" required placeholder="Selecciona o escribe nueva obra">
                 </div>
                 
                 <div class="flex gap-4">
@@ -150,11 +149,18 @@
                     <textarea id="bit-notas" rows="4" required class="w-full bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Escribe o dicta las observaciones..."></textarea>
                 </div>
 
-                <!-- Pizarra / Dibujo -->
-                <div class="flex flex-col gap-2">
+                <!-- Botón para abrir Pizarra (Colapsada por defecto) -->
+                <div>
+                    <button type="button" id="btn-toggle-pizarra" class="text-xs bg-surface-variant text-on-surface px-4 py-2 rounded-xl font-medium flex items-center gap-2 border border-outline-variant hover:bg-primary hover:text-on-primary transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">draw</span> Abrir Pizarra / Croquis
+                    </button>
+                </div>
+
+                <!-- Contenedor Pizarra Oculto por defecto -->
+                <div id="pizarra-container" class="hidden flex-col gap-2">
                     <label class="text-sm font-medium">Croquis / Pizarra</label>
-                    <div class="border border-outline-variant rounded-2xl bg-white dark:bg-zinc-900 p-2 flex flex-col items-center gap-2">
-                        <canvas id="pizarra-canvas" width="600" height="250" class="w-full h-48 touch-none bg-zinc-50 dark:bg-zinc-950 rounded-xl cursor-crosshair border border-outline-variant/50"></canvas>
+                    <div class="border border-outline-variant rounded-2xl p-2 flex flex-col items-center gap-2 bg-surface">
+                        <canvas id="pizarra-canvas" width="600" height="250" class="w-full h-48 touch-none rounded-xl cursor-crosshair border border-outline-variant/50"></canvas>
                         <div class="flex gap-2 w-full justify-between items-center">
                             <div class="flex gap-2">
                                 <button type="button" class="pizarra-color w-6 h-6 rounded-full bg-black dark:bg-white border-2 border-primary" data-color="current"></button>
@@ -173,7 +179,7 @@
             </form>
         </section>
 
-        <!-- Vista: Detalle Bitácora (Con botón de Exportar a PDF) -->
+        <!-- Vista: Detalle Bitácora -->
         <section id="view-detalle-bitacora" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-medium text-on-surface">Detalle del Registro</h2>
@@ -185,9 +191,7 @@
                 </div>
             </div>
             
-            <!-- Contenedor optimizado para PDF con datos de empresa y logotipo -->
             <div id="pdf-export-container" class="bg-surface-container-low p-6 rounded-3xl shadow-sm flex flex-col gap-4 text-on-surface">
-                <!-- Cabecera Empresa para PDF -->
                 <div id="pdf-empresa-header" class="flex justify-between items-center border-b border-outline-variant pb-4 mb-2">
                     <div>
                         <h3 id="pdf-emp-nombre" class="font-bold text-base text-primary">Diario de Obra</h3>
@@ -209,7 +213,7 @@
                 
                 <div class="md3-input-group"><label>Fecha a realizar</label><input type="date" id="input-fecha" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
                 <div class="md3-input-group"><label>Cliente</label><input type="text" id="input-cliente" list="clientes-datalist" required></div>
-                <div class="md3-input-group"><label>Obra</label><input type="text" id="input-obra" required></div>
+                <div class="md3-input-group"><label>Obra</label><input type="text" id="input-obra" list="obras-datalist" required></div>
                 
                 <div class="flex gap-4">
                     <div class="md3-input-group flex-1"><label>Dirección</label><input type="text" id="input-direccion" required></div>
@@ -244,7 +248,7 @@
             
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-clientes" placeholder="Buscar por cliente, obra, dirección o localidad..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+                <input type="text" id="search-clientes" placeholder="Buscar cliente, obra, dirección..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
             </div>
 
             <div id="clientes-container" class="flex flex-col gap-3"></div>
@@ -339,9 +343,11 @@
         </div>
     </div>
 
+    <!-- Datalists para autocompletar dinámico -->
     <datalist id="clientes-datalist"></datalist>
+    <datalist id="obras-datalist"></datalist>
 
-    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (Bitácora a la izquierda de Clientes) -->
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
