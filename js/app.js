@@ -1,6 +1,4 @@
 // js/app.js
-import { loadNotificaciones, initPushNotifications } from './modules/notifications.js';
-
 document.addEventListener('DOMContentLoaded', () => {
     const viewTaskList = document.getElementById('view-task-list');
     const viewNewTask = document.getElementById('view-new-task');
@@ -12,6 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const navEmpleados = document.getElementById('nav-empleados');
     const fabNewTask = document.getElementById('fab-new-task');
     
+    const appHeader = document.getElementById('app-header');
+    const bottomNav = document.getElementById('bottom-nav');
+    const viewAuth = document.getElementById('view-auth');
+
     const btnMenuPerfil = document.getElementById('btn-menu-perfil');
     const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
     const menuItemPerfil = document.getElementById('menu-item-perfil');
@@ -64,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const empresaMensaje = document.getElementById('empresa-mensaje');
     let logoBlobToUpload = null;
 
-    // Modal Editar Empleado
+    // Modales
     const modalEditarEmpleado = document.getElementById('modal-editar-empleado');
     const formEditarEmpleado = document.getElementById('form-editar-empleado');
     const editEmpId = document.getElementById('edit-emp-id');
@@ -106,8 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarDatosPerfil();
         cargarDatosEmpresa();
         loadTasks();
-        loadNotificaciones(supabaseClient, window.currentUserProfile, notificacionesContainer, notifBadge);
-        initPushNotifications(btnRequestPush, window.currentUserProfile, supabaseClient);
+        loadNotificaciones();
+        sincronizarEstadoPushUI();
 
         const isAdmin = window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin';
         if (isAdmin) {
@@ -159,6 +161,89 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Notificaciones Push y Sistema
+    function sincronizarEstadoPushUI() {
+        if (!btnRequestPush || !window.currentUserProfile) return;
+        if (window.currentUserProfile.notificaciones_activas && Notification.permission === 'granted') {
+            btnRequestPush.textContent = "Activadas";
+            btnRequestPush.disabled = true;
+            btnRequestPush.classList.add('opacity-70');
+        } else {
+            btnRequestPush.textContent = "Activar Push";
+            btnRequestPush.disabled = false;
+            btnRequestPush.classList.remove('opacity-70');
+        }
+    }
+
+    if (btnRequestPush) {
+        btnRequestPush.addEventListener('click', async () => {
+            if (!('Notification' in window)) {
+                alert("Este navegador no soporta notificaciones push.");
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                window.currentUserProfile.notificaciones_activas = true;
+                await supabaseClient
+                    .from('perfiles')
+                    .update({ notificaciones_activas: true })
+                    .eq('id', window.currentUserProfile.id);
+
+                new Notification("Diario de Obra", { body: "¡Notificaciones activadas con éxito!" });
+                sincronizarEstadoPushUI();
+            } else {
+                alert("Permiso de notificaciones denegado en el navegador o dispositivo.");
+            }
+        });
+    }
+
+    async function loadNotificaciones() {
+        if (!notificacionesContainer || !window.currentUserProfile) return;
+        const userId = window.currentUserProfile.id;
+        
+        const { data, error } = await supabaseClient
+            .from('notificaciones')
+            .select('*')
+            .or(`user_id.eq.${userId},user_id.is.null`)
+            .order('created_at', { ascending: false })
+            .limit(15);
+
+        if (error || !data) return;
+
+        notificacionesContainer.innerHTML = '';
+        const unreadCount = data.filter(n => !n.leida).length;
+
+        if (unreadCount > 0 && notifBadge) {
+            notifBadge.classList.remove('hidden');
+        } else if (notifBadge) {
+            notifBadge.classList.add('hidden');
+        }
+
+        if (data.length === 0) {
+            notificacionesContainer.innerHTML = '<p class="text-xs text-on-surface-variant text-center py-4">No hay notificaciones</p>';
+            return;
+        }
+
+        data.forEach(notif => {
+            const item = document.createElement('div');
+            item.className = `p-3 text-xs flex flex-col gap-1 cursor-pointer hover:bg-surface-variant transition-colors ${notif.leida ? 'opacity-70' : 'bg-primary-container/20 font-medium'}`;
+            item.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-medium text-primary">${notif.titulo}</span>
+                    <span class="text-[10px] text-on-surface-variant">${new Date(notif.created_at).toLocaleDateString()}</span>
+                </div>
+                <p class="text-on-surface">${notif.mensaje}</p>
+            `;
+            item.addEventListener('click', async () => {
+                if (!notif.leida) {
+                    await supabaseClient.from('notificaciones').update({ leida: true }).eq('id', notif.id);
+                    loadNotificaciones();
+                }
+            });
+            notificacionesContainer.appendChild(item);
+        });
+    }
+
     function aplicarTema(modo) {
         const root = document.documentElement;
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -174,8 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
         selectTema.addEventListener('change', async () => {
             const nuevoTema = selectTema.value;
             aplicarTema(nuevoTema);
-            window.currentUserProfile.tema = nuevoTema;
-            await supabaseClient.from('perfiles').update({ tema: nuevoTema }).eq('id', window.currentUserProfile.id);
+            if (window.currentUserProfile) {
+                window.currentUserProfile.tema = nuevoTema;
+                await supabaseClient.from('perfiles').update({ tema: nuevoTema }).eq('id', window.currentUserProfile.id);
+            }
         });
     }
 
@@ -365,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Empleados y Tareas se mantienen igual o se pueden mover a sus propios módulos en el siguiente paso.
+    // Empleados
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
