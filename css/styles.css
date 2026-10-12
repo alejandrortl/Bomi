@@ -1,4 +1,4 @@
-/* css/styles.css - Estructura MD3 Empresarial con Contraste Absoluto y Calendarios MD3 */
+/* css/styles.css - Estructura MD3 con Contraste Absoluto */
 
 :root {
     --md-sys-color-primary: #005fb8;
@@ -53,41 +53,42 @@
     --md-sys-color-outline-variant: #44474f;
     --md-sys-color-error: #ffb4ab;
     
-    /* Fuerza a los controles nativos (calendarios, flechas de select) a adoptar el esquema oscuro en navegadores */
     color-scheme: dark;
 }
 
 html, body {
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
+    margin: 0; padding: 0; height: 100vh; height: 100dvh; overflow: hidden;
     background-color: var(--md-sys-color-surface);
     color: var(--md-sys-color-on-surface);
 }
 
-body {
-    display: flex;
-    flex-direction: column;
-}
+body { display: flex; flex-direction: column; }
 
 #main-content {
-    flex: 1;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 200px !important; 
+    flex: 1; overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 200px !important; 
 }
 
-/* MENÚ DESPLEGABLE SUPERIOR */
-#dropdown-menu-perfil {
+/* MENÚS DESPLEGABLES 100% OPACOS */
+#dropdown-menu-perfil, #dropdown-menu-notificaciones {
     background-color: var(--md-sys-color-surface-container-highest) !important;
     color: var(--md-sys-color-on-surface) !important;
     border: 1px solid var(--md-sys-color-outline-variant) !important;
     box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.35) !important;
 }
 
-/* MODALES CON FONDO Y TEXTO VISIBLE */
+/* TARJETAS DE EMPLEADOS PENDIENTES CON CONTRASTE ADAPTATIVO */
+.card-pendiente {
+    background-color: #fef3c7 !important;
+    color: #78350f !important;
+    border: 1px solid #f59e0b !important;
+}
+.dark .card-pendiente {
+    background-color: #27200a !important;
+    color: #fde68a !important;
+    border: 1px solid #b45309 !important;
+}
+
+/* MODALES */
 #modal-editar-empleado > div,
 #modal-detalle-tarea > div,
 #modal-canvas > div {
@@ -96,27 +97,19 @@ body {
     border: 1px solid var(--md-sys-color-outline-variant);
 }
 
-#modal-editar-empleado, 
-#modal-detalle-tarea, 
-#modal-canvas {
+#modal-editar-empleado, #modal-detalle-tarea, #modal-canvas {
     background-color: rgba(0, 0, 0, 0.75) !important;
     backdrop-filter: blur(4px);
 }
 
-/* BOTONES DE ELIMINAR CON FONDO ROJO SÓLIDO Y TEXTO BLANCO */
-button[onclick*="eliminar"], 
-.btn-eliminar-empleado {
-    background-color: #ba1a1a !important;
-    color: #ffffff !important;
+/* BOTONES DE ELIMINAR */
+button[onclick*="eliminar"], .btn-eliminar-empleado {
+    background-color: #ba1a1a !important; color: #ffffff !important;
+}
+.dark button[onclick*="eliminar"], .dark .btn-eliminar-empleado {
+    background-color: #93000a !important; color: #ffffff !important;
 }
 
-.dark button[onclick*="eliminar"], 
-.dark .btn-eliminar-empleado {
-    background-color: #93000a !important;
-    color: #ffffff !important;
-}
-
-/* INPUTS, SELECTS Y CALENDARIOS */
 input, select, textarea {
     background-color: var(--md-sys-color-surface) !important;
     color: var(--md-sys-color-on-surface) !important;
@@ -128,20 +121,13 @@ input, select, textarea {
     color: var(--md-sys-color-on-surface) !important;
 }
 
-/* BARRA INFERIOR FIJA */
 #bottom-nav {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    z-index: 40 !important;
+    position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 40 !important;
     background-color: var(--md-sys-color-surface-container) !important;
     border-top: 1px solid var(--md-sys-color-outline-variant) !important;
 }
 
 .md3-input-group { display: flex; flex-direction: column; gap: 4px; }
 .md3-input-group label { font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-left: 16px; }
-.md3-input-group input, .md3-input-group select, .md3-input-group textarea {
-    border-radius: 4px; padding: 12px 16px; font-size: 16px;
-}
+.md3-input-group input, .md3-input-group select, .md3-input-group textarea { border-radius: 4px; padding: 12px 16px; font-size: 16px; }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
