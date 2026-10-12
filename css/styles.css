@@ -1,4 +1,4 @@
-/* css/styles.css - Estructura MD3 con Contraste Absoluto */
+/* css/styles.css - Estructura MD3 Empresarial con Contraste Absoluto y Calendarios MD3 */
 
 :root {
     --md-sys-color-primary: #005fb8;
@@ -24,6 +24,8 @@
     --md-sys-color-outline: #74777f;
     --md-sys-color-outline-variant: #c4c6d0;
     --md-sys-color-error: #ba1a1a;
+    
+    color-scheme: light;
 }
 
 .dark {
@@ -50,6 +52,9 @@
     --md-sys-color-outline: #8e9099;
     --md-sys-color-outline-variant: #44474f;
     --md-sys-color-error: #ffb4ab;
+    
+    /* Fuerza a los controles nativos (calendarios, flechas de select) a adoptar el esquema oscuro en navegadores */
+    color-scheme: dark;
 }
 
 html, body {
@@ -82,7 +87,7 @@ body {
     box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.35) !important;
 }
 
-/* MODALES CON FONDO DE SUPERFICIE CLARO/OSCURO ADECUADO Y TEXTO VISIBLE */
+/* MODALES CON FONDO Y TEXTO VISIBLE */
 #modal-editar-empleado > div,
 #modal-detalle-tarea > div,
 #modal-canvas > div {
@@ -91,7 +96,6 @@ body {
     border: 1px solid var(--md-sys-color-outline-variant);
 }
 
-/* FORZAR QUE LOS TEXTOS INTERNOS DE LOS MODALES NO HEREDEN OSCURIDAD EN MODO CLARO */
 #modal-editar-empleado, 
 #modal-detalle-tarea, 
 #modal-canvas {
@@ -99,7 +103,7 @@ body {
     backdrop-filter: blur(4px);
 }
 
-/* BOTONES DE ELIMINAR CON FONDO ROJO SÓLIDO Y TEXTO BLANCO OBLIGATORIO */
+/* BOTONES DE ELIMINAR CON FONDO ROJO SÓLIDO Y TEXTO BLANCO */
 button[onclick*="eliminar"], 
 .btn-eliminar-empleado {
     background-color: #ba1a1a !important;
@@ -112,7 +116,7 @@ button[onclick*="eliminar"],
     color: #ffffff !important;
 }
 
-/* INPUTS Y SELECTS CON CONTRASTE */
+/* INPUTS, SELECTS Y CALENDARIOS */
 input, select, textarea {
     background-color: var(--md-sys-color-surface) !important;
     color: var(--md-sys-color-on-surface) !important;
