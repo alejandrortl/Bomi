@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
+    <!-- Librería para generar PDFs profesionales -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
@@ -23,7 +25,6 @@
                 <option value="claro">☀️ Claro</option>
                 <option value="oscuro">🌙 Oscuro</option>
             </select>
-            
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
             <div class="relative">
@@ -32,7 +33,6 @@
                     <span id="header-username-label" class="hidden sm:inline">Cuenta</span>
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
                 </button>
-
                 <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-48 bg-surface-container-high text-on-surface border border-outline-variant rounded-2xl shadow-2xl py-2 z-50 flex flex-col">
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil
@@ -173,13 +173,32 @@
             </form>
         </section>
 
-        <!-- Vista: Detalle Bitácora -->
+        <!-- Vista: Detalle Bitácora (Con botón de Exportar a PDF) -->
         <section id="view-detalle-bitacora" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-medium text-on-surface">Detalle del Registro</h2>
-                <button type="button" id="btn-back-bitacora-list" class="text-xs bg-surface-variant px-3 py-1.5 rounded-full font-medium">Volver</button>
+                <div class="flex gap-2">
+                    <button type="button" id="btn-export-pdf" class="text-xs bg-primary text-on-primary px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm">
+                        <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar PDF
+                    </button>
+                    <button type="button" id="btn-back-bitacora-list" class="text-xs bg-surface-variant px-3 py-1.5 rounded-full font-medium">Volver</button>
+                </div>
             </div>
-            <div id="detalle-bitacora-content" class="bg-surface-container-low p-6 rounded-3xl shadow-sm flex flex-col gap-4"></div>
+            
+            <!-- Contenedor optimizado para PDF con datos de empresa y logotipo -->
+            <div id="pdf-export-container" class="bg-surface-container-low p-6 rounded-3xl shadow-sm flex flex-col gap-4 text-on-surface">
+                <!-- Cabecera Empresa para PDF -->
+                <div id="pdf-empresa-header" class="flex justify-between items-center border-b border-outline-variant pb-4 mb-2">
+                    <div>
+                        <h3 id="pdf-emp-nombre" class="font-bold text-base text-primary">Diario de Obra</h3>
+                        <p id="pdf-emp-cif" class="text-xs text-on-surface-variant"></p>
+                        <p id="pdf-emp-dir" class="text-xs text-on-surface-variant"></p>
+                    </div>
+                    <img id="pdf-emp-logo" src="" alt="Logo" class="hidden h-12 object-contain max-w-[120px]">
+                </div>
+                
+                <div id="detalle-bitacora-content" class="flex flex-col gap-4"></div>
+            </div>
         </section>
 
         <!-- Vista: Nueva Tarea -->
@@ -276,11 +295,12 @@
 
         <!-- Vista: Empresa -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa</h2>
+            <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa y Logotipo</h2>
             <form id="form-empresa" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
                 <div class="md3-input-group"><label>Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
                 <div class="md3-input-group"><label>CIF / NIF</label><input type="text" id="emp-cif" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
                 <div class="md3-input-group"><label>Dirección</label><input type="text" id="emp-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>URL del Logotipo (Imagen)</label><input type="url" id="emp-logo" placeholder="https://ejemplo.com/logo.png" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
                 <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md mt-2">Guardar Datos de Empresa</button>
             </form>
         </section>
@@ -319,7 +339,6 @@
         </div>
     </div>
 
-    <!-- Datalist compartido para autocompletar clientes -->
     <datalist id="clientes-datalist"></datalist>
 
     <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (Bitácora a la izquierda de Clientes) -->
