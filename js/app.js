@@ -574,6 +574,7 @@
                 clienteId = newCli.id;
             }
 
+            // Guardar Contactos del Cliente
             const filasCC = contactosClienteContainer.querySelectorAll('.flex.gap-2.items-center');
             for (const fila of filasCC) {
                 const nombre = fila.querySelector('.contacto-cli-nombre').value.trim();
@@ -583,6 +584,7 @@
                 }
             }
 
+            // Guardar Obras y sus contactos de obra
             const filasObras = obrasContainer.querySelectorAll('.obra-row');
             for (const fObra of filasObras) {
                 const nombre_obra = fObra.querySelector('.obra-nombre').value.trim();
@@ -595,12 +597,14 @@
 
                     if (!obError && newOb) {
                         const subContainer = fObra.querySelector('.contactos-obra-subcontainer');
-                        const filasCO = subContainer.querySelectorAll('.flex.gap-2.items-center');
-                        for (const fCo of filasCO) {
-                            const coNombre = fCo.querySelector('.co-nombre').value.trim();
-                            const coTel = fCo.querySelector('.co-tel').value.trim();
-                            if (coNombre) {
-                                await supabaseClient.from('contactos_obras').insert([{ obra_id: newOb.id, nombre: coNombre, telefono: coTel }]);
+                        if (subContainer) {
+                            const filasCO = subContainer.querySelectorAll('.flex.gap-2.items-center');
+                            for (const fCo of filasCO) {
+                                const coNombre = fCo.querySelector('.co-nombre').value.trim();
+                                const coTel = fCo.querySelector('.co-tel').value.trim();
+                                if (coNombre) {
+                                    await supabaseClient.from('contactos_obras').insert([{ obra_id: newOb.id, nombre: coNombre, telefono: coTel }]);
+                                }
                             }
                         }
                     }
