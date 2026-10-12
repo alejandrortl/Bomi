@@ -11,7 +11,7 @@
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- BLOQUE 1: HEADER (Barra Superior con Notificaciones y Perfil) -->
+    <!-- BLOQUE 1: HEADER -->
     <header id="app-header" class="hidden w-full bg-surface-container shadow-sm px-4 py-3 justify-between items-center z-30 shrink-0 relative">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">engineering</span>
@@ -26,7 +26,7 @@
             
             <!-- Botón de Notificaciones -->
             <div class="relative">
-                <button id="btn-menu-notificaciones" class="relative flex items-center justify-center bg-surface-variant text-on-surface w-9 h-9 rounded-full hover:bg-surface-variant/80 transition-colors" title="Notificaciones">
+                <button id="btn-menu-notificaciones" class="relative flex items-center justify-center bg-surface-variant text-on-surface w-9 h-9 rounded-full hover:bg-surface-variant/85 transition-colors" title="Notificaciones">
                     <span class="material-symbols-outlined text-[20px]">notifications</span>
                     <span id="notif-badge" class="hidden absolute top-0 right-0 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-surface"></span>
                 </button>
@@ -34,7 +34,7 @@
                 <div id="dropdown-menu-notificaciones" class="hidden absolute right-0 mt-2 w-80 max-w-[90vw] bg-surface-container-high text-on-surface border border-outline-variant rounded-2xl shadow-2xl py-3 z-50 flex flex-col">
                     <div class="flex justify-between items-center px-4 pb-2 border-b border-outline-variant">
                         <h3 class="font-medium text-sm">Notificaciones</h3>
-                        <button id="btn-request-push" class="text-xs bg-primary text-on-primary px-2.5 py-1 rounded-full font-medium shadow-xs">Activar Push</button>
+                        <button id="btn-request-push" class="text-xs bg-primary text-on-primary px-3 py-1.5 rounded-full font-medium shadow-xs">Activar Push</button>
                     </div>
                     <div id="notificaciones-container" class="max-h-64 overflow-y-auto flex flex-col divide-y divide-outline-variant/40">
                         <p class="text-xs text-on-surface-variant text-center py-4">No hay notificaciones</p>
@@ -44,9 +44,9 @@
 
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
-            <!-- Menú Desplegable de Perfil -->
+            <!-- Menú Perfil -->
             <div class="relative">
-                <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/80 transition-colors">
+                <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/85 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
                     <span id="header-username-label" class="hidden sm:inline">Cuenta</span>
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
@@ -98,7 +98,7 @@
     <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
-        <!-- Vista: Lista de Tareas (Diario) -->
+        <!-- Vista: Diario -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
@@ -117,7 +117,7 @@
             </button>
         </section>
 
-        <!-- Vista: Nueva Tarea / Editar Tarea -->
+        <!-- Vista: Nueva Tarea -->
         <section id="view-new-task" class="hidden flex-col gap-4">
             <h2 class="text-lg font-medium text-on-surface" id="form-task-title">Asignar Nueva Tarea</h2>
             <form id="form-new-task" class="flex flex-col gap-4 bg-surface-container-low p-4 rounded-2xl shadow-sm">
@@ -162,7 +162,7 @@
             </form>
         </section>
 
-        <!-- Vista: Gestión de Empleados / Agenda -->
+        <!-- Vista: Empleados -->
         <section id="view-empleados" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-medium text-on-surface">Agenda de Empleados</h2>
@@ -175,7 +175,7 @@
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
-        <!-- Vista: Mi Perfil -->
+        <!-- Vista: Perfil -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-medium text-on-surface">Mi Perfil y Ajustes</h2>
             <form id="form-perfil" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
@@ -195,7 +195,7 @@
             </form>
         </section>
 
-        <!-- Vista: Datos de Empresa y Logotipo -->
+        <!-- Vista: Empresa -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa y Logotipo</h2>
             <form id="form-empresa" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
@@ -225,7 +225,7 @@
 
     <!-- BLOQUE 4: MODALES -->
     
-    <!-- Modal Detalles de Tarea -->
+    <!-- Modal Detalles Tarea -->
     <div id="modal-detalle-tarea" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -236,7 +236,7 @@
         </div>
     </div>
 
-    <!-- Modal Pizarra Táctil -->
+    <!-- Modal Pizarra -->
     <div id="modal-canvas" class="hidden fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center pb-safe sm:p-4">
         <div class="bg-surface text-on-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -298,7 +298,7 @@
         </div>
     </div>
 
-    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR FIJA -->
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
@@ -311,6 +311,14 @@
     </nav>
 
     <!-- SCRIPTS -->
+    <script>
+        // Registro del Service Worker para PWA y Notificaciones Push
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error: ', err));
+            });
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
