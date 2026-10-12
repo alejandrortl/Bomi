@@ -204,7 +204,7 @@
     }
 
     function agregarFilaObra(obraObj = null) {
-        const obraIdUnica = 'obra_' + Math.random().toString(36.substring(2, 9));
+        const obraIdUnica = 'obra_' + Math.random().toString(36).substring(2, 9);
         const div = document.createElement('div');
         div.className = "obra-row flex flex-col gap-3 bg-surface p-3 rounded-2xl border border-outline-variant";
         div.innerHTML = `
@@ -477,7 +477,6 @@
 
     // --- CARGAR Y GUARDAR CLIENTES, OBRAS Y CONTACTOS ---
     async function loadClientes() {
-        // Cargar clientes con sus contactos y obras con sus contactos en paralelo
         const { data: clientesData, error: cliError } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
         if (cliError) {
             if (clientesContainer) clientesContainer.innerHTML = `<p class="text-error text-center mt-4">Error al cargar clientes: ${cliError.message}</p>`;
@@ -486,9 +485,7 @@
 
         allClientesCompletos = [];
         for (const cli of (clientesData || [])) {
-            // Cargar contactos del cliente
             const { data: cCli } = await supabaseClient.from('contactos_clientes').select('*').eq('cliente_id', cli.id);
-            // Cargar obras del cliente
             const { data: obrasCli } = await supabaseClient.from('obras').select('*').eq('cliente_id', cli.id);
             
             const obrasCompletas = [];
@@ -569,7 +566,6 @@
             let clienteId = editId;
             if (editId) {
                 await supabaseClient.from('clientes').update({ nombre_cliente: cName }).eq('id', editId);
-                // Borrar relaciones antiguas para reinsertar limpias
                 await supabaseClient.from('contactos_clientes').delete().eq('cliente_id', editId);
                 await supabaseClient.from('obras').delete().eq('cliente_id', editId);
             } else {
@@ -578,7 +574,6 @@
                 clienteId = newCli.id;
             }
 
-            // Guardar Contactos del Cliente
             const filasCC = contactosClienteContainer.querySelectorAll('.flex.gap-2.items-center');
             for (const fila of filasCC) {
                 const nombre = fila.querySelector('.contacto-cli-nombre').value.trim();
@@ -588,7 +583,6 @@
                 }
             }
 
-            // Guardar Obras y sus contactos
             const filasObras = obrasContainer.querySelectorAll('.obra-row');
             for (const fObra of filasObras) {
                 const nombre_obra = fObra.querySelector('.obra-nombre').value.trim();
@@ -633,7 +627,6 @@
             const card = document.createElement('div');
             card.className = "p-5 rounded-3xl shadow-sm bg-surface-container-low flex flex-col gap-4";
             
-            // HTML de contactos del cliente
             let contactosCliHtml = '';
             if (cli.contactos_clientes && cli.contactos_clientes.length > 0) {
                 contactosCliHtml = `<div class="flex flex-wrap gap-2 text-xs pt-1"><span class="font-medium text-on-surface-variant">Contactos Cliente:</span>` +
@@ -641,7 +634,6 @@
                     `</div>`;
             }
 
-            // HTML de Obras
             let obrasHtml = '';
             if (cli.obras && cli.obras.length > 0) {
                 obrasHtml = `<div class="flex flex-col gap-3 mt-2 border-t border-outline-variant pt-3"><span class="text-xs font-bold text-primary uppercase tracking-wider">Obras (${cli.obras.length})</span>` +
@@ -729,7 +721,7 @@
         modalCliente.classList.remove('hidden');
     };
 
-    // --- BITÁCORA Y TAREAS ---
+    // --- BITÁCORA ---
     async function loadBitacora() {
         if (!bitacoraContainer) return;
         bitacoraContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
@@ -796,7 +788,6 @@
             const dName = bitDireccion.value.trim();
             const lName = bitLocalidad.value.trim();
 
-            // Sincronizar automáticamente en la tabla relacional si no existe
             let cliEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === cName.toLowerCase());
             let clienteId;
             if (!cliEncontrado) {
