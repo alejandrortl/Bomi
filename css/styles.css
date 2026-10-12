@@ -1,4 +1,4 @@
-/* css/styles.css - Estructura MD3 y Scroll corregido */
+/* css/styles.css - Estructura MD3 y Scroll optimizado para móviles y PC */
 
 :root {
     --md-sys-color-primary: #0061a4;
@@ -46,20 +46,28 @@
     --md-sys-color-error: #ffb4ab;
 }
 
+/* Usamos altura dinámica (dvh) para evitar que las barras del navegador móvil corten la app */
 html, body {
     margin: 0;
     padding: 0;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     background-color: var(--md-sys-color-surface);
     color: var(--md-sys-color-on-surface);
 }
 
-/* Contenedor central con scroll fluido y margen inferior amplio para la barra y el FAB */
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Contenedor principal con scroll fluido y margen inferior amplio para que el contenido no quede detrás de la barra */
 #main-content {
+    flex: 1;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 140px !important; /* Margen generoso para que el scroll baje holgadamente por encima del menú */
+    padding-bottom: 120px !important;
 }
 
 .md3-input-group { display: flex; flex-direction: column; gap: 4px; }
