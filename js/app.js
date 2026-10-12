@@ -10,12 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const navEmpleados = document.getElementById('nav-empleados');
     const fabNewTask = document.getElementById('fab-new-task');
     
-    // Desplegable de Perfil en Header
+    // Perfil y Notificaciones Header
     const btnMenuPerfil = document.getElementById('btn-menu-perfil');
     const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
     const menuItemPerfil = document.getElementById('menu-item-perfil');
     const menuItemEmpresa = document.getElementById('menu-item-empresa');
     const headerUsernameLabel = document.getElementById('header-username-label');
+
+    const btnMenuNotificaciones = document.getElementById('btn-menu-notificaciones');
+    const dropdownMenuNotificaciones = document.getElementById('dropdown-menu-notificaciones');
+    const notificacionesContainer = document.getElementById('notificaciones-container');
+    const notifBadge = document.getElementById('notif-badge');
+    const btnRequestPush = document.getElementById('btn-request-push');
 
     const tasksContainer = document.getElementById('tasks-container');
     const empleadosContainer = document.getElementById('empleados-container');
@@ -101,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarDatosPerfil();
         cargarDatosEmpresa();
         loadTasks();
+        loadNotificaciones();
 
         const isAdmin = window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin';
         if (isAdmin) {
@@ -114,20 +121,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === MENÚ DESPLEGABLE DE PERFIL ===
+    // === MENÚS DESPLEGABLES HEADER ===
     if (btnMenuPerfil && dropdownMenuPerfil) {
         btnMenuPerfil.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (dropdownMenuNotificaciones) dropdownMenuNotificaciones.classList.add('hidden');
             dropdownMenuPerfil.classList.toggle('hidden');
         });
-        document.addEventListener('click', () => dropdownMenuPerfil.classList.add('hidden'));
     }
+
+    if (btnMenuNotificaciones && dropdownMenuNotificaciones) {
+        btnMenuNotificaciones.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (dropdownMenuPerfil) dropdownMenuPerfil.classList.add('hidden');
+            dropdownMenuNotificaciones.classList.toggle('hidden');
+        });
+    }
+
+    document.addEventListener('click', () => {
+        if (dropdownMenuPerfil) dropdownMenuPerfil.classList.add('hidden');
+        if (dropdownMenuNotificaciones) dropdownMenuNotificaciones.classList.add('hidden');
+    });
 
     if (menuItemPerfil) {
         menuItemPerfil.addEventListener('click', () => {
             hideAllViews();
             if (viewPerfil) { viewPerfil.classList.remove('hidden'); viewPerfil.classList.add('flex'); }
-            dropdownMenuPerfil.classList.add('hidden');
             cargarDatosPerfil();
         });
     }
@@ -136,8 +155,72 @@ document.addEventListener('DOMContentLoaded', () => {
         menuItemEmpresa.addEventListener('click', () => {
             hideAllViews();
             if (viewEmpresa) { viewEmpresa.classList.remove('hidden'); viewEmpresa.classList.add('flex'); }
-            dropdownMenuPerfil.classList.add('hidden');
             cargarDatosEmpresa();
+        });
+    }
+
+    // === GESTIÓN DE NOTIFICACIONES PUSH Y SISTEMA ===
+    if (btnRequestPush) {
+        btnRequestPush.addEventListener('click', async () => {
+            if (!('Notification' in window)) {
+                alert("Este navegador no soporta notificaciones push.");
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                new Notification("Diario de Obra", { body: "¡Notificaciones activadas con éxito!" });
+                btnRequestPush.textContent = "Activadas";
+                btnRequestPush.disabled = true;
+            } else {
+                alert("Permiso de notificaciones denegado.");
+            }
+        });
+    }
+
+    async function loadNotificaciones() {
+        if (!notificacionesContainer || !window.currentUserProfile) return;
+        const userId = window.currentUserProfile.id;
+        
+        const { data, error } = await supabaseClient
+            .from('notificaciones')
+            .select('*')
+            .or(`user_id.eq.${userId},user_id.is.null`)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (error || !data) return;
+
+        notificacionesContainer.innerHTML = '';
+        const unreadCount = data.filter(n => !n.leida).length;
+
+        if (unreadCount > 0 && notifBadge) {
+            notifBadge.classList.remove('hidden');
+        } else if (notifBadge) {
+            notifBadge.classList.add('hidden');
+        }
+
+        if (data.length === 0) {
+            notificacionesContainer.innerHTML = '<p class="text-xs text-on-surface-variant text-center py-4">No hay notificaciones</p>';
+            return;
+        }
+
+        data.forEach(notif => {
+            const item = document.createElement('div');
+            item.className = `p-3 text-xs flex flex-col gap-1 cursor-pointer hover:bg-surface-variant transition-colors ${notif.leida ? 'opacity-70' : 'bg-primary-container/20 font-medium'}`;
+            item.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-medium text-primary">${notif.titulo}</span>
+                    <span class="text-[10px] text-on-surface-variant">${new Date(notif.created_at).toLocaleDateString()}</span>
+                </div>
+                <p class="text-on-surface">${notif.mensaje}</p>
+            `;
+            item.addEventListener('click', async () => {
+                if (!notif.leida) {
+                    await supabaseClient.from('notificaciones').update({ leida: true }).eq('id', notif.id);
+                    loadNotificaciones();
+                }
+            });
+            notificacionesContainer.appendChild(item);
         });
     }
 
@@ -216,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnCancelTask) btnCancelTask.addEventListener('click', () => navHome.click());
 
-    // === GESTIÓN DE PERFIL PERSONAL ===
+    // === PERFIL ===
     function cargarDatosPerfil() {
         if (!window.currentUserProfile) return;
         const p = window.currentUserProfile;
@@ -277,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === GESTIÓN DE EMPRESA Y LOGOTIPO ===
+    // === EMPRESA ===
     async function cargarDatosEmpresa() {
         const { data } = await supabaseClient.from('configuracion_empresa').select('*').limit(1).single();
         if (data) {
@@ -322,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.disabled = false; btn.textContent = "Guardar Datos de Empresa";
                     return;
                 }
-                const { data: { publicUrl } } = await supabaseClient.storage.from('empresa').getPublicUrl(fileName);
+                const { data: { publicUrl } } = supabaseClient.storage.from('empresa').getPublicUrl(fileName);
                 logoUrl = publicUrl;
             }
 
@@ -358,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === AGENDA DE EMPLEADOS Y MODAL DE EDICIÓN ===
+    // === AGENDA DE EMPLEADOS ===
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
@@ -389,13 +472,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const isSuperAdmin = emp.rol === 'SuperAdmin';
             
             const card = document.createElement('div');
-            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'bg-amber-50 dark:bg-amber-950/35 border border-amber-300'}`;
+            card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'card-pendiente'}`;
             
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full ml-2">Pendiente aprobación</span>' : ''}</h3>
-                        <p class="text-xs text-on-surface-variant">@${emp.username || 'sin_usuario'}</p>
+                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold ml-2">Pendiente aprobación</span>' : ''}</h3>
+                        <p class="text-xs opacity-80">@${emp.username || 'sin_usuario'}</p>
                     </div>
                     ${isAdmin ? `
                         <span class="text-xs px-2.5 py-1 rounded-full font-medium ${isSuperAdmin ? 'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'}">${emp.rol}</span>
@@ -420,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm">
                                 <span class="material-symbols-outlined text-[14px]">delete</span> Eliminar
                             </button>
-                        ` : '<span class="text-[11px] text-on-surface-variant italic px-2">Protegido</span>'}
+                        ` : '<span class="text-[11px] opacity-70 italic px-2">Protegido</span>'}
                     </div>
                 ` : ''}
             `;
@@ -443,7 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === MODAL DE EDICIÓN DE EMPLEADO Y ROL (Admin / SuperAdmin) ===
     window.abrirModalEditarEmpleado = function(id) {
         const emp = allEmpleados.find(e => e.id === id);
         if (!emp || !modalEditarEmpleado) return;
@@ -526,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
     }
 
-    // === TAREAS Y BUSCADOR ===
+    // === TAREAS ===
     if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
