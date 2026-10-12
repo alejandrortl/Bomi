@@ -1,18 +1,22 @@
 // js/app.js
+import { initClientesModule } from './modules/clientes.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const viewTaskList = document.getElementById('view-task-list');
     const viewNewTask = document.getElementById('view-new-task');
     const viewEmpleados = document.getElementById('view-empleados');
+    const viewClientes = document.getElementById('view-clientes');
     const viewPerfil = document.getElementById('view-perfil');
     const viewEmpresa = document.getElementById('view-empresa');
     
     const navHome = document.getElementById('nav-home');
+    const navClientes = document.getElementById('nav-clientes');
     const navEmpleados = document.getElementById('nav-empleados');
     const fabNewTask = document.getElementById('fab-new-task');
+    const fabNewCliente = document.getElementById('fab-new-cliente');
     
     const appHeader = document.getElementById('app-header');
     const bottomNav = document.getElementById('bottom-nav');
-    const viewAuth = document.getElementById('view-auth');
 
     const btnMenuPerfil = document.getElementById('btn-menu-perfil');
     const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
@@ -66,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const empresaMensaje = document.getElementById('empresa-mensaje');
     let logoBlobToUpload = null;
 
-    // Modales
+    // Modales Empleado
     const modalEditarEmpleado = document.getElementById('modal-editar-empleado');
     const formEditarEmpleado = document.getElementById('form-editar-empleado');
     const editEmpId = document.getElementById('edit-emp-id');
@@ -84,21 +88,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const detalleContenido = document.getElementById('detalle-contenido');
     const btnCloseDetalle = document.getElementById('btn-close-detalle');
 
-    const modalCanvas = document.getElementById('modal-canvas');
-    const btnOpenCanvas = document.getElementById('btn-open-canvas');
-    const btnCloseCanvas = document.getElementById('btn-close-canvas');
-    const canvas = document.getElementById('drawing-canvas');
-    const ctx = canvas ? canvas.getContext('2d') : null;
-    const btnClearCanvas = document.getElementById('btn-clear-canvas');
-    const btnSaveCanvas = document.getElementById('btn-save-canvas');
-    const colorPickers = document.querySelectorAll('.color-picker');
-    const attachedDrawingContainer = document.getElementById('attached-drawing-container');
-    const previewDrawing = document.getElementById('preview-drawing');
-    const btnRemoveDrawing = document.getElementById('btn-remove-drawing');
-
     let allTasks = [];
     let allEmpleados = [];
-    let drawingBlob = null;
+
+    // Inicializar módulo de clientes
+    initClientesModule(supabaseClient);
+
+    window.hideAllViews = function() {
+        if (viewTaskList) viewTaskList.classList.add('hidden');
+        if (viewNewTask) { viewNewTask.classList.add('hidden'); viewNewTask.classList.remove('flex'); }
+        if (viewClientes) { viewClientes.classList.add('hidden'); viewClientes.classList.remove('flex'); }
+        if (viewEmpleados) { viewEmpleados.classList.add('hidden'); viewEmpleados.classList.remove('flex'); }
+        if (viewPerfil) { viewPerfil.classList.add('hidden'); viewPerfil.classList.remove('flex'); }
+        if (viewEmpresa) { viewEmpresa.classList.add('hidden'); viewEmpresa.classList.remove('flex'); }
+        
+        if (navHome) navHome.classList.remove('text-primary');
+        if (navClientes) navClientes.classList.remove('text-primary');
+        if (navEmpleados) navEmpleados.classList.remove('text-primary');
+        if (fabNewTask) fabNewTask.classList.add('hidden');
+        if (fabNewCliente) fabNewCliente.classList.add('hidden');
+    }
 
     window.addEventListener('userLoggedIn', () => {
         if (filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
@@ -161,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Notificaciones Push y Sistema
+    // Notificaciones Push
     function sincronizarEstadoPushUI() {
         if (!btnRequestPush || !window.currentUserProfile) return;
         if (window.currentUserProfile.notificaciones_activas && Notification.permission === 'granted') {
@@ -178,21 +187,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnRequestPush) {
         btnRequestPush.addEventListener('click', async () => {
             if (!('Notification' in window)) {
-                alert("Este navegador no soporta notificaciones push.");
+                alert("Este navegador no soporta notificaciones.");
                 return;
             }
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 window.currentUserProfile.notificaciones_activas = true;
-                await supabaseClient
-                    .from('perfiles')
-                    .update({ notificaciones_activas: true })
-                    .eq('id', window.currentUserProfile.id);
-
-                new Notification("Diario de Obra", { body: "¡Notificaciones activadas con éxito!" });
+                await supabaseClient.from('perfiles').update({ notificaciones_activas: true }).eq('id', window.currentUserProfile.id);
+                new Notification("Diario de Obra", { body: "¡Notificaciones activadas!" });
                 sincronizarEstadoPushUI();
             } else {
-                alert("Permiso de notificaciones denegado en el navegador o dispositivo.");
+                alert("Permiso denegado.");
             }
         });
     }
@@ -200,24 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadNotificaciones() {
         if (!notificacionesContainer || !window.currentUserProfile) return;
         const userId = window.currentUserProfile.id;
-        
-        const { data, error } = await supabaseClient
-            .from('notificaciones')
-            .select('*')
-            .or(`user_id.eq.${userId},user_id.is.null`)
-            .order('created_at', { ascending: false })
-            .limit(15);
-
+        const { data, error } = await supabaseClient.from('notificaciones').select('*').or(`user_id.eq.${userId},user_id.is.null`).order('created_at', { ascending: false }).limit(10);
         if (error || !data) return;
 
         notificacionesContainer.innerHTML = '';
         const unreadCount = data.filter(n => !n.leida).length;
-
-        if (unreadCount > 0 && notifBadge) {
-            notifBadge.classList.remove('hidden');
-        } else if (notifBadge) {
-            notifBadge.classList.add('hidden');
-        }
+        if (unreadCount > 0 && notifBadge) notifBadge.classList.remove('hidden');
+        else if (notifBadge) notifBadge.classList.add('hidden');
 
         if (data.length === 0) {
             notificacionesContainer.innerHTML = '<p class="text-xs text-on-surface-variant text-center py-4">No hay notificaciones</p>';
@@ -227,13 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach(notif => {
             const item = document.createElement('div');
             item.className = `p-3 text-xs flex flex-col gap-1 cursor-pointer hover:bg-surface-variant transition-colors ${notif.leida ? 'opacity-70' : 'bg-primary-container/20 font-medium'}`;
-            item.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <span class="font-medium text-primary">${notif.titulo}</span>
-                    <span class="text-[10px] text-on-surface-variant">${new Date(notif.created_at).toLocaleDateString()}</span>
-                </div>
-                <p class="text-on-surface">${notif.mensaje}</p>
-            `;
+            item.innerHTML = `<span class="font-medium text-primary">${notif.titulo}</span><p class="text-on-surface">${notif.mensaje}</p>`;
             item.addEventListener('click', async () => {
                 if (!notif.leida) {
                     await supabaseClient.from('notificaciones').update({ leida: true }).eq('id', notif.id);
@@ -259,10 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
         selectTema.addEventListener('change', async () => {
             const nuevoTema = selectTema.value;
             aplicarTema(nuevoTema);
-            if (window.currentUserProfile) {
-                window.currentUserProfile.tema = nuevoTema;
-                await supabaseClient.from('perfiles').update({ tema: nuevoTema }).eq('id', window.currentUserProfile.id);
-            }
+            window.currentUserProfile.tema = nuevoTema;
+            await supabaseClient.from('perfiles').update({ tema: nuevoTema }).eq('id', window.currentUserProfile.id);
         });
     }
 
@@ -271,29 +257,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
     }
 
-    function hideAllViews() {
-        viewTaskList.classList.add('hidden');
-        viewNewTask.classList.add('hidden');
-        viewNewTask.classList.remove('flex');
-        if (viewEmpleados) { viewEmpleados.classList.add('hidden'); viewEmpleados.classList.remove('flex'); }
-        if (viewPerfil) { viewPerfil.classList.add('hidden'); viewPerfil.classList.remove('flex'); }
-        if (viewEmpresa) { viewEmpresa.classList.add('hidden'); viewEmpresa.classList.remove('flex'); }
-        
-        navHome.classList.remove('text-primary');
-        if (navEmpleados) navEmpleados.classList.remove('text-primary');
-        if (fabNewTask) fabNewTask.classList.add('hidden');
+    if (navHome) {
+        navHome.addEventListener('click', () => {
+            hideAllViews();
+            viewTaskList.classList.remove('hidden');
+            navHome.classList.add('text-primary');
+            if (fabNewTask) {
+                fabNewTask.classList.remove('hidden');
+                fabNewTask.classList.add('flex');
+            }
+            loadTasks();
+        });
     }
-
-    navHome.addEventListener('click', () => {
-        hideAllViews();
-        viewTaskList.classList.remove('hidden');
-        navHome.classList.add('text-primary');
-        if (fabNewTask) {
-            fabNewTask.classList.remove('hidden');
-            fabNewTask.classList.add('flex');
-        }
-        loadTasks();
-    });
 
     if (navEmpleados) {
         navEmpleados.addEventListener('click', () => {
@@ -342,19 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nuevoTelefono = perfilTelefono.value.trim();
             const nuevaPassword = perfilPassword.value;
 
-            const { error: perfilError } = await supabaseClient
-                .from('perfiles')
-                .update({ nombre: nuevoNombre, apellido: nuevoApellido, telefono: nuevoTelefono })
-                .eq('id', window.currentUserProfile.id);
-
-            if (perfilError) {
-                perfilMensaje.textContent = "Error: " + perfilError.message;
-                perfilMensaje.className = "text-error text-sm text-center font-medium";
-                perfilMensaje.classList.remove('hidden');
-                btn.disabled = false; btn.textContent = "Guardar Cambios";
-                return;
-            }
-
+            await supabaseClient.from('perfiles').update({ nombre: nuevoNombre, apellido: nuevoApellido, telefono: nuevoTelefono }).eq('id', window.currentUserProfile.id);
             window.currentUserProfile.nombre = nuevoNombre;
             window.currentUserProfile.apellido = nuevoApellido;
             window.currentUserProfile.telefono = nuevoTelefono;
@@ -388,18 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (inputLogoFile) {
-        inputLogoFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                logoBlobToUpload = file;
-                previewLogo.src = URL.createObjectURL(file);
-                previewLogo.classList.remove('hidden');
-                logoPlaceholder.classList.add('hidden');
-            }
-        });
-    }
-
     if (formEmpresa) {
         formEmpresa.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -407,46 +358,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = formEmpresa.querySelector('button[type="submit"]');
             btn.disabled = true; btn.textContent = "Guardando...";
 
-            let logoUrl = previewLogo.src;
-            if (logoBlobToUpload) {
-                const fileName = `logo_${Date.now()}.jpg`;
-                const { error: uploadError } = await supabaseClient.storage.from('empresa').upload(fileName, logoBlobToUpload);
-                if (uploadError) {
-                    alert("Error al subir el logotipo: " + uploadError.message);
-                    btn.disabled = false; btn.textContent = "Guardar Datos de Empresa";
-                    return;
-                }
-                const { data: { publicUrl } } = supabaseClient.storage.from('empresa').getPublicUrl(fileName);
-                logoUrl = publicUrl;
-            }
-
             const empresaData = {
                 nombre_fiscal: empNombre.value.trim(),
                 cif: empCif.value.trim(),
                 direccion: empDireccion.value.trim(),
                 telefono: empTelefono.value.trim(),
-                email: empEmail.value.trim(),
-                logo_url: logoUrl
+                email: empEmail.value.trim()
             };
 
             const { data: existing } = await supabaseClient.from('configuracion_empresa').select('id').limit(1).single();
-            let error;
             if (existing) {
-                const res = await supabaseClient.from('configuracion_empresa').update(empresaData).eq('id', existing.id);
-                error = res.error;
+                await supabaseClient.from('configuracion_empresa').update(empresaData).eq('id', existing.id);
             } else {
-                const res = await supabaseClient.from('configuracion_empresa').insert([empresaData]);
-                error = res.error;
+                await supabaseClient.from('configuracion_empresa').insert([empresaData]);
             }
 
-            if (error) {
-                empresaMensaje.textContent = "Error: " + error.message;
-                empresaMensaje.className = "text-error text-sm text-center font-medium";
-            } else {
-                empresaMensaje.textContent = "¡Datos de empresa actualizados!";
-                empresaMensaje.className = "text-green-600 text-sm text-center font-medium";
-                logoBlobToUpload = null;
-            }
+            empresaMensaje.textContent = "¡Datos de empresa actualizados!";
+            empresaMensaje.className = "text-green-600 text-sm text-center font-medium";
             empresaMensaje.classList.remove('hidden');
             btn.disabled = false; btn.textContent = "Guardar Datos de Empresa";
         });
@@ -456,65 +384,37 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
-        
         const { data, error } = await supabaseClient.from('perfiles').select('*').order('nombre', { ascending: true });
-        if (error) {
-            empleadosContainer.innerHTML = '<p class="text-error text-center">Error al cargar empleados.</p>';
-            return;
-        }
-        allEmpleados = data;
+        if (error) return;
+        allEmpleados = data || [];
         renderEmpleados(allEmpleados);
     }
 
     function renderEmpleados(empleadosToRender) {
         empleadosContainer.innerHTML = '';
         if (empleadosCount) empleadosCount.textContent = `${empleadosToRender.length} empleados`;
-
-        if (empleadosToRender.length === 0) {
-            empleadosContainer.innerHTML = '<p class="text-on-surface-variant text-center mt-4">No se encontraron empleados.</p>';
-            return;
-        }
-
         const isAdmin = window.currentUserProfile && (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin');
 
         empleadosToRender.forEach(emp => {
-            const telefonoLink = emp.telefono ? `tel:${emp.telefono}` : '#';
-            const emailLink = emp.email ? `mailto:${emp.email}` : '#';
-            const isSuperAdmin = emp.rol === 'SuperAdmin';
-            
             const card = document.createElement('div');
             card.className = `p-4 rounded-2xl shadow-sm flex flex-col gap-3 ${emp.activo ? 'bg-surface-container-low' : 'card-pendiente'}`;
-            
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold ml-2">Pendiente aprobación</span>' : ''}</h3>
+                        <h3 class="font-medium text-base text-on-surface">${emp.nombre || ''} ${emp.apellido || ''} ${!emp.activo ? '<span class="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full font-bold ml-2">Pendiente</span>' : ''}</h3>
                         <p class="text-xs opacity-80">@${emp.username || 'sin_usuario'}</p>
                     </div>
-                    ${isAdmin ? `
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium ${isSuperAdmin ? 'bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'}">${emp.rol}</span>
-                    ` : ''}
                 </div>
-
                 <div class="flex flex-wrap gap-2 items-center text-sm pt-1">
-                    <a href="${telefonoLink}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium hover:bg-surface-variant transition-colors shadow-xs">
+                    <a href="tel:${emp.telefono || ''}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium">
                         <span class="material-symbols-outlined text-[16px]">call</span> ${emp.telefono || 'Sin teléfono'}
                     </a>
-                    <a href="${emailLink}" class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-xl border border-outline-variant text-primary font-medium hover:bg-surface-variant transition-colors shadow-xs truncate max-w-[220px]">
-                        <span class="material-symbols-outlined text-[16px]">mail</span> ${emp.email}
-                    </a>
                 </div>
-
                 ${isAdmin ? `
                     <div class="flex gap-2 mt-2 pt-2 border-t border-outline-variant justify-end items-center">
-                        <button onclick="abrirModalEditarEmpleado('${emp.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:opacity-80">
+                        <button onclick="abrirModalEditarEmpleado('${emp.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">edit</span> Editar / Rol
                         </button>
-                        ${!isSuperAdmin ? `
-                            <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm cursor-pointer">
-                                <span class="material-symbols-outlined text-[14px]">delete</span> Eliminar
-                            </button>
-                        ` : '<span class="text-[11px] opacity-70 italic px-2">Protegido (SuperAdmin)</span>'}
                     </div>
                 ` : ''}
             `;
@@ -522,34 +422,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (searchEmpleadosInput) {
-        searchEmpleadosInput.addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            const filtradas = allEmpleados.filter(emp => 
-                (emp.nombre && emp.nombre.toLowerCase().includes(q)) || 
-                (emp.apellido && emp.apellido.toLowerCase().includes(q)) || 
-                (emp.email && emp.email.toLowerCase().includes(q)) || 
-                (emp.telefono && emp.telefono.toLowerCase().includes(q)) || 
-                (emp.username && emp.username.toLowerCase().includes(q)) ||
-                (emp.rol && emp.rol.toLowerCase().includes(q))
-            );
-            renderEmpleados(filtradas);
-        });
-    }
-
     window.abrirModalEditarEmpleado = function(id) {
         const emp = allEmpleados.find(e => e.id === id);
         if (!emp || !modalEditarEmpleado) return;
-
         editEmpId.value = emp.id;
         editEmpNombre.value = emp.nombre || '';
         editEmpApellido.value = emp.apellido || '';
         editEmpTelefono.value = emp.telefono || '';
         if (editEmpRol) editEmpRol.value = emp.rol || 'Operario';
         if (editEmpActivo) editEmpActivo.checked = !!emp.activo;
-        if (editEmpPassword) editEmpPassword.value = '';
-        if (editEmpMensaje) editEmpMensaje.classList.add('hidden');
-
         modalEditarEmpleado.classList.remove('hidden');
     };
 
@@ -559,70 +440,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formEditarEmpleado) {
         formEditarEmpleado.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (editEmpMensaje) editEmpMensaje.classList.add('hidden');
-            const btnSubmit = formEditarEmpleado.querySelector('button[type="submit"]');
-            btnSubmit.disabled = true;
-            btnSubmit.textContent = "Guardando...";
-
             const id = editEmpId.value;
-            const updates = {
+            await supabaseClient.from('perfiles').update({
                 nombre: editEmpNombre.value.trim(),
                 apellido: editEmpApellido.value.trim(),
                 telefono: editEmpTelefono.value.trim(),
-                rol: editEmpRol ? editEmpRol.value : 'Operario',
-                activo: editEmpActivo ? editEmpActivo.checked : true
-            };
-
-            const { error: perfilError } = await supabaseClient
-                .from('perfiles')
-                .update(updates)
-                .eq('id', id);
-
-            if (perfilError) {
-                if (editEmpMensaje) {
-                    editEmpMensaje.textContent = "Error: " + perfilError.message;
-                    editEmpMensaje.className = "text-error text-sm text-center font-medium";
-                    editEmpMensaje.classList.remove('hidden');
-                }
-                btnSubmit.disabled = false;
-                btnSubmit.textContent = "Guardar Cambios";
-                return;
-            }
-
+                rol: editEmpRol.value,
+                activo: editEmpActivo.checked
+            }).eq('id', id);
             modalEditarEmpleado.classList.add('hidden');
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = "Guardar Cambios";
             loadEmpleados();
-            loadOperariosSelect();
         });
     }
 
-    window.eliminarEmpleado = async function(id) {
-        const emp = allEmpleados.find(e => e.id === id);
-        if (!emp) return;
-
-        if (emp.rol === 'SuperAdmin') {
-            alert("Los usuarios SuperAdmin están protegidos y no pueden ser eliminados.");
-            return;
-        }
-
-        if (confirm(`¿Estás seguro de eliminar al empleado ${emp.nombre} ${emp.apellido}?`)) {
-            const { error } = await supabaseClient.from('perfiles').delete().eq('id', id);
-            if (!error) {
-                loadEmpleados();
-                loadOperariosSelect();
-            } else {
-                alert("Error al eliminar empleado: " + error.message);
-            }
-        }
-    };
-
     async function loadOperariosSelect() {
         if (!selectOperario) return;
-        const { data, error } = await supabaseClient.from('perfiles').select('username').eq('activo', true);
-        if (error) return;
-        selectOperario.innerHTML = '<option value="" disabled selected>Selecciona un operario...</option>';
-        data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
+        const { data } = await supabaseClient.from('perfiles').select('username').eq('activo', true);
+        if (data) {
+            selectOperario.innerHTML = '<option value="" disabled selected>Selecciona un operario...</option>';
+            data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
+        }
     }
 
     // Tareas
@@ -631,19 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadTasks() {
         if (!tasksContainer || !filtroFechaDiario) return;
         tasksContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-primary text-3xl">sync</span></div>';
-        
         const selectedDate = filtroFechaDiario.value;
-        const { data, error } = await supabaseClient
-            .from('tareas')
-            .select('*')
-            .eq('fecha', selectedDate)
-            .order('completada', { ascending: true });
-
-        if (error) {
-            tasksContainer.innerHTML = '<p class="text-error text-center mt-4">Error al cargar tareas.</p>';
-            return;
-        }
-        allTasks = data;
+        const { data, error } = await supabaseClient.from('tareas').select('*').eq('fecha', selectedDate).order('completada', { ascending: true });
+        if (error) return;
+        allTasks = data || [];
         renderTasks(allTasks);
     }
 
@@ -660,7 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCompleted = tarea.completada;
             const cardBg = isCompleted ? 'bg-surface-variant opacity-70' : 'bg-surface-container-low';
             const isMyTask = window.currentUserProfile && (tarea.operario_username === window.currentUserProfile.username);
-
             const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
@@ -671,187 +498,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="text-xs font-medium text-primary bg-primary-container px-2 py-1 rounded-md">${tarea.cliente} - ${tarea.obra}</span>
                     ${isCompleted ? '<span class="material-symbols-outlined text-green-600">check_circle</span>' : ''}
                 </div>
-                <h3 class="font-medium text-base truncate ${isCompleted ? 'line-through text-on-surface-variant' : 'text-on-surface'}">${tarea.tarea}</h3>
-                
+                <h3 class="font-medium text-base ${isCompleted ? 'line-through text-on-surface-variant' : 'text-on-surface'}">${tarea.tarea}</h3>
                 <div class="text-xs text-on-surface-variant flex justify-between items-center mt-1">
                     <span>👷 @${tarea.operario_username}</span>
                     <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-primary font-medium hover:underline bg-surface px-2 py-1 rounded-md border border-outline-variant">
                         <span class="material-symbols-outlined text-[14px]">map</span> ${tarea.localidad}
                     </a>
                 </div>
-                
                 <div class="flex gap-2 mt-3 pt-2 border-t border-outline-variant items-center justify-between">
-                    <button onclick="verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[14px]">visibility</span> Ver
-                    </button>
-                    
-                    <div class="flex gap-2">
-                        ${(!isCompleted && isMyTask) ? `
-                            <button onclick="marcarCompletada('${tarea.id}')" class="text-xs bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg font-medium">Realizada</button>
-                        ` : ''}
-
-                        ${isAdmin ? `
-                            <button onclick="editarTarea('${tarea.id}')" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[14px]">edit</span> Editar
-                            </button>
-                            <button onclick="eliminarTarea('${tarea.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm">
-                                <span class="material-symbols-outlined text-[14px]">delete</span>
-                            </button>
-                        ` : ''}
-                    </div>
+                    <button onclick="verDetalles('${tarea.id}')" class="text-xs bg-surface text-primary px-3 py-1.5 rounded-lg border border-primary font-medium">Ver</button>
+                    ${(!isCompleted && isMyTask) ? `<button onclick="marcarCompletada('${tarea.id}')" class="text-xs bg-secondary-container text-on-secondary-container px-3 py-1.5 rounded-lg font-medium">Realizada</button>` : ''}
                 </div>
             `;
             tasksContainer.appendChild(card);
         });
     }
 
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            const filtradas = allTasks.filter(t => 
-                (t.operario_username && t.operario_username.toLowerCase().includes(q)) || 
-                (t.fecha && t.fecha.toLowerCase().includes(q)) ||
-                (t.cliente && t.cliente.toLowerCase().includes(q)) ||
-                (t.obra && t.obra.toLowerCase().includes(q)) ||
-                (t.direccion && t.direccion.toLowerCase().includes(q)) ||
-                (t.localidad && t.localidad.toLowerCase().includes(q)) ||
-                (t.tarea && t.tarea.toLowerCase().includes(q))
-            );
-            renderTasks(filtradas);
-        });
-    }
-
     window.verDetalles = function(id) {
         const tarea = allTasks.find(t => t.id === id);
         if (!tarea) return;
-
         const mapsQuery = encodeURIComponent(`${tarea.direccion}, ${tarea.localidad}`);
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
         detalleContenido.innerHTML = `
             <div><span class="text-xs text-on-surface-variant">Cliente / Obra:</span><p class="font-medium text-lg">${tarea.cliente} - ${tarea.obra}</p></div>
-            <div><span class="text-xs text-on-surface-variant">Fecha programada:</span><p class="font-medium">${tarea.fecha}</p></div>
-            <div>
-                <span class="text-xs text-on-surface-variant">Dirección:</span>
-                <p class="font-medium flex items-center justify-between">
-                    <span>${tarea.direccion}, ${tarea.localidad}</span>
-                    <a href="${mapsUrl}" target="_blank" class="bg-primary text-on-primary text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-sm hover:opacity-90">
-                        <span class="material-symbols-outlined text-[14px]">map</span> Google Maps
-                    </a>
-                </p>
-            </div>
-            <div><span class="text-xs text-on-surface-variant">Operario Asignado:</span><p class="font-medium">@${tarea.operario_username}</p></div>
-            <div><span class="text-xs text-on-surface-variant">Descripción de la Tarea:</span><p class="bg-surface-container p-3 rounded-xl mt-1">${tarea.tarea}</p></div>
-            ${tarea.imagen_url ? `<div><span class="text-xs text-on-surface-variant">Pizarra Adjunta:</span><img src="${tarea.imagen_url}" class="mt-2 rounded-xl border border-outline-variant w-full"></div>` : ''}
+            <div><span class="text-xs text-on-surface-variant">Dirección:</span><p class="font-medium"><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery}" target="_blank" class="text-primary underline">${tarea.direccion}, ${tarea.localidad}</a></p></div>
+            <div><span class="text-xs text-on-surface-variant">Descripción:</span><p class="bg-surface-container p-3 rounded-xl mt-1">${tarea.tarea}</p></div>
         `;
         modalDetalle.classList.remove('hidden');
     };
 
     if (btnCloseDetalle) btnCloseDetalle.addEventListener('click', () => modalDetalle.classList.add('hidden'));
 
-    window.editarTarea = function(id) {
-        const tarea = allTasks.find(t => t.id === id);
-        if (!tarea) return;
-
-        hideAllViews();
-        document.getElementById('form-task-title').textContent = "Editar Tarea";
-        editTaskId.value = tarea.id;
-        inputFecha.value = tarea.fecha;
-        inputCliente.value = tarea.cliente;
-        inputObra.value = tarea.obra;
-        inputDireccion.value = tarea.direccion;
-        inputLocalidad.value = tarea.localidad;
-        selectOperario.value = tarea.operario_username;
-        inputTarea.value = tarea.tarea;
-
-        viewNewTask.classList.remove('hidden');
-        viewNewTask.classList.add('flex');
-    };
-
-    window.eliminarTarea = async function(id) {
-        if (confirm("¿Estás seguro de eliminar esta tarea?")) {
-            const { error } = await supabaseClient.from('tareas').delete().eq('id', id);
-            if (!error) loadTasks();
-            else alert("Error al eliminar: " + error.message);
-        }
-    };
-
     window.marcarCompletada = async function(id) {
-        const { error } = await supabaseClient.from('tareas').update({ completada: true }).eq('id', id);
-        if (!error) loadTasks();
+        await supabaseClient.from('tareas').update({ completada: true }).eq('id', id);
+        loadTasks();
     };
-
-    // Pizarra
-    let isDrawing = false, currentColor = '#000000';
-    function resizeCanvas() {
-        if (!canvas) return;
-        const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width; canvas.height = rect.height;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    if (btnOpenCanvas) btnOpenCanvas.addEventListener('click', () => { modalCanvas.classList.remove('hidden'); setTimeout(resizeCanvas, 50); });
-    if (btnCloseCanvas) btnCloseCanvas.addEventListener('click', () => modalCanvas.classList.add('hidden'));
-    if (colorPickers) {
-        colorPickers.forEach(btn => btn.addEventListener('click', (e) => {
-            currentColor = e.target.dataset.color;
-            colorPickers.forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-primary'));
-            e.target.classList.add('ring-2', 'ring-offset-2', 'ring-primary');
-        }));
-    }
-    function startDrawing(e) { isDrawing = true; draw(e); }
-    function stopDrawing() { isDrawing = false; if (ctx) ctx.beginPath(); }
-    function draw(e) {
-        if (!isDrawing || !ctx) return;
-        e.preventDefault();
-        let clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        let clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        const rect = canvas.getBoundingClientRect();
-        const x = clientX - rect.left; const y = clientY - rect.top;
-        ctx.strokeStyle = currentColor; ctx.lineTo(x, y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x, y);
-    }
-    if (canvas) {
-        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDrawing);
-    }
-    if (btnClearCanvas) btnClearCanvas.addEventListener('click', resizeCanvas);
-    if (btnSaveCanvas) {
-        btnSaveCanvas.addEventListener('click', () => {
-            if (!canvas) return;
-            canvas.toBlob((blob) => {
-                drawingBlob = blob;
-                previewDrawing.src = URL.createObjectURL(blob);
-                attachedDrawingContainer.classList.remove('hidden');
-                modalCanvas.classList.add('hidden');
-            }, 'image/jpeg', 0.8);
-        });
-    }
-    if (btnRemoveDrawing) {
-        btnRemoveDrawing.addEventListener('click', () => {
-            drawingBlob = null; previewDrawing.src = '';
-            attachedDrawingContainer.classList.add('hidden');
-        });
-    }
 
     const formNewTask = document.getElementById('form-new-task');
     if (formNewTask) {
         formNewTask.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btnSubmit = document.getElementById('btn-submit-task');
-            btnSubmit.disabled = true; btnSubmit.textContent = "Guardando...";
-
-            let imagenUrl = null;
-            if (drawingBlob) {
-                const fileName = `pizarra_${Date.now()}.jpg`;
-                const { error: uploadError } = await supabaseClient.storage.from('pizarras').upload(fileName, drawingBlob);
-                if (uploadError) { alert("Error al subir el dibujo."); btnSubmit.disabled = false; btnSubmit.textContent = "Guardar"; return; }
-                const { data: { publicUrl } } = supabaseClient.storage.from('pizarras').getPublicUrl(fileName);
-                imagenUrl = publicUrl;
-            }
+            btnSubmit.disabled = true;
 
             const tareaData = {
                 fecha: inputFecha.value,
@@ -863,27 +550,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 tarea: inputTarea.value,
                 user_id: window.currentUserProfile.id
             };
-            if (imagenUrl) tareaData.imagen_url = imagenUrl;
 
-            const taskId = editTaskId.value;
-            let error;
-            if (taskId) {
-                const res = await supabaseClient.from('tareas').update(tareaData).eq('id', taskId);
-                error = res.error;
-            } else {
-                const res = await supabaseClient.from('tareas').insert([tareaData]);
-                error = res.error;
-            }
-
-            if (error) {
-                alert("Error: " + error.message);
-            } else {
-                formNewTask.reset();
-                if (btnRemoveDrawing) btnRemoveDrawing.click();
-                if (filtroFechaDiario) filtroFechaDiario.value = inputFecha.value;
-                navHome.click();
-            }
-            btnSubmit.disabled = false; btnSubmit.textContent = "Guardar";
+            await supabaseClient.from('tareas').insert([tareaData]);
+            formNewTask.reset();
+            if (filtroFechaDiario) filtroFechaDiario.value = inputFecha.value;
+            navHome.click();
+            btnSubmit.disabled = false;
         });
     }
 });
