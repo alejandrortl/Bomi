@@ -1,5 +1,5 @@
 // js/app.js
-document.addEventListener('DOMContentLoaded', () => {
+(function() {
     const viewTaskList = document.getElementById('view-task-list');
     const viewNewTask = document.getElementById('view-new-task');
     const viewClientes = document.getElementById('view-clientes');
@@ -161,12 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnCancelModalCliente) btnCancelModalCliente.addEventListener('click', () => modalCliente.classList.add('hidden'));
 
     // --- EVENTO LOGIN EXITOSO ---
-    window.addEventListener('userLoggedIn', () => {
+    function initAppAfterLogin() {
         if (filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
         loadTasks();
         loadClientes();
 
-        const isAdmin = window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin';
+        const isAdmin = window.currentUserProfile && (window.currentUserProfile.rol === 'Admin' || window.currentUserProfile.rol === 'SuperAdmin');
         if (navEmpleados) {
             if (isAdmin) {
                 navEmpleados.classList.remove('hidden');
@@ -179,7 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
             menuItemEmpresa.classList.remove('hidden');
             menuItemEmpresa.classList.add('flex');
         }
-    });
+    }
+
+    window.addEventListener('userLoggedIn', initAppAfterLogin);
+    // Si el usuario ya estaba logueado antes de cargar este script, inicializar directamente
+    if (window.currentUserProfile) {
+        initAppAfterLogin();
+    }
 
     // --- MENÚ HEADER ---
     if (btnMenuPerfil && dropdownMenuPerfil) {
@@ -512,4 +518,4 @@ document.addEventListener('DOMContentLoaded', () => {
             data.forEach(op => selectOperario.innerHTML += `<option value="${op.username}">@${op.username}</option>`);
         }
     }
-});
+})();
