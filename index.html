@@ -127,11 +127,11 @@
                 
                 <div class="md3-input-group">
                     <label>Cliente</label>
-                    <input type="text" id="bit-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe nuevo cliente">
+                    <input type="text" id="bit-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe cliente">
                 </div>
                 <div class="md3-input-group">
                     <label>Obra</label>
-                    <input type="text" id="bit-obra" list="obras-datalist" required placeholder="Selecciona o escribe nueva obra">
+                    <input type="text" id="bit-obra" list="obras-datalist" required placeholder="Selecciona o escribe obra">
                 </div>
                 
                 <div class="flex gap-4">
@@ -149,14 +149,12 @@
                     <textarea id="bit-notas" rows="4" required class="w-full bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Escribe o dicta las observaciones..."></textarea>
                 </div>
 
-                <!-- Botón para abrir Pizarra (Colapsada por defecto) -->
                 <div>
                     <button type="button" id="btn-toggle-pizarra" class="text-xs bg-surface-variant text-on-surface px-4 py-2 rounded-xl font-medium flex items-center gap-2 border border-outline-variant hover:bg-primary hover:text-on-primary transition-colors">
                         <span class="material-symbols-outlined text-[18px]">draw</span> Abrir Pizarra / Croquis
                     </button>
                 </div>
 
-                <!-- Contenedor Pizarra Oculto por defecto -->
                 <div id="pizarra-container" class="hidden flex-col gap-2">
                     <label class="text-sm font-medium">Croquis / Pizarra</label>
                     <div class="border border-outline-variant rounded-2xl p-2 flex flex-col items-center gap-2 bg-surface">
@@ -248,7 +246,7 @@
             
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-clientes" placeholder="Buscar cliente, obra, dirección..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+                <input type="text" id="search-clientes" placeholder="Buscar cliente, contactos, obras o direcciones..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
             </div>
 
             <div id="clientes-container" class="flex flex-col gap-3"></div>
@@ -311,23 +309,43 @@
 
     </main>
 
-    <!-- BLOQUE 4: MODALES -->
-    <div id="modal-cliente" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
-        <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant">
+    <!-- BLOQUE 4: MODALES (Cliente, Obras y Contactos Dinámicos) -->
+    <div id="modal-cliente" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 overflow-y-auto">
+        <div class="bg-surface text-on-surface w-full max-w-xl rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant my-8">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
-                <h3 id="modal-cliente-title" class="font-medium text-on-surface text-lg">Nuevo Cliente / Obra</h3>
+                <h3 id="modal-cliente-title" class="font-medium text-on-surface text-lg">Nuevo Cliente, Obras y Contactos</h3>
                 <button type="button" id="btn-close-modal-cliente" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
             </div>
-            <form id="form-cliente" class="p-6 flex flex-col gap-4 bg-surface">
+            <form id="form-cliente" class="p-6 flex flex-col gap-6 bg-surface max-h-[80vh] overflow-y-auto">
                 <input type="hidden" id="edit-cliente-id">
-                <div class="md3-input-group"><label>Nombre del Cliente</label><input type="text" id="cli-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Nombre de la Obra</label><input type="text" id="cli-obra" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Dirección</label><input type="text" id="cli-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Localidad</label><input type="text" id="cli-localidad" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Teléfono</label><input type="tel" id="cli-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="flex justify-end gap-3 mt-4">
+                
+                <!-- Datos Generales del Cliente -->
+                <div class="flex flex-col gap-3">
+                    <h4 class="text-sm font-medium text-primary">Información del Cliente</h4>
+                    <div class="md3-input-group"><label>Nombre del Cliente</label><input type="text" id="cli-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                </div>
+
+                <!-- Contactos Generales del Cliente -->
+                <div class="flex flex-col gap-3 border-t border-outline-variant pt-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-sm font-medium text-primary">Personas de Contacto del Cliente</h4>
+                        <button type="button" id="btn-add-contacto-cliente" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium hover:bg-primary hover:text-on-primary transition-colors">+ Añadir Contacto</button>
+                    </div>
+                    <div id="contactos-cliente-container" class="flex flex-col gap-3"></div>
+                </div>
+
+                <!-- Obras del Cliente -->
+                <div class="flex flex-col gap-3 border-t border-outline-variant pt-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-sm font-medium text-primary">Obras del Cliente</h4>
+                        <button type="button" id="btn-add-obra" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium hover:bg-primary hover:text-on-primary transition-colors">+ Añadir Obra</button>
+                    </div>
+                    <div id="obras-container" class="flex flex-col gap-4"></div>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant">
                     <button type="button" id="btn-cancel-modal-cliente" class="px-4 py-2 rounded-full font-medium text-on-surface-variant">Cancelar</button>
-                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar</button>
+                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Cliente y Obras</button>
                 </div>
             </form>
         </div>
@@ -343,7 +361,6 @@
         </div>
     </div>
 
-    <!-- Datalists para autocompletar dinámico -->
     <datalist id="clientes-datalist"></datalist>
     <datalist id="obras-datalist"></datalist>
 
