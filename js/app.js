@@ -375,8 +375,6 @@
     function redibujarPizarraFondo() {
         if (!canvas || !ctx) return;
         const isDark = document.documentElement.classList.contains('dark');
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
         canvas.style.backgroundColor = isDark ? '#000000' : '#ffffff';
         ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
     }
@@ -406,11 +404,13 @@
 
     // --- CLIENTES Y OBRAS INTELIGENTES ---
     async function loadClientes() {
-        const { data } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
-        if (data) {
+        const { data, error } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
+        if (!error && data) {
             allClientes = data;
             actualizarDatalists();
             if (clientesContainer) renderClientes(allClientes);
+        } else if (error) {
+            if (clientesContainer) clientesContainer.innerHTML = `<p class="text-error text-center mt-4">Error al cargar clientes: ${error.message}</p>`;
         }
     }
 
@@ -541,7 +541,6 @@
             const dName = bitDireccion.value.trim();
             const lName = bitLocalidad.value.trim();
 
-            // Comprobar si el cliente/obra existe en la tabla clientes; si no, crearlo automáticamente
             const existeClienteObra = allClientes.find(c => c.nombre_cliente.toLowerCase() === cName.toLowerCase() && c.obra.toLowerCase() === oName.toLowerCase());
             if (!existeClienteObra) {
                 await supabaseClient.from('clientes').insert([{
