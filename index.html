@@ -41,6 +41,9 @@
                         <span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil
                     </button>
                     <div class="border-t border-outline-variant my-1"></div>
+                    <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">business</span> Datos de Empresa
+                    </button>
                     <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-error hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">logout</span> Cerrar Sesión
                     </button>
@@ -79,7 +82,55 @@
     <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-24 relative">
 
+        
+<!-- Vista: Configuración de Empresa (Solo Admin / SuperAdmin) -->
+        <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
+            <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa y Logotipo</h2>
+            <form id="form-empresa" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
+                
+                <div class="flex flex-col items-center gap-3 mb-2">
+                    <div class="w-24 h-24 rounded-2xl border border-outline-variant bg-surface flex items-center justify-center overflow-hidden relative shadow-inner">
+                        <img id="preview-logo" src="" class="w-full h-full object-contain hidden" alt="Logo Empresa">
+                        <span id="logo-placeholder" class="material-symbols-outlined text-4xl text-on-surface-variant">business</span>
+                    </div>
+                    <label class="cursor-pointer bg-secondary-container text-on-secondary-container px-4 py-2 rounded-full text-xs font-medium hover:opacity-90 transition-opacity">
+                        Subir Logotipo
+                        <input type="file" id="input-logo-file" accept="image/*" class="hidden">
+                    </label>
+                </div>
 
+                <div class="md3-input-group">
+                    <label>Nombre Fiscal / Empresa</label>
+                    <input type="text" id="emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
+                </div>
+
+                <div class="md3-input-group">
+                    <label>CIF / NIF</label>
+                    <input type="text" id="emp-cif" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
+                </div>
+
+                <div class="md3-input-group">
+                    <label>Dirección Fiscal</label>
+                    <input type="text" id="emp-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="md3-input-group flex-1">
+                        <label>Teléfono</label>
+                        <input type="tel" id="emp-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
+                    </div>
+                    <div class="md3-input-group flex-1">
+                        <label>Correo Electrónico</label>
+                        <input type="email" id="emp-email" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
+                    </div>
+                </div>
+
+                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md hover:shadow-lg transition-all mt-2">Guardar Datos de Empresa</button>
+                <p id="empresa-mensaje" class="text-sm text-center hidden font-medium"></p>
+            </form>
+        </section>
+
+        
         <!-- Vista: Mi Perfil / Ajustes Personales -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-medium text-on-surface">Mi Perfil y Ajustes</h2>
