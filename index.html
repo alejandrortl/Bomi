@@ -11,7 +11,7 @@
 </head>
 <body class="bg-surface text-on-surface antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- BLOQUE 1: HEADER -->
+    <!-- BLOQUE 1: HEADER (Barra Superior con Notificaciones y Perfil) -->
     <header id="app-header" class="hidden w-full bg-surface-container shadow-sm px-4 py-3 justify-between items-center z-30 shrink-0 relative">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary">engineering</span>
@@ -24,8 +24,27 @@
                 <option value="oscuro">🌙 Oscuro</option>
             </select>
             
+            <!-- Botón de Notificaciones -->
+            <div class="relative">
+                <button id="btn-menu-notificaciones" class="relative flex items-center justify-center bg-surface-variant text-on-surface w-9 h-9 rounded-full hover:bg-surface-variant/80 transition-colors" title="Notificaciones">
+                    <span class="material-symbols-outlined text-[20px]">notifications</span>
+                    <span id="notif-badge" class="hidden absolute top-0 right-0 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-surface"></span>
+                </button>
+
+                <div id="dropdown-menu-notificaciones" class="hidden absolute right-0 mt-2 w-80 max-w-[90vw] bg-surface-container-high text-on-surface border border-outline-variant rounded-2xl shadow-2xl py-3 z-50 flex flex-col">
+                    <div class="flex justify-between items-center px-4 pb-2 border-b border-outline-variant">
+                        <h3 class="font-medium text-sm">Notificaciones</h3>
+                        <button id="btn-request-push" class="text-xs bg-primary text-on-primary px-2.5 py-1 rounded-full font-medium shadow-xs">Activar Push</button>
+                    </div>
+                    <div id="notificaciones-container" class="max-h-64 overflow-y-auto flex flex-col divide-y divide-outline-variant/40">
+                        <p class="text-xs text-on-surface-variant text-center py-4">No hay notificaciones</p>
+                    </div>
+                </div>
+            </div>
+
             <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
+            <!-- Menú Desplegable de Perfil -->
             <div class="relative">
                 <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/80 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
@@ -204,7 +223,7 @@
 
     </main>
 
-    <!-- BLOQUE 4: MODALES 100% OPACOS Y DE ALTO CONTRASTE -->
+    <!-- BLOQUE 4: MODALES -->
     
     <!-- Modal Detalles de Tarea -->
     <div id="modal-detalle-tarea" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
@@ -239,7 +258,7 @@
         </div>
     </div>
 
-   <!-- Modal Editar Empleado (100% Opaco y Contraste Alto con Selector de Rol) -->
+    <!-- Modal Editar Empleado -->
     <div id="modal-editar-empleado" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -250,21 +269,10 @@
             <form id="form-editar-empleado" class="p-6 overflow-y-auto flex flex-col gap-4 bg-surface text-on-surface">
                 <input type="hidden" id="edit-emp-id">
                 
-                <div class="md3-input-group">
-                    <label>Nombre</label>
-                    <input type="text" id="edit-emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Apellido</label>
-                    <input type="text" id="edit-emp-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
-                </div>
-
-                <div class="md3-input-group">
-                    <label>Teléfono</label>
-                    <input type="tel" id="edit-emp-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Ej. +34 600 000 000">
-                </div>
-
+                <div class="md3-input-group"><label>Nombre</label><input type="text" id="edit-emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Apellido</label><input type="text" id="edit-emp-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Teléfono</label><input type="tel" id="edit-emp-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Ej. +34 600 000 000"></div>
+                
                 <div class="md3-input-group">
                     <label>Rol en el Sistema</label>
                     <select id="edit-emp-rol" class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
@@ -279,10 +287,7 @@
                     <label for="edit-emp-activo" class="text-sm font-medium cursor-pointer text-on-surface">Aprobar Acceso al Sistema</label>
                 </div>
 
-                <div class="md3-input-group">
-                    <label>Nueva Contraseña (Opcional)</label>
-                    <input type="password" id="edit-emp-password" class="bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Dejar en blanco para no cambiar" minlength="6">
-                </div>
+                <div class="md3-input-group"><label>Nueva Contraseña (Opcional)</label><input type="password" id="edit-emp-password" class="bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Dejar en blanco para no cambiar" minlength="6"></div>
 
                 <div class="flex justify-end gap-3 mt-4 pt-3 border-t border-outline-variant">
                     <button type="button" id="btn-cancel-modal-emp" class="px-4 py-2 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors">Cancelar</button>
@@ -292,6 +297,7 @@
             </form>
         </div>
     </div>
+
     <!-- BLOQUE 5: NAVEGACIÓN INFERIOR FIJA -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
