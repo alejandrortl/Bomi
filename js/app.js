@@ -18,7 +18,6 @@
     const fabNewBitacora = document.getElementById('fab-new-bitacora');
     const fabNewCliente = document.getElementById('fab-new-cliente');
 
-    // Menús Header y Tema
     const selectTema = document.getElementById('select-tema');
     const btnMenuPerfil = document.getElementById('btn-menu-perfil');
     const dropdownMenuPerfil = document.getElementById('dropdown-menu-perfil');
@@ -26,7 +25,6 @@
     const menuItemEmpresa = document.getElementById('menu-item-empresa');
     const headerUsernameLabel = document.getElementById('header-username-label');
 
-    // Tareas
     const tasksContainer = document.getElementById('tasks-container');
     const searchInput = document.getElementById('search-tareas');
     const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
@@ -40,7 +38,6 @@
     const btnCancelTask = document.getElementById('btn-cancel-task');
     const formNewTask = document.getElementById('form-new-task');
 
-    // Bitácora
     const bitacoraContainer = document.getElementById('bitacora-container');
     const bitacoraCount = document.getElementById('bitacora-count');
     const searchBitacoraInput = document.getElementById('search-bitacora');
@@ -58,13 +55,11 @@
     const btnMicNotas = document.getElementById('btn-mic-notas');
     const btnExportPdf = document.getElementById('btn-export-pdf');
 
-    // Pizarra Colapsable
     const btnTogglePizarra = document.getElementById('btn-toggle-pizarra');
     const pizarraContainer = document.getElementById('pizarra-container');
     const canvas = document.getElementById('pizarra-canvas');
     const ctx = canvas ? canvas.getContext('2d') : null;
 
-    // Clientes y Modales Relacionales
     const clientesContainer = document.getElementById('clientes-container');
     const clientesCount = document.getElementById('clientes-count');
     const searchClientesInput = document.getElementById('search-clientes');
@@ -82,14 +77,12 @@
     const datalistClientes = document.getElementById('clientes-datalist');
     const datalistObras = document.getElementById('obras-datalist');
 
-    // Perfil y Empresa
     const formPerfil = document.getElementById('form-perfil');
     const perfilNewPass = document.getElementById('perfil-new-pass');
     const perfilConfirmPass = document.getElementById('perfil-confirm-pass');
     const perfilMensaje = document.getElementById('perfil-mensaje');
     const formEmpresa = document.getElementById('form-empresa');
 
-    // Empleados y Modales
     const empleadosContainer = document.getElementById('empleados-container');
     const empleadosCount = document.getElementById('empleados-count');
     const searchEmpleadosInput = document.getElementById('search-empleados');
@@ -103,7 +96,6 @@
     let allEmpleados = [];
     let currentBitacoraItem = null;
 
-    // --- GESTIÓN DE TEMA Y MODO OSCURO ---
     function aplicarTema(tema) {
         const isDark = tema === 'oscuro' || (tema === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (isDark) {
@@ -147,13 +139,11 @@
         if (fabNewCliente) fabNewCliente.classList.add('hidden');
     }
 
-    // --- NAVEGACIÓN INFERIOR ---
     if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); navHome.classList.add('text-blue-600', 'dark:text-blue-400'); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); loadTasks(); });
     if (navBitacora) navBitacora.addEventListener('click', () => { hideAllViews(); viewBitacora.classList.remove('hidden'); viewBitacora.classList.add('flex'); navBitacora.classList.add('text-blue-600', 'dark:text-blue-400'); fabNewBitacora.classList.remove('hidden'); fabNewBitacora.classList.add('flex'); loadBitacora(); });
     if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); navClientes.classList.add('text-blue-600', 'dark:text-blue-400'); fabNewCliente.classList.remove('hidden'); fabNewCliente.classList.add('flex'); loadClientes(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); navEmpleados.classList.add('text-blue-600', 'dark:text-blue-400'); loadEmpleados(); });
 
-    // --- FABs ---
     if (fabNewTask) fabNewTask.addEventListener('click', () => { hideAllViews(); document.getElementById('form-task-title').textContent = "Asignar Nueva Tarea"; formNewTask.reset(); inputFecha.value = getTodayLocalString(); loadOperariosSelect(); viewNewTask.classList.remove('hidden'); viewNewTask.classList.add('flex'); });
     if (btnCancelTask) btnCancelTask.addEventListener('click', () => navHome.click());
 
@@ -173,7 +163,6 @@
     if (btnCancelBitacora) btnCancelBitacora.addEventListener('click', () => navBitacora.click());
     if (btnBackBitacoraList) btnBackBitacoraList.addEventListener('click', () => navBitacora.click());
 
-    // --- GESTIÓN MODAL CLIENTE / OBRAS / CONTACTOS ---
     if (fabNewCliente) {
         fabNewCliente.addEventListener('click', () => {
             modalClienteTitle.textContent = "Nuevo Cliente, Obras y Contactos";
@@ -213,7 +202,7 @@
                 <button type="button" class="text-red-600 material-symbols-outlined text-sm p-1 hover:bg-red-100 rounded" onclick="this.closest('.obra-row').remove()">delete</button>
             </div>
             <div class="flex gap-2">
-                <input type="text" placeholder="Nombre de la Obra" value="${obraObj ? obraObj.nombre_obra : ''}" class="obra-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
+                <input type="text" placeholder="Nombre de la Obra" value="${obraObj ? obraObj.nombre : ''}" class="obra-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
             </div>
             <div class="flex gap-2">
                 <input type="text" placeholder="Dirección" value="${obraObj ? obraObj.direccion : ''}" class="obra-dir flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
@@ -221,43 +210,17 @@
             </div>
             <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-700 pt-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-[11px] font-medium text-slate-500">Personas de contacto en esta obra</span>
-                    <button type="button" class="text-xs bg-slate-200 dark:bg-zinc-700 px-2 py-1 rounded hover:bg-blue-600 hover:text-white" onclick="window.agregarFilaContactoObra('${obraIdUnica}')">+ Contacto Obra</button>
+                    <span class="text-[11px] font-medium text-slate-500">Contacto principal en esta obra</span>
                 </div>
-                <div id="${obraIdUnica}" class="contactos-obra-subcontainer flex flex-col gap-2"></div>
+                <div class="flex gap-2">
+                    <input type="text" placeholder="Nombre contacto obra" value="${obraObj ? (obraObj.contacto_nombre || '') : ''}" class="obra-co-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm">
+                    <input type="tel" placeholder="Teléfono" value="${obraObj ? (obraObj.contacto_telefono || '') : ''}" class="obra-co-tel w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm">
+                </div>
             </div>
         `;
         obrasContainer.appendChild(div);
-
-        const subContainer = document.getElementById(obraIdUnica);
-        if (obraObj && obraObj.contactos_obras && obraObj.contactos_obras.length > 0) {
-            obraObj.contactos_obras.forEach(co => {
-                const cDiv = document.createElement('div');
-                cDiv.className = "flex gap-2 items-center bg-white dark:bg-zinc-900 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700";
-                cDiv.innerHTML = `
-                    <input type="text" placeholder="Nombre contacto obra" value="${co.nombre}" class="co-nombre flex-1 bg-transparent border-none outline-none text-xs p-1">
-                    <input type="tel" placeholder="Teléfono" value="${co.telefono}" class="co-tel w-28 bg-transparent border-none outline-none text-xs p-1">
-                    <button type="button" class="text-red-600 material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
-                `;
-                subContainer.appendChild(cDiv);
-            });
-        }
     }
 
-    window.agregarFilaContactoObra = function(containerId, nombre = '', telefono = '') {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        const div = document.createElement('div');
-        div.className = "flex gap-2 items-center bg-white dark:bg-zinc-900 p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700";
-        div.innerHTML = `
-            <input type="text" placeholder="Nombre contacto obra" value="${nombre}" class="co-nombre flex-1 bg-transparent border-none outline-none text-xs p-1">
-            <input type="tel" placeholder="Teléfono" value="${telefono}" class="co-tel w-28 bg-transparent border-none outline-none text-xs p-1">
-            <button type="button" class="text-red-600 material-symbols-outlined text-xs p-1" onclick="this.parentElement.remove()">delete</button>
-        `;
-        container.appendChild(div);
-    };
-
-    // --- INICIALIZACIÓN LOGIN ---
     function initAppAfterLogin() {
         if (filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
         loadTasks();
@@ -277,7 +240,6 @@
     window.addEventListener('userLoggedIn', initAppAfterLogin);
     if (window.currentUserProfile) initAppAfterLogin();
 
-    // --- MENÚ HEADER ---
     if (btnMenuPerfil && dropdownMenuPerfil) {
         btnMenuPerfil.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenuPerfil.classList.toggle('hidden'); });
     }
@@ -382,7 +344,6 @@
         });
     }
 
-    // --- DICTADO POR VOZ ---
     if (btnMicNotas && bitNotas) {
         btnMicNotas.addEventListener('click', () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -408,7 +369,6 @@
         });
     }
 
-    // --- PIZARRA COLAPSIBLE Y DINÁMICA ---
     if (btnTogglePizarra && pizarraContainer) {
         btnTogglePizarra.addEventListener('click', () => {
             pizarraContainer.classList.toggle('hidden');
@@ -488,16 +448,10 @@
             const { data: cCli } = await supabaseClient.from('contactos_clientes').select('*').eq('cliente_id', cli.id);
             const { data: obrasCli } = await supabaseClient.from('obras').select('*').eq('cliente_id', cli.id);
             
-            const obrasCompletas = [];
-            for (const ob of (obrasCli || [])) {
-                const { data: cOb } = await supabaseClient.from('contactos_obras').select('*').eq('obra_id', ob.id);
-                obrasCompletas.push({ ...ob, contactos_obras: cOb || [] });
-            }
-
             allClientesCompletos.push({
                 ...cli,
                 contactos_clientes: cCli || [],
-                obras: obrasCompletas
+                obras: obrasCli || []
             });
         }
 
@@ -521,7 +475,7 @@
             if (clienteEncontrado && clienteEncontrado.obras) {
                 clienteEncontrado.obras.forEach(ob => {
                     const opt = document.createElement('option');
-                    opt.value = ob.nombre_obra;
+                    opt.value = ob.nombre;
                     opt.textContent = `${ob.direccion}, ${ob.localidad}`;
                     datalistObras.appendChild(opt);
                 });
@@ -535,7 +489,7 @@
             const clienteSel = bitCliente.value.trim().toLowerCase();
             const encontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === clienteSel);
             if (encontrado && encontrado.obras && encontrado.obras.length > 0) {
-                if (bitObra) bitObra.value = encontrado.obras[0].nombre_obra || '';
+                if (bitObra) bitObra.value = encontrado.obras[0].nombre || '';
                 if (bitDireccion) bitDireccion.value = encontrado.obras[0].direccion || '';
                 if (bitLocalidad) bitLocalidad.value = encontrado.obras[0].localidad || '';
             }
@@ -548,7 +502,7 @@
             const obraSel = bitObra.value.trim().toLowerCase();
             const clienteEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === clienteSel);
             if (clienteEncontrado && clienteEncontrado.obras) {
-                const obraEncontrada = clienteEncontrado.obras.find(o => o.nombre_obra.toLowerCase() === obraSel);
+                const obraEncontrada = clienteEncontrado.obras.find(o => o.nombre.toLowerCase() === obraSel);
                 if (obraEncontrada) {
                     if (bitDireccion) bitDireccion.value = obraEncontrada.direccion || '';
                     if (bitLocalidad) bitLocalidad.value = obraEncontrada.localidad || '';
@@ -574,7 +528,6 @@
                 clienteId = newCli.id;
             }
 
-            // Guardar Contactos del Cliente
             const filasCC = contactosClienteContainer.querySelectorAll('.flex.gap-2.items-center');
             for (const fila of filasCC) {
                 const nombre = fila.querySelector('.contacto-cli-nombre').value.trim();
@@ -584,30 +537,23 @@
                 }
             }
 
-            // Guardar Obras y sus contactos de obra
             const filasObras = obrasContainer.querySelectorAll('.obra-row');
             for (const fObra of filasObras) {
-                const nombre_obra = fObra.querySelector('.obra-nombre').value.trim();
+                const nombre = fObra.querySelector('.obra-nombre').value.trim();
                 const direccion = fObra.querySelector('.obra-dir').value.trim();
                 const localidad = fObra.querySelector('.obra-loc').value.trim();
-                if (nombre_obra) {
-                    const { data: newOb, error: obError } = await supabaseClient.from('obras').insert([{
-                        cliente_id: clienteId, nombre_obra, direccion, localidad
-                    }]).select().single();
+                const contacto_nombre = fObra.querySelector('.obra-co-nombre').value.trim();
+                const contacto_telefono = fObra.querySelector('.obra-co-tel').value.trim();
 
-                    if (!obError && newOb) {
-                        const subContainer = fObra.querySelector('.contactos-obra-subcontainer');
-                        if (subContainer) {
-                            const filasCO = subContainer.querySelectorAll('.flex.gap-2.items-center');
-                            for (const fCo of filasCO) {
-                                const coNombre = fCo.querySelector('.co-nombre').value.trim();
-                                const coTel = fCo.querySelector('.co-tel').value.trim();
-                                if (coNombre) {
-                                    await supabaseClient.from('contactos_obras').insert([{ obra_id: newOb.id, nombre: coNombre, telefono: coTel }]);
-                                }
-                            }
-                        }
-                    }
+                if (nombre) {
+                    await supabaseClient.from('obras').insert([{
+                        cliente_id: clienteId,
+                        nombre,
+                        direccion,
+                        localidad,
+                        contacto_nombre,
+                        contacto_telefono
+                    }]);
                 }
             }
 
@@ -645,23 +591,21 @@
                         const mapsQuery = encodeURIComponent(`${ob.direccion}, ${ob.localidad}`);
                         const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
                         
-                        let contactosObraHtml = '';
-                        if (ob.contactos_obras && ob.contactos_obras.length > 0) {
-                            contactosObraHtml = `<div class="flex flex-wrap gap-2 text-xs mt-1"><span class="text-slate-500">Contacto Obra:</span>` +
-                                ob.contactos_obras.map(co => `<a href="tel:${co.telefono}" class="bg-slate-50 dark:bg-zinc-800 px-2 py-0.5 rounded border border-slate-200 dark:border-zinc-700 text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">call</span> ${co.nombre} (${co.telefono})</a>`).join('') +
-                                `</div>`;
+                        let contactoObraHtml = '';
+                        if (ob.contacto_nombre) {
+                            contactoObraHtml = `<div class="text-xs mt-1"><span class="text-slate-500">Contacto Obra:</span> <a href="tel:${ob.contacto_telefono}" class="text-blue-600 dark:text-blue-400 font-medium">${ob.contacto_nombre} (${ob.contacto_telefono || 'Sin tel'})</a></div>`;
                         }
 
                         return `
                             <div class="bg-slate-50 dark:bg-zinc-800/50 p-3.5 rounded-2xl border border-slate-200 dark:border-zinc-700 flex flex-col gap-2">
                                 <div class="flex justify-between items-start">
-                                    <h4 class="font-medium text-sm">🏗️ ${ob.nombre_obra}</h4>
+                                    <h4 class="font-medium text-sm">🏗️ ${ob.nombre}</h4>
                                     <a href="${mapsUrl}" target="_blank" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-xs transition-colors">
                                         <span class="material-symbols-outlined text-[14px]">map</span> Google Maps
                                     </a>
                                 </div>
                                 <p class="text-xs text-slate-500">📍 ${ob.direccion}, ${ob.localidad}</p>
-                                ${contactosObraHtml}
+                                ${contactoObraHtml}
                             </div>
                         `;
                     }).join('') + `</div>`;
@@ -690,10 +634,10 @@
                 const matchCli = (cli.nombre_cliente && cli.nombre_cliente.toLowerCase().includes(q));
                 const matchContactosCli = cli.contactos_clientes.some(cc => cc.nombre.toLowerCase().includes(q) || cc.telefono.includes(q));
                 const matchObras = cli.obras.some(ob => 
-                    ob.nombre_obra.toLowerCase().includes(q) || 
+                    ob.nombre.toLowerCase().includes(q) || 
                     ob.direccion.toLowerCase().includes(q) || 
                     ob.localidad.toLowerCase().includes(q) ||
-                    ob.contactos_obras.some(co => co.nombre.toLowerCase().includes(q) || co.telefono.includes(q))
+                    (ob.contacto_nombre && ob.contacto_nombre.toLowerCase().includes(q))
                 );
                 return matchCli || matchContactosCli || matchObras;
             });
@@ -725,7 +669,6 @@
         modalCliente.classList.remove('hidden');
     };
 
-    // --- BITÁCORA ---
     async function loadBitacora() {
         if (!bitacoraContainer) return;
         bitacoraContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
@@ -801,10 +744,10 @@
                 clienteId = cliEncontrado.id;
             }
 
-            const obraEncontrada = allClientesCompletos.find(c => c.id === clienteId)?.obras?.find(o => o.nombre_obra.toLowerCase() === oName.toLowerCase());
+            const obraEncontrada = allClientesCompletos.find(c => c.id === clienteId)?.obras?.find(o => o.nombre.toLowerCase() === oName.toLowerCase());
             if (!obraEncontrada) {
                 await supabaseClient.from('obras').insert([{
-                    cliente_id: clienteId, nombre_obra: oName, direccion: dName, localidad: lName
+                    cliente_id: clienteId, nombre: oName, direccion: dName, localidad: lName
                 }]);
                 loadClientes();
             }
@@ -927,7 +870,6 @@
         viewFormBitacora.classList.add('flex');
     };
 
-    // --- TAREAS ---
     if (filtroFechaDiario) filtroFechaDiario.addEventListener('change', loadTasks);
 
     async function loadTasks() {
