@@ -39,41 +39,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleAuthMode(registering) {
         isRegistering = registering;
-        authError.classList.add('hidden');
-        authSuccess.classList.add('hidden');
-        formAuth.reset();
+        if (authError) authError.classList.add('hidden');
+        if (authSuccess) authSuccess.classList.add('hidden');
+        if (formAuth) formAuth.reset();
 
         if (isRegistering) {
-            authTitle.textContent = "Registro de Operario";
-            authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
-            btnAuthSubmit.textContent = "Registrarse";
-            btnToggleAuth.classList.add('hidden'); 
-            registerFields.classList.remove('hidden');
-            registerFields.classList.add('flex');
-            btnBackLogin.classList.remove('hidden');
-            btnBackLogin.classList.add('flex');
-            authNombre.required = true;
-            authApellido.required = true;
+            if (authTitle) authTitle.textContent = "Registro de Operario";
+            if (authSubtitle) authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
+            if (btnAuthSubmit) btnAuthSubmit.textContent = "Registrarse";
+            if (btnToggleAuth) btnToggleAuth.classList.add('hidden'); 
+            if (registerFields) { registerFields.classList.remove('hidden'); registerFields.classList.add('flex'); }
+            if (btnBackLogin) { btnBackLogin.classList.remove('hidden'); btnBackLogin.classList.add('flex'); }
+            if (authNombre) authNombre.required = true;
+            if (authApellido) authApellido.required = true;
         } else {
-            authTitle.textContent = "Iniciar Sesión";
-            authSubtitle.textContent = "Acceso para operarios";
-            btnAuthSubmit.textContent = "Ingresar";
-            btnToggleAuth.classList.remove('hidden');
-            registerFields.classList.add('hidden');
-            registerFields.classList.remove('flex');
-            btnBackLogin.classList.add('hidden');
-            btnBackLogin.classList.remove('flex');
-            authNombre.required = false;
-            authApellido.required = false;
+            if (authTitle) authTitle.textContent = "Iniciar Sesión";
+            if (authSubtitle) authSubtitle.textContent = "Acceso para operarios";
+            if (btnAuthSubmit) btnAuthSubmit.textContent = "Ingresar";
+            if (btnToggleAuth) btnToggleAuth.classList.remove('hidden');
+            if (registerFields) { registerFields.classList.add('hidden'); registerFields.classList.remove('flex'); }
+            if (btnBackLogin) { btnBackLogin.classList.add('hidden'); btnBackLogin.classList.remove('flex'); }
+            if (authNombre) authNombre.required = false;
+            if (authApellido) authApellido.required = false;
         }
     }
 
     if (formAuth) {
         formAuth.addEventListener('submit', async (e) => {
             e.preventDefault();
-            authError.classList.add('hidden');
-            authSuccess.classList.add('hidden');
-            btnAuthSubmit.disabled = true;
+            if (authError) authError.classList.add('hidden');
+            if (authSuccess) authSuccess.classList.add('hidden');
+            if (btnAuthSubmit) btnAuthSubmit.disabled = true;
 
             const email = authEmail.value.trim();
             const password = authPassword.value;
@@ -83,19 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const apellido = authApellido.value.trim();
                 const username = email.split('@')[0].toLowerCase();
 
-                btnAuthSubmit.textContent = "Registrando...";
+                if (btnAuthSubmit) btnAuthSubmit.textContent = "Registrando...";
                 const { data, error } = await supabaseClient.auth.signUp({ email, password });
                 
                 if (error) {
-                    authError.textContent = error.message;
-                    authError.classList.remove('hidden');
-                    btnAuthSubmit.disabled = false;
-                    btnAuthSubmit.textContent = "Registrarse";
+                    if (authError) { authError.textContent = error.message; authError.classList.remove('hidden'); }
+                    if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Registrarse"; }
                     return;
                 }
 
                 if (data && data.user) {
-                    const { error: profileError } = await supabaseClient.from('perfiles').insert([{
+                    await supabaseClient.from('perfiles').insert([{
                         id: data.user.id,
                         email: email,
                         nombre: nombre,
@@ -105,43 +99,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         activo: false
                     }]);
 
-                    if (profileError) {
-                        authError.textContent = "Error al crear perfil: " + profileError.message;
-                        authError.classList.remove('hidden');
-                        btnAuthSubmit.disabled = false;
-                        btnAuthSubmit.textContent = "Registrarse";
-                        return;
+                    if (authSuccess) {
+                        authSuccess.textContent = "¡Registro exitoso! Cuenta pendiente de aprobación.";
+                        authSuccess.classList.remove('hidden');
                     }
-
-                    const { data: admins } = await supabaseClient
-                        .from('perfiles')
-                        .select('id')
-                        .in('rol', ['Admin', 'SuperAdmin']);
-
-                    if (admins && admins.length > 0) {
-                        const notifInserts = admins.map(adm => ({
-                            user_id: adm.id,
-                            titulo: 'Nuevo Registro Pendiente',
-                            mensaje: `${nombre} ${apellido} (@${username}) se ha registrado y requiere aprobación.`
-                        }));
-                        await supabaseClient.from('notificaciones').insert(notifInserts);
-                    }
-
-                    authSuccess.textContent = "¡Registro exitoso! Tu cuenta está pendiente de aprobación.";
-                    authSuccess.classList.remove('hidden');
-                    formAuth.reset();
-                    btnAuthSubmit.disabled = false;
-                    btnAuthSubmit.textContent = "Registrarse";
+                    if (formAuth) formAuth.reset();
+                    if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Registrarse"; }
                 }
             } else {
-                btnAuthSubmit.textContent = "Ingresando...";
+                if (btnAuthSubmit) btnAuthSubmit.textContent = "Ingresando...";
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 
                 if (error) {
-                    authError.textContent = error.message;
-                    authError.classList.remove('hidden');
-                    btnAuthSubmit.disabled = false;
-                    btnAuthSubmit.textContent = "Ingresar";
+                    if (authError) { authError.textContent = error.message; authError.classList.remove('hidden'); }
+                    if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Ingresar"; }
                     return;
                 }
 
@@ -160,20 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
             .single();
 
         if (error || !profile) {
-            authError.textContent = "No se encontró el perfil de usuario.";
-            authError.classList.remove('hidden');
+            if (authError) { authError.textContent = "No se encontró el perfil de usuario."; authError.classList.remove('hidden'); }
             await supabaseClient.auth.signOut();
-            btnAuthSubmit.disabled = false;
-            btnAuthSubmit.textContent = "Ingresar";
+            if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Ingresar"; }
             return;
         }
 
         if (!profile.activo) {
-            authError.textContent = "Tu cuenta está pendiente de aprobación por un administrador.";
-            authError.classList.remove('hidden');
+            if (authError) { authError.textContent = "Tu cuenta está pendiente de aprobación."; authError.classList.remove('hidden'); }
             await supabaseClient.auth.signOut();
-            btnAuthSubmit.disabled = false;
-            btnAuthSubmit.textContent = "Ingresar";
+            if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Ingresar"; }
             return;
         }
 
@@ -183,15 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showAppInterface() {
         if (viewAuth) viewAuth.classList.add('hidden');
-        if (appHeader) {
-            appHeader.classList.remove('hidden');
-            appHeader.classList.add('flex');
-        }
+        if (appHeader) { appHeader.classList.remove('hidden'); appHeader.classList.add('flex'); }
         if (mainContent) mainContent.classList.remove('hidden');
-        if (bottomNav) {
-            bottomNav.classList.remove('hidden');
-            bottomNav.classList.add('flex');
-        }
+        if (bottomNav) { bottomNav.classList.remove('hidden'); bottomNav.classList.add('flex'); }
 
         if (userRoleBadge && window.currentUserProfile) {
             userRoleBadge.textContent = window.currentUserProfile.rol;
