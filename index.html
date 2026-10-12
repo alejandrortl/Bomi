@@ -5,42 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Diario de Obra</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS CDN Estable -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-<body class="bg-surface text-on-surface antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
+<body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
     <!-- BLOQUE 1: HEADER -->
-    <header id="app-header" class="hidden w-full bg-surface-container shadow-sm px-4 py-3 justify-between items-center z-30 shrink-0 relative">
+    <header id="app-header" class="hidden w-full bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3 justify-between items-center z-30 shrink-0 relative shadow-sm">
         <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">engineering</span>
-            <h1 class="text-xl font-medium tracking-tight">Diario de Obra</h1>
+            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">engineering</span>
+            <h1 class="text-xl font-semibold tracking-tight">Diario de Obra</h1>
         </div>
         <div class="flex items-center gap-3">
-            <select id="select-tema" class="text-xs bg-surface border border-outline-variant rounded-full px-3 py-1.5 text-on-surface focus:outline-none focus:border-primary">
+            <select id="select-tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none">
                 <option value="auto">🌓 Auto</option>
                 <option value="claro">☀️ Claro</option>
                 <option value="oscuro">🌙 Oscuro</option>
             </select>
-            <span id="user-role-badge" class="text-xs bg-primary-container text-on-primary-container px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
+            <span id="user-role-badge" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             
             <div class="relative">
-                <button id="btn-menu-perfil" class="flex items-center gap-1 bg-surface-variant text-on-surface px-3 py-1.5 rounded-full text-xs font-medium hover:bg-surface-variant/85 transition-colors">
+                <button id="btn-menu-perfil" class="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
                     <span id="header-username-label" class="hidden sm:inline">Cuenta</span>
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
                 </button>
-                <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-48 bg-surface-container-high text-on-surface border border-outline-variant rounded-2xl shadow-2xl py-2 z-50 flex flex-col">
-                    <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant flex items-center gap-2">
+                <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 flex flex-col">
+                    <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil
                     </button>
-                    <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-variant items-center gap-2">
+                    <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">business</span> Datos de Empresa
                     </button>
-                    <div class="border-t border-outline-variant my-1"></div>
-                    <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-error hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
+                    <div class="border-t border-slate-200 dark:border-zinc-800 my-1"></div>
+                    <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">logout</span> Cerrar Sesión
                     </button>
                 </div>
@@ -50,29 +51,29 @@
 
     <!-- BLOQUE 2: AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto overflow-y-auto">
-        <div class="bg-surface-container-low p-8 rounded-3xl shadow-md w-full flex flex-col gap-6">
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-8 rounded-3xl shadow-lg w-full flex flex-col gap-6">
             <div class="text-center">
-                <span class="material-symbols-outlined text-5xl text-primary mb-2">lock</span>
-                <h2 id="auth-title" class="text-2xl font-medium">Iniciar Sesión</h2>
-                <p id="auth-subtitle" class="text-sm text-on-surface-variant mt-1">Acceso para operarios</p>
+                <span class="material-symbols-outlined text-5xl text-blue-600 dark:text-blue-400 mb-2">lock</span>
+                <h2 id="auth-title" class="text-2xl font-semibold">Iniciar Sesión</h2>
+                <p id="auth-subtitle" class="text-sm text-slate-500 dark:text-slate-400 mt-1">Acceso para operarios</p>
             </div>
             
             <form id="form-auth" class="flex flex-col gap-4">
                 <div id="register-fields" class="hidden flex-col gap-4">
-                    <div class="md3-input-group"><label>Nombre</label><input type="text" id="auth-nombre"></div>
-                    <div class="md3-input-group"><label>Apellido</label><input type="text" id="auth-apellido"></div>
+                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="auth-nombre" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="auth-apellido" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
-                <div class="md3-input-group"><label>Correo Electrónico</label><input type="email" id="auth-email" required></div>
-                <div class="md3-input-group"><label>Contraseña</label><input type="password" id="auth-password" required minlength="6"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Correo Electrónico</label><input type="email" id="auth-email" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Contraseña</label><input type="password" id="auth-password" required minlength="6" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 
-                <button type="submit" id="btn-auth-submit" class="bg-primary text-on-primary w-full py-3 rounded-full font-medium mt-2 shadow-sm">Ingresar</button>
-                <p id="auth-error" class="text-error text-sm text-center hidden"></p>
-                <p id="auth-success" class="text-green-600 text-sm text-center hidden"></p>
+                <button type="submit" id="btn-auth-submit" class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-full font-medium mt-2 shadow-md transition-colors">Ingresar</button>
+                <p id="auth-error" class="text-red-600 dark:text-red-400 text-sm text-center hidden"></p>
+                <p id="auth-success" class="text-emerald-600 text-sm text-center hidden"></p>
             </form>
 
             <div class="text-center mt-2 flex flex-col gap-3">
-                <button id="btn-toggle-auth" class="text-primary text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
-                <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center gap-2 shadow-xs">
+                <button id="btn-toggle-auth" class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
+                <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver a Iniciar Sesión
                 </button>
             </div>
@@ -84,19 +85,19 @@
         
         <!-- Vista: Diario -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
-            <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
-                <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-tareas" placeholder="Buscar tareas..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant">
+            <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+                <input type="text" id="search-tareas" placeholder="Buscar tareas..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             
             <div class="flex justify-between items-center mt-2">
-                <h2 class="text-lg font-medium text-on-surface">Diario de Tareas</h2>
-                <input type="date" id="filtro-fecha-diario" class="bg-surface-container-low border border-outline-variant rounded-lg p-2 text-sm text-on-surface focus:outline-none focus:border-primary">
+                <h2 class="text-lg font-semibold">Diario de Tareas</h2>
+                <input type="date" id="filtro-fecha-diario" class="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-xl p-2 text-sm">
             </div>
             
             <div id="tasks-container" class="flex flex-col gap-3"></div>
 
-            <button id="fab-new-task" class="fixed bottom-20 right-4 sm:right-8 bg-primary text-on-primary p-4 rounded-2xl shadow-xl z-30 flex items-center justify-center hover:opacity-90 transition-opacity">
+            <button id="fab-new-task" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -104,75 +105,75 @@
         <!-- Vista: Bitácora -->
         <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
-                <h2 class="text-lg font-medium text-on-surface">Bitácora General</h2>
-                <span id="bitacora-count" class="text-xs bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-medium">Cargando...</span>
+                <h2 class="text-lg font-semibold">Bitácora General</h2>
+                <span id="bitacora-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium">Cargando...</span>
             </div>
-            <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
-                <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-bitacora" placeholder="Buscar cliente, obra, autor o notas..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+            <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+                <input type="text" id="search-bitacora" placeholder="Buscar cliente, obra, autor o notas..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             
             <div id="bitacora-container" class="flex flex-col gap-3"></div>
 
-            <button id="fab-new-bitacora" class="fixed bottom-20 right-4 sm:right-8 bg-primary text-on-primary p-4 rounded-2xl shadow-xl z-30 flex items-center justify-center hover:opacity-90 transition-opacity" title="Nuevo Registro Bitácora">
+            <button id="fab-new-bitacora" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
 
         <!-- Vista: Formulario Bitácora -->
         <section id="view-form-bitacora" class="hidden flex-col gap-4">
-            <h2 class="text-lg font-medium text-on-surface" id="form-bitacora-title">Nuevo Registro de Bitácora</h2>
-            <form id="form-bitacora" class="flex flex-col gap-4 bg-surface-container-low p-4 rounded-2xl shadow-sm">
+            <h2 class="text-lg font-semibold" id="form-bitacora-title">Nuevo Registro de Bitácora</h2>
+            <form id="form-bitacora" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <input type="hidden" id="edit-bitacora-id" value="">
                 
-                <div class="md3-input-group">
-                    <label>Cliente</label>
-                    <input type="text" id="bit-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe cliente">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label>
+                    <input type="text" id="bit-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe cliente" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                 </div>
-                <div class="md3-input-group">
-                    <label>Obra</label>
-                    <input type="text" id="bit-obra" list="obras-datalist" required placeholder="Selecciona o escribe obra">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra</label>
+                    <input type="text" id="bit-obra" list="obras-datalist" required placeholder="Selecciona o escribe obra" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                 </div>
                 
                 <div class="flex gap-4">
-                    <div class="md3-input-group flex-1"><label>Dirección</label><input type="text" id="bit-direccion" required></div>
-                    <div class="md3-input-group flex-1"><label>Localidad</label><input type="text" id="bit-localidad" required></div>
+                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="bit-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="bit-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
-                <div class="md3-input-group">
+                <div class="flex flex-col gap-1">
                     <div class="flex justify-between items-center mb-1">
-                        <label>Notas / Observaciones</label>
-                        <button type="button" id="btn-mic-notas" class="text-xs bg-surface-variant text-on-surface px-3 py-1 rounded-full flex items-center gap-1 hover:bg-primary hover:text-on-primary transition-colors">
+                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Notas / Observaciones</label>
+                        <button type="button" id="btn-mic-notas" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-blue-600 hover:text-white transition-colors">
                             <span class="material-symbols-outlined text-[16px]">mic</span> Dictar por Voz
                         </button>
                     </div>
-                    <textarea id="bit-notas" rows="4" required class="w-full bg-surface border border-outline-variant rounded p-3 text-on-surface" placeholder="Escribe o dicta las observaciones..."></textarea>
+                    <textarea id="bit-notas" rows="4" required class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm" placeholder="Escribe o dicta las observaciones..."></textarea>
                 </div>
 
                 <div>
-                    <button type="button" id="btn-toggle-pizarra" class="text-xs bg-surface-variant text-on-surface px-4 py-2 rounded-xl font-medium flex items-center gap-2 border border-outline-variant hover:bg-primary hover:text-on-primary transition-colors">
+                    <button type="button" id="btn-toggle-pizarra" class="text-xs bg-slate-100 dark:bg-zinc-800 px-4 py-2 rounded-xl font-medium flex items-center gap-2 border border-slate-300 dark:border-zinc-700 hover:bg-blue-600 hover:text-white transition-colors">
                         <span class="material-symbols-outlined text-[18px]">draw</span> Abrir Pizarra / Croquis
                     </button>
                 </div>
 
                 <div id="pizarra-container" class="hidden flex-col gap-2">
                     <label class="text-sm font-medium">Croquis / Pizarra</label>
-                    <div class="border border-outline-variant rounded-2xl p-2 flex flex-col items-center gap-2 bg-surface">
-                        <canvas id="pizarra-canvas" width="600" height="250" class="w-full h-48 touch-none rounded-xl cursor-crosshair border border-outline-variant/50"></canvas>
+                    <div class="border border-slate-300 dark:border-zinc-700 rounded-2xl p-2 flex flex-col items-center gap-2 bg-slate-50 dark:bg-zinc-800">
+                        <canvas id="pizarra-canvas" width="600" height="250" class="w-full h-48 touch-none rounded-xl cursor-crosshair border border-slate-200 dark:border-zinc-700 bg-white dark:bg-black"></canvas>
                         <div class="flex gap-2 w-full justify-between items-center">
                             <div class="flex gap-2">
-                                <button type="button" class="pizarra-color w-6 h-6 rounded-full bg-black dark:bg-white border-2 border-primary" data-color="current"></button>
+                                <button type="button" class="pizarra-color w-6 h-6 rounded-full bg-black dark:bg-white border-2 border-blue-600" data-color="current"></button>
                                 <button type="button" class="pizarra-color w-6 h-6 rounded-full bg-red-600" data-color="#dc2626"></button>
                                 <button type="button" class="pizarra-color w-6 h-6 rounded-full bg-blue-600" data-color="#2563eb"></button>
                             </div>
-                            <button type="button" id="btn-limpiar-pizarra" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium">Limpiar Pizarra</button>
+                            <button type="button" id="btn-limpiar-pizarra" class="text-xs bg-slate-200 dark:bg-zinc-700 px-3 py-1.5 rounded-lg font-medium">Limpiar Pizarra</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" id="btn-cancel-bitacora" class="px-4 py-2 rounded-full font-medium text-on-surface-variant">Cancelar</button>
-                    <button type="submit" id="btn-submit-bitacora" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Registro</button>
+                    <button type="button" id="btn-cancel-bitacora" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
+                    <button type="submit" id="btn-submit-bitacora" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Registro</button>
                 </div>
             </form>
         </section>
@@ -180,21 +181,21 @@
         <!-- Vista: Detalle Bitácora -->
         <section id="view-detalle-bitacora" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
             <div class="flex justify-between items-center">
-                <h2 class="text-lg font-medium text-on-surface">Detalle del Registro</h2>
+                <h2 class="text-lg font-semibold">Detalle del Registro</h2>
                 <div class="flex gap-2">
-                    <button type="button" id="btn-export-pdf" class="text-xs bg-primary text-on-primary px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm">
+                    <button type="button" id="btn-export-pdf" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm">
                         <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar PDF
                     </button>
-                    <button type="button" id="btn-back-bitacora-list" class="text-xs bg-surface-variant px-3 py-1.5 rounded-full font-medium">Volver</button>
+                    <button type="button" id="btn-back-bitacora-list" class="text-xs bg-slate-200 dark:bg-zinc-800 px-3 py-1.5 rounded-full font-medium">Volver</button>
                 </div>
             </div>
             
-            <div id="pdf-export-container" class="bg-surface-container-low p-6 rounded-3xl shadow-sm flex flex-col gap-4 text-on-surface">
-                <div id="pdf-empresa-header" class="flex justify-between items-center border-b border-outline-variant pb-4 mb-2">
+            <div id="pdf-export-container" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm flex flex-col gap-4">
+                <div id="pdf-empresa-header" class="flex justify-between items-center border-b border-slate-200 dark:border-zinc-800 pb-4 mb-2">
                     <div>
-                        <h3 id="pdf-emp-nombre" class="font-bold text-base text-primary">Diario de Obra</h3>
-                        <p id="pdf-emp-cif" class="text-xs text-on-surface-variant"></p>
-                        <p id="pdf-emp-dir" class="text-xs text-on-surface-variant"></p>
+                        <h3 id="pdf-emp-nombre" class="font-bold text-base text-blue-600 dark:text-blue-400">Diario de Obra</h3>
+                        <p id="pdf-emp-cif" class="text-xs text-slate-500"></p>
+                        <p id="pdf-emp-dir" class="text-xs text-slate-500"></p>
                     </div>
                     <img id="pdf-emp-logo" src="" alt="Logo" class="hidden h-12 object-contain max-w-[120px]">
                 </div>
@@ -205,34 +206,34 @@
 
         <!-- Vista: Nueva Tarea -->
         <section id="view-new-task" class="hidden flex-col gap-4">
-            <h2 class="text-lg font-medium text-on-surface" id="form-task-title">Asignar Nueva Tarea</h2>
-            <form id="form-new-task" class="flex flex-col gap-4 bg-surface-container-low p-4 rounded-2xl shadow-sm">
+            <h2 class="text-lg font-semibold" id="form-task-title">Asignar Nueva Tarea</h2>
+            <form id="form-new-task" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <input type="hidden" id="edit-task-id" value="">
                 
-                <div class="md3-input-group"><label>Fecha a realizar</label><input type="date" id="input-fecha" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Cliente</label><input type="text" id="input-cliente" list="clientes-datalist" required></div>
-                <div class="md3-input-group"><label>Obra</label><input type="text" id="input-obra" list="obras-datalist" required></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Fecha a realizar</label><input type="date" id="input-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label><input type="text" id="input-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra</label><input type="text" id="input-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 
                 <div class="flex gap-4">
-                    <div class="md3-input-group flex-1"><label>Dirección</label><input type="text" id="input-direccion" required></div>
-                    <div class="md3-input-group flex-1"><label>Localidad</label><input type="text" id="input-localidad" required></div>
+                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="input-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="input-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
                 
-                <div class="md3-input-group">
-                    <label>Operario (Asignado a)</label>
-                    <select id="select-operario" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface">
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Operario (Asignado a)</label>
+                    <select id="select-operario" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                         <option value="">Cargando operarios...</option>
                     </select>
                 </div>
 
-                <div class="md3-input-group">
-                    <label>Tarea a realizar</label>
-                    <textarea id="input-tarea" rows="3" required class="w-full bg-surface border border-outline-variant rounded p-3 text-on-surface"></textarea>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Tarea a realizar</label>
+                    <textarea id="input-tarea" rows="3" required class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></textarea>
                 </div>
                 
                 <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" id="btn-cancel-task" class="px-4 py-2 rounded-full font-medium text-on-surface-variant">Cancelar</button>
-                    <button type="submit" id="btn-submit-task" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Tarea</button>
+                    <button type="button" id="btn-cancel-task" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
+                    <button type="submit" id="btn-submit-task" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Tarea</button>
                 </div>
             </form>
         </section>
@@ -240,18 +241,18 @@
         <!-- Vista: Clientes -->
         <section id="view-clientes" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
-                <h2 class="text-lg font-medium text-on-surface">Directorio de Clientes y Obras</h2>
-                <span id="clientes-count" class="text-xs bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-medium">Cargando...</span>
+                <h2 class="text-lg font-semibold">Directorio de Clientes y Obras</h2>
+                <span id="clientes-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium">Cargando...</span>
             </div>
             
-            <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
-                <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-clientes" placeholder="Buscar cliente, contactos, obras o direcciones..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+            <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+                <input type="text" id="search-clientes" placeholder="Buscar cliente, contactos, obras o direcciones..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
 
             <div id="clientes-container" class="flex flex-col gap-3"></div>
 
-            <button id="fab-new-cliente" class="fixed bottom-20 right-4 sm:right-8 bg-primary text-on-primary p-4 rounded-2xl shadow-xl z-30 flex items-center justify-center hover:opacity-90 transition-opacity">
+            <button id="fab-new-cliente" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -259,105 +260,105 @@
         <!-- Vista: Empleados -->
         <section id="view-empleados" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
-                <h2 class="text-lg font-medium text-on-surface">Agenda de Empleados</h2>
-                <span id="empleados-count" class="text-xs bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-medium">Cargando...</span>
+                <h2 class="text-lg font-semibold">Agenda de Empleados</h2>
+                <span id="empleados-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium">Cargando...</span>
             </div>
-            <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
-                <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
-                <input type="text" id="search-empleados" placeholder="Buscar empleados..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+            <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+                <input type="text" id="search-empleados" placeholder="Buscar empleados..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
         <!-- Vista: Perfil -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-medium text-on-surface">Mi Perfil y Ajustes</h2>
-            <form id="form-perfil" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
+            <h2 class="text-lg font-semibold">Mi Perfil y Ajustes</h2>
+            <form id="form-perfil" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <div class="flex items-center gap-4 mb-2">
-                    <span class="material-symbols-outlined text-4xl text-primary bg-primary-container p-3 rounded-full">account_circle</span>
+                    <span class="material-symbols-outlined text-4xl text-blue-600 bg-blue-100 dark:bg-blue-950 p-3 rounded-full">account_circle</span>
                     <div>
                         <h3 id="perfil-nombre-header" class="font-medium text-lg">Cargando...</h3>
-                        <p id="perfil-email-header" class="text-xs text-on-surface-variant"></p>
+                        <p id="perfil-email-header" class="text-xs text-slate-500"></p>
                     </div>
                 </div>
-                <div class="md3-input-group"><label>Nombre</label><input type="text" id="perfil-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Apellido</label><input type="text" id="perfil-apellido" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Teléfono</label><input type="tel" id="perfil-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="perfil-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="perfil-apellido" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</label><input type="tel" id="perfil-telefono" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 
-                <div class="border-t border-outline-variant pt-3 mt-1">
-                    <h3 class="text-sm font-medium mb-3">Cambiar Contraseña</h3>
-                    <div class="md3-input-group mb-3"><label>Nueva Contraseña</label><input type="password" id="perfil-new-pass" placeholder="Dejar en blanco para no cambiar" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                    <div class="md3-input-group"><label>Repetir Nueva Contraseña</label><input type="password" id="perfil-confirm-pass" placeholder="Repetir contraseña" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="border-t border-slate-200 dark:border-zinc-800 pt-3 mt-1">
+                    <h3 class="text-sm font-semibold mb-3">Cambiar Contraseña</h3>
+                    <div class="flex flex-col gap-1 mb-3"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nueva Contraseña</label><input type="password" id="perfil-new-pass" placeholder="Dejar en blanco para no cambiar" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Repetir Nueva Contraseña</label><input type="password" id="perfil-confirm-pass" placeholder="Repetir contraseña" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
-                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md mt-2">Guardar Cambios</button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-medium shadow-md mt-2">Guardar Cambios</button>
                 <p id="perfil-mensaje" class="text-sm text-center hidden font-medium"></p>
             </form>
         </section>
 
         <!-- Vista: Empresa -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-medium text-on-surface">Datos de la Empresa y Logotipo</h2>
-            <form id="form-empresa" class="flex flex-col gap-4 bg-surface-container-low p-6 rounded-3xl shadow-sm">
-                <div class="md3-input-group"><label>Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>CIF / NIF</label><input type="text" id="emp-cif" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>Dirección</label><input type="text" id="emp-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <div class="md3-input-group"><label>URL del Logotipo (Imagen)</label><input type="url" id="emp-logo" placeholder="https://ejemplo.com/logo.png" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
-                <button type="submit" class="bg-primary text-on-primary py-3 rounded-full font-medium shadow-md mt-2">Guardar Datos de Empresa</button>
+            <h2 class="text-lg font-semibold">Datos de la Empresa y Logotipo</h2>
+            <form id="form-empresa" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">CIF / NIF</label><input type="text" id="emp-cif" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="emp-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">URL del Logotipo (Imagen)</label><input type="url" id="emp-logo" placeholder="https://ejemplo.com/logo.png" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-medium shadow-md mt-2">Guardar Datos de Empresa</button>
             </form>
         </section>
 
     </main>
 
     <!-- BLOQUE 4: MODALES (Cliente, Obras y Contactos Dinámicos) -->
-    <div id="modal-cliente" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 overflow-y-auto">
-        <div class="bg-surface text-on-surface w-full max-w-xl rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant my-8">
-            <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
-                <h3 id="modal-cliente-title" class="font-medium text-on-surface text-lg">Nuevo Cliente, Obras y Contactos</h3>
-                <button type="button" id="btn-close-modal-cliente" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
+    <div id="modal-cliente" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 overflow-y-auto bg-black/50">
+        <div class="bg-white dark:bg-zinc-900 text-slate-900 dark:text-slate-100 w-full max-w-xl rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-zinc-800 my-8">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50">
+                <h3 id="modal-cliente-title" class="font-semibold text-lg">Nuevo Cliente, Obras y Contactos</h3>
+                <button type="button" id="btn-close-modal-cliente" class="material-symbols-outlined text-slate-500 p-2 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full">close</button>
             </div>
-            <form id="form-cliente" class="p-6 flex flex-col gap-6 bg-surface max-h-[80vh] overflow-y-auto">
+            <form id="form-cliente" class="p-6 flex flex-col gap-6 bg-white dark:bg-zinc-900 max-h-[80vh] overflow-y-auto">
                 <input type="hidden" id="edit-cliente-id">
                 
                 <!-- Datos Generales del Cliente -->
                 <div class="flex flex-col gap-3">
-                    <h4 class="text-sm font-medium text-primary">Información del Cliente</h4>
-                    <div class="md3-input-group"><label>Nombre del Cliente</label><input type="text" id="cli-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                    <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400">Información del Cliente</h4>
+                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre del Cliente</label><input type="text" id="cli-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
                 <!-- Contactos Generales del Cliente -->
-                <div class="flex flex-col gap-3 border-t border-outline-variant pt-4">
+                <div class="flex flex-col gap-3 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <div class="flex justify-between items-center">
-                        <h4 class="text-sm font-medium text-primary">Personas de Contacto del Cliente</h4>
-                        <button type="button" id="btn-add-contacto-cliente" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium hover:bg-primary hover:text-on-primary transition-colors">+ Añadir Contacto</button>
+                        <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400">Personas de Contacto del Cliente</h4>
+                        <button type="button" id="btn-add-contacto-cliente" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition-colors">+ Añadir Contacto</button>
                     </div>
                     <div id="contactos-cliente-container" class="flex flex-col gap-3"></div>
                 </div>
 
                 <!-- Obras del Cliente -->
-                <div class="flex flex-col gap-3 border-t border-outline-variant pt-4">
+                <div class="flex flex-col gap-3 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <div class="flex justify-between items-center">
-                        <h4 class="text-sm font-medium text-primary">Obras del Cliente</h4>
-                        <button type="button" id="btn-add-obra" class="text-xs bg-surface-variant text-on-surface px-3 py-1.5 rounded-lg font-medium hover:bg-primary hover:text-on-primary transition-colors">+ Añadir Obra</button>
+                        <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400">Obras del Cliente</h4>
+                        <button type="button" id="btn-add-obra" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition-colors">+ Añadir Obra</button>
                     </div>
                     <div id="obras-container" class="flex flex-col gap-4"></div>
                 </div>
 
-                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant">
-                    <button type="button" id="btn-cancel-modal-cliente" class="px-4 py-2 rounded-full font-medium text-on-surface-variant">Cancelar</button>
-                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Cliente y Obras</button>
+                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
+                    <button type="button" id="btn-cancel-modal-cliente" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Cliente y Obras</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="modal-detalle-tarea" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
-        <div class="bg-surface text-on-surface w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
-            <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
-                <h3 class="font-medium text-on-surface text-lg">Detalles de la Tarea</h3>
-                <button type="button" id="btn-close-detalle" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
+    <div id="modal-detalle-tarea" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50">
+        <div class="bg-white dark:bg-zinc-900 text-slate-900 dark:text-slate-100 w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50">
+                <h3 class="font-semibold text-lg">Detalles de la Tarea</h3>
+                <button type="button" id="btn-close-detalle" class="material-symbols-outlined text-slate-500 p-2 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full">close</button>
             </div>
-            <div id="detalle-contenido" class="p-6 overflow-y-auto flex flex-col gap-4 text-on-surface bg-surface"></div>
+            <div id="detalle-contenido" class="p-6 overflow-y-auto flex flex-col gap-4 bg-white dark:bg-zinc-900"></div>
         </div>
     </div>
 
@@ -365,20 +366,20 @@
     <datalist id="obras-datalist"></datalist>
 
     <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
-    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
-        <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
-            <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
+    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
+        <button id="nav-home" class="nav-btn flex flex-col items-center text-blue-600 dark:text-blue-400">
+            <span class="material-symbols-outlined bg-blue-100 dark:bg-blue-950 px-4 py-1 rounded-full mb-1">list_alt</span>
             <span class="text-[11px] font-medium">Diario</span>
         </button>
-        <button id="nav-bitacora" class="nav-btn flex flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
+        <button id="nav-bitacora" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">menu_book</span>
             <span class="text-[11px] font-medium">Bitácora</span>
         </button>
-        <button id="nav-clientes" class="nav-btn flex flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
+        <button id="nav-clientes" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">business_center</span>
             <span class="text-[11px] font-medium">Clientes</span>
         </button>
-        <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
+        <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span>
             <span class="text-[11px] font-medium">Empleados</span>
         </button>
