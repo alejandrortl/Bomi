@@ -140,10 +140,23 @@
             </form>
         </section>
 
-        <!-- Vista: Gestión de Empleados (Solo Admins) -->
-        <section id="view-empleados" class="hidden flex-col gap-4">
-            <h2 class="text-lg font-medium text-on-surface">Gestión de Personal</h2>
-            <div id="empleados-container" class="flex flex-col gap-3"></div>
+        <!-- Vista: Gestión de Empleados / Agenda (Solo Admins / SuperAdmins) -->
+        <section id="view-empleados" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h2 class="text-xl font-medium text-on-surface">Agenda de Empleados</h2>
+                <span id="empleados-count" class="text-xs bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-medium">Cargando...</span>
+            </div>
+
+            <!-- Buscador rápido en agenda -->
+            <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+                <input type="text" id="search-empleados" placeholder="Buscar por nombre, apellido, email, teléfono o rol..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+            </div>
+
+            <!-- Contenedor de Tarjetas de Empleados -->
+            <div id="empleados-container" class="flex flex-col gap-3">
+                <!-- Se inyecta dinámicamente desde JS -->
+            </div>
         </section>
 
         <!-- Vista: Mi Perfil -->
