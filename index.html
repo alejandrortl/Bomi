@@ -89,16 +89,19 @@
                 <p id="auth-error" class="text-error text-sm text-center hidden"></p>
                 <p id="auth-success" class="text-green-600 text-sm text-center hidden"></p>
             </form>
-            <div class="text-center mt-2">
+
+            <!-- Contenedor inferior absoluto para alternar o volver -->
+            <div class="text-center mt-2 flex flex-col gap-3">
                 <button id="btn-toggle-auth" class="text-primary text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
+                <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center gap-2 shadow-xs">
+                    <span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver a Iniciar Sesión
+                </button>
             </div>
         </div>
     </main>
 
     <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
-        
-        <!-- Vista: Diario -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
@@ -317,7 +320,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
-    <!-- Cargamos app.js como Módulo Principal -->
-    <script type="module" src="js/app.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
