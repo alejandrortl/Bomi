@@ -90,7 +90,6 @@
                 <p id="auth-success" class="text-green-600 text-sm text-center hidden"></p>
             </form>
 
-            <!-- Contenedor inferior absoluto para alternar o volver -->
             <div class="text-center mt-2 flex flex-col gap-3">
                 <button id="btn-toggle-auth" class="text-primary text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
                 <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center gap-2 shadow-xs">
@@ -102,6 +101,8 @@
 
     <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
+        
+        <!-- Vista: Diario -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
@@ -163,6 +164,25 @@
                     </div>
                 </div>
             </form>
+        </section>
+
+        <!-- Vista: Clientes (Nuevo) -->
+        <section id="view-clientes" class="hidden flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-medium text-on-surface">Directorio de Clientes y Obras</h2>
+                <span id="clientes-count" class="text-xs bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-medium">Cargando...</span>
+            </div>
+            
+            <div class="bg-surface-container-high rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+                <input type="text" id="search-clientes" placeholder="Buscar por cliente, obra, dirección o localidad..." class="bg-transparent border-none outline-none w-full text-on-surface placeholder:text-on-surface-variant text-sm">
+            </div>
+
+            <div id="clientes-container" class="flex flex-col gap-3"></div>
+
+            <button id="fab-new-cliente" class="fixed bottom-20 right-4 sm:right-8 bg-primary text-on-primary p-4 rounded-2xl shadow-xl z-30 flex items-center justify-center hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined">add</span>
+            </button>
         </section>
 
         <!-- Vista: Empleados -->
@@ -227,6 +247,34 @@
     </main>
 
     <!-- BLOQUE 4: MODALES -->
+    
+    <!-- Modal Cliente / Obra -->
+    <div id="modal-cliente" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
+        <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
+            <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
+                <h3 id="modal-cliente-title" class="font-medium text-on-surface text-lg">Nuevo Cliente / Obra</h3>
+                <button type="button" id="btn-close-modal-cliente" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
+            </div>
+            
+            <form id="form-cliente" class="p-6 overflow-y-auto flex flex-col gap-4 bg-surface text-on-surface">
+                <input type="hidden" id="edit-cliente-id">
+                
+                <div class="md3-input-group"><label>Nombre del Cliente</label><input type="text" id="cli-nombre" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Nombre de la Obra</label><input type="text" id="cli-obra" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Dirección</label><input type="text" id="cli-direccion" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Localidad</label><input type="text" id="cli-localidad" required class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Teléfono de Contacto</label><input type="tel" id="cli-telefono" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+                <div class="md3-input-group"><label>Correo Electrónico (Opcional)</label><input type="email" id="cli-email" class="bg-surface border border-outline-variant rounded p-3 text-on-surface"></div>
+
+                <div class="flex justify-end gap-3 mt-4 pt-3 border-t border-outline-variant">
+                    <button type="button" id="btn-cancel-modal-cliente" class="px-4 py-2 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors">Cancelar</button>
+                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detalles Tarea -->
     <div id="modal-detalle-tarea" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -237,6 +285,7 @@
         </div>
     </div>
 
+    <!-- Modal Pizarra -->
     <div id="modal-canvas" class="hidden fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center pb-safe sm:p-4">
         <div class="bg-surface text-on-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -258,6 +307,7 @@
         </div>
     </div>
 
+    <!-- Modal Editar Empleado -->
     <div id="modal-editar-empleado" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4">
         <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
@@ -297,11 +347,16 @@
         </div>
     </div>
 
-    <!-- BLOQUE 5: NAVEGACIÓN -->
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-surface-container border-t border-outline-variant px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-primary active">
             <span class="material-symbols-outlined bg-secondary-container px-4 py-1 rounded-full mb-1">list_alt</span>
             <span class="text-[11px] font-medium">Diario</span>
+        </button>
+        <!-- Botón Clientes ubicado justo antes de Empleados -->
+        <button id="nav-clientes" class="nav-btn flex flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">business_center</span>
+            <span class="text-[11px] font-medium">Clientes</span>
         </button>
         <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span>
