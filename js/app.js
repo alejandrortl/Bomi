@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === GESTIÓN DE NOTIFICACIONES PUSH Y SISTEMA ===
+    // === NOTIFICACIONES PUSH Y SISTEMA ===
     if (btnRequestPush) {
         btnRequestPush.addEventListener('click', async () => {
             if (!('Notification' in window)) {
@@ -500,10 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="material-symbols-outlined text-[14px]">edit</span> Editar / Rol
                         </button>
                         ${!isSuperAdmin ? `
-                            <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm">
+                            <button onclick="eliminarEmpleado('${emp.id}')" class="text-xs btn-eliminar-empleado px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 shadow-sm cursor-pointer">
                                 <span class="material-symbols-outlined text-[14px]">delete</span> Eliminar
                             </button>
-                        ` : '<span class="text-[11px] opacity-70 italic px-2">Protegido</span>'}
+                        ` : '<span class="text-[11px] opacity-70 italic px-2">Protegido (SuperAdmin)</span>'}
                     </div>
                 ` : ''}
             `;
@@ -586,17 +586,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // FUNCIÓN DE ELIMINAR EMPLEADO SEGURA Y PROTEGIDA
     window.eliminarEmpleado = async function(id) {
         const emp = allEmpleados.find(e => e.id === id);
-        if (emp && emp.rol === 'SuperAdmin') {
+        if (!emp) return;
+
+        if (emp.rol === 'SuperAdmin') {
             alert("Los usuarios SuperAdmin están protegidos y no pueden ser eliminados.");
             return;
         }
 
-        if (confirm("¿Estás seguro de eliminar este empleado del sistema?")) {
+        if (confirm(`¿Estás seguro de eliminar al empleado ${emp.nombre} ${emp.apellido}?`)) {
             const { error } = await supabaseClient.from('perfiles').delete().eq('id', id);
-            if (!error) loadEmpleados();
-            else alert("Error al eliminar: " + error.message);
+            if (!error) {
+                loadEmpleados();
+                loadOperariosSelect();
+            } else {
+                alert("Error al eliminar empleado: " + error.message);
+            }
         }
     };
 
