@@ -146,13 +146,46 @@
                 <h2 class="text-xl font-medium text-on-surface">Agenda de Empleados</h2>
                 <span id="empleados-count" class="text-xs bg-primary-container text-on-primary-container px-3 py-1 rounded-full font-medium">Cargando...</span>
             </div>
-            <!-- MODAL FLOTANTE LIMPIO Y OPACA PARA EDITAR EMPLEADO -->
-    <div id="modal-editar-empleado" class="hidden fixed inset-0 bg-black/70 z-50 flex justify-center items-center p-4">
-        <div class="bg-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
+      
+<!-- MODAL FLOTANTE 100% OPACO PARA EDITAR EMPLEADO -->
+    <div id="modal-editar-empleado" class="hidden fixed inset-0 bg-black/85 z-50 flex justify-center items-center p-4">
+        <div class="bg-surface text-on-surface w-full max-w-md rounded-3xl flex flex-col shadow-2xl overflow-hidden border border-outline-variant max-h-[90vh]">
             <div class="flex justify-between items-center p-4 border-b border-outline-variant bg-surface-container">
                 <h3 class="font-medium text-on-surface text-lg">Editar Empleado</h3>
                 <button type="button" id="btn-close-modal-emp" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-variant rounded-full">close</button>
             </div>
+            
+            <form id="form-editar-empleado" class="p-6 overflow-y-auto flex flex-col gap-4 bg-surface">
+                <input type="hidden" id="edit-emp-id">
+                
+                <div class="md3-input-group">
+                    <label>Nombre</label>
+                    <input type="text" id="edit-emp-nombre" required class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface">
+                </div>
+
+                <div class="md3-input-group">
+                    <label>Apellido</label>
+                    <input type="text" id="edit-emp-apellido" required class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface">
+                </div>
+
+                <div class="md3-input-group">
+                    <label>Teléfono</label>
+                    <input type="tel" id="edit-emp-telefono" class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface" placeholder="Ej. +34 600 000 000">
+                </div>
+
+                <div class="md3-input-group">
+                    <label>Nueva Contraseña (Opcional)</label>
+                    <input type="password" id="edit-emp-password" class="bg-surface-container-low border border-outline-variant rounded p-3 text-on-surface" placeholder="Dejar en blanco para no cambiar" minlength="6">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-4 pt-3 border-t border-outline-variant">
+                    <button type="button" id="btn-cancel-modal-emp" class="px-4 py-2 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors">Cancelar</button>
+                    <button type="submit" class="bg-primary text-on-primary px-6 py-2 rounded-full font-medium shadow-md">Guardar Cambios</button>
+                </div>
+                <p id="edit-emp-mensaje" class="text-sm text-center hidden font-medium"></p>
+            </form>
+        </div>
+    </div>
             
             <form id="form-editar-empleado" class="p-6 overflow-y-auto flex flex-col gap-4 text-on-surface">
                 <input type="hidden" id="edit-emp-id">
