@@ -19,7 +19,7 @@
             <h1 class="text-xl font-semibold tracking-tight">Diario de Obra</h1>
         </div>
         <div class="flex items-center gap-3">
-            <select id="select-tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none">
+            <select id="select-tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none cursor-pointer">
                 <option value="auto">🌓 Auto</option>
                 <option value="claro">☀️ Claro</option>
                 <option value="oscuro">🌙 Oscuro</option>
@@ -32,12 +32,13 @@
                     <span id="header-username-label" class="hidden sm:inline">Cuenta</span>
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
                 </button>
-                <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 flex flex-col">
+                <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 flex flex-col">
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil
                     </button>
+                    <!-- Actualizado: Logotipo y nombre de empresa -->
                     <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">business</span> Datos de Empresa
+                        <span class="material-symbols-outlined text-[18px]">business</span> Logotipo y nombre de empresa
                     </button>
                     <div class="border-t border-slate-200 dark:border-zinc-800 my-1"></div>
                     <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
@@ -79,7 +80,7 @@
         </div>
     </main>
 
-    <!-- BLOQUE 3: CONTENIDO PRINCIPAL (Vistas de la PWA) -->
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
         <!-- Vista: Diario -->
@@ -266,7 +267,7 @@
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
-        <!-- Vista: Perfil (Con Repetición de Contraseña) -->
+        <!-- Vista: Perfil -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Mi Perfil y Ajustes</h2>
             <form id="form-perfil" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -292,9 +293,9 @@
             </form>
         </section>
 
-        <!-- Vista: Empresa -->
+        <!-- Vista: Empresa (Logotipo y Nombre de Empresa) -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
-            <h2 class="text-lg font-semibold">Datos de la Empresa y Logotipo</h2>
+            <h2 class="text-lg font-semibold">Logotipo y Nombre de Empresa</h2>
             <form id="form-empresa" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">CIF / NIF</label><input type="text" id="emp-cif" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
@@ -325,7 +326,7 @@
     <datalist id="materiales-datalist"></datalist>
     <datalist id="operarios-datalist"></datalist>
 
-    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (MD3 Navigation Bar con Módulo Partes entre Diario y Bitácora) -->
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (MD3) -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span>
