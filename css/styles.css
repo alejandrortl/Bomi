@@ -1,5 +1,5 @@
 /* css/styles.css - Material Design 3 & Dark Mode Support */
-@import "tailwindcss";
+;
 
 @layer base {
   :root {
