@@ -80,6 +80,7 @@
     // NAVEGACIÓN
     if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); setActiveNav(navHome); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); renderTareas(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); setActiveNav(navEmpleados); loadEmpleados(); });
+    if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); setActiveNav(navClientes); if (window.BomiClientes) window.BomiClientes.abrir(); });
 
     async function cargarNombreEmpresa() {
         if (!headerAppTitle) return;
@@ -109,6 +110,8 @@
     }
 
     window.addEventListener('userLoggedIn', initAppAfterLogin);
+    // Clientes u obras cambiados desde la pestaña Clientes: refresca el autocompletado de tareas.
+    window.addEventListener('clientesActualizados', () => loadClientes());
     if (window.currentUserProfile) initAppAfterLogin();
 
     async function loadClientes() {
