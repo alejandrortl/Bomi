@@ -9,7 +9,6 @@
         @custom-variant dark (&:where(.dark, .dark *));
     </style>
 
-    <!-- Script de ejecución inmediata para evitar parpadeos de Modo Oscuro -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'auto';
@@ -29,7 +28,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- BLOQUE 1: HEADER (Barra Superior MD3) -->
+    <!-- BLOQUE 1: HEADER -->
     <header id="app-header" class="hidden w-full bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3 justify-between items-center z-30 shrink-0 relative shadow-sm">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">engineering</span>
@@ -88,10 +87,10 @@
         </div>
     </main>
 
-    <!-- BLOQUE 3: CONTENIDO PRINCIPAL Y VISTAS -->
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
-        <!-- Vista: Diario de Tareas (Con Buscador y Calendario Inteligente) -->
+        <!-- Vista: Diario de Tareas -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="flex flex-col gap-3 sticky top-0 bg-slate-50 dark:bg-black z-10 pt-2 pb-3">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
@@ -103,9 +102,7 @@
                     <input type="date" id="filtro-fecha-diario" aria-label="Filtrar por fecha" class="bg-slate-100 dark:bg-zinc-800 border-none rounded-lg p-2 text-sm font-medium focus:ring-2 focus:ring-blue-600 cursor-pointer">
                 </div>
             </div>
-            
             <div id="tasks-container" class="flex flex-col gap-3 pb-6"></div>
-            
             <button id="fab-new-task" aria-label="Crear nueva tarea" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
@@ -116,22 +113,18 @@
             <h2 class="text-lg font-semibold" id="form-tarea-title">Nueva Tarea</h2>
             <form id="form-tarea" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <input type="hidden" id="edit-tarea-id" value="">
-                
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
-
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium">Dirección</label><input type="text" id="tarea-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-localidad" class="text-xs font-medium">Localidad</label><input type="text" id="tarea-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
-
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-operario" class="text-xs font-medium">Operario Asignado</label><input type="text" id="tarea-operario" list="operarios-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-fecha" class="text-xs font-medium">Fecha</label><input type="date" id="tarea-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
-
                 <div class="flex flex-col gap-1 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <div class="flex justify-between items-center mb-1">
                         <label for="tarea-notas" class="text-xs font-medium">Notas / Descripción</label>
@@ -141,7 +134,6 @@
                     </div>
                     <textarea id="tarea-notas" rows="4" class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm" placeholder="Detalles..."></textarea>
                 </div>
-
                 <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <div class="flex justify-between items-center">
                         <label class="text-xs font-medium">Dibujo / Pizarra (Opcional)</label>
@@ -153,7 +145,6 @@
                         <button type="button" id="btn-borrar-dibujo" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1"><span class="material-symbols-outlined text-[14px]">close</span></button>
                     </div>
                 </div>
-
                 <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
                     <button type="button" id="btn-cancel-tarea" class="px-4 py-2 rounded-full font-medium text-slate-600">Cancelar</button>
                     <button type="submit" id="btn-submit-tarea" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Tarea</button>
@@ -177,19 +168,31 @@
             </div>
         </section>
 
-        <!-- Resto de vistas operativas y de módulos (Partes, Bitácora, Materiales, Clientes, Empleados, Perfil, Empresa) -->
+        <!-- VISTA: EMPLEADOS (Agenda Interactiva y Gestión de Roles) -->
+        <section id="view-empleados" class="hidden flex-col gap-4 relative min-h-full">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600">group</span> Agenda de Empleados</h2>
+                <span id="empleados-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium">Cargando...</span>
+            </div>
+            <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+                <input type="text" id="search-empleados" aria-label="Buscar empleados" placeholder="Buscar por nombre, correo, rol..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+            </div>
+            <div id="empleados-container" class="flex flex-col gap-3 pb-6"></div>
+        </section>
+
+        <!-- RESTO DE VISTAS (Partes, Bitácora, Materiales, Clientes, Perfil, Empresa) -->
         <section id="view-partes" class="hidden flex-col gap-4 relative min-h-full"></section>
         <section id="view-form-parte" class="hidden flex-col gap-4"></section>
         <section id="view-detalle-parte" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full"></section>
         <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full"></section>
         <section id="view-materiales" class="hidden flex-col gap-4 relative min-h-full"></section>
         <section id="view-clientes" class="hidden flex-col gap-4"></section>
-        <section id="view-empleados" class="hidden flex-col gap-4"></section>
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full"></section>
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full"></section>
     </main>
 
-    <!-- BLOQUE 4: MODALES DINÁMICOS -->
+    <!-- MODAL PIZARRA -->
     <div id="modal-pizarra" class="hidden fixed inset-0 z-[60] flex justify-center items-center p-2 bg-black/90 backdrop-blur-sm">
         <div class="bg-white dark:bg-zinc-900 w-full h-full max-w-3xl rounded-3xl p-4 flex flex-col shadow-2xl relative">
             <div class="flex justify-between items-center mb-2 shrink-0">
@@ -213,13 +216,38 @@
         </div>
     </div>
 
-    <!-- DATALISTS PARA AUTOCOMPLETAR -->
+    <!-- MODAL MODIFICAR EMPLEADO (ADMIN/SUPERADMIN) -->
+    <div id="modal-empleado" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+            <h3 class="font-semibold text-lg">Modificar Empleado / Rol</h3>
+            <form id="form-empleado" class="flex flex-col gap-4">
+                <input type="hidden" id="edit-empleado-id">
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium">Nombre</label><input type="text" id="emp-nombre-modal" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium">Apellido</label><input type="text" id="emp-apellido-modal" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label class="text-xs font-medium">Teléfono</label><input type="tel" id="emp-telefono-modal" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium">Rol en el Sistema</label>
+                    <select id="emp-rol-modal" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
+                        <option value="empleado">Empleado</option>
+                        <option value="admin">Admin</option>
+                        <option value="superadmin">Superadmin</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 mt-2">
+                    <button type="button" id="btn-cancel-modal-empleado" class="px-4 py-2 rounded-full font-medium text-slate-600">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-full font-medium">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DATALISTS -->
     <datalist id="clientes-datalist"></datalist>
     <datalist id="obras-datalist"></datalist>
     <datalist id="materiales-datalist"></datalist>
     <datalist id="operarios-datalist"></datalist>
 
-    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (MD3 Bottom Nav) -->
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span><span class="text-[11px] font-medium">Diario</span></button>
         <button id="nav-partes" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">assignment</span><span class="text-[11px] font-medium">Partes</span></button>
@@ -229,7 +257,6 @@
         <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button>
     </nav>
 
-    <!-- SCRIPTS DE CONEXIÓN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
