@@ -72,10 +72,12 @@
     let allOperarios = [];
     let currentParteItem = null;
 
-    // --- TEMA CLARO / OSCURO ---
+    // --- SINCRONIZACIÓN ROBUSTA MODO CLARO / OSCURO ---
     function aplicarTema(tema) {
         const root = document.documentElement;
-        if (tema === 'oscuro' || (tema === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (tema === 'oscuro' || (tema === 'auto' && prefersDark)) {
             root.classList.add('dark');
         } else {
             root.classList.remove('dark');
@@ -90,6 +92,12 @@
         aplicarTema(savedTheme);
         selectTema.addEventListener('change', (e) => aplicarTema(e.target.value));
     }
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if ((localStorage.getItem('theme') || 'auto') === 'auto') {
+            aplicarTema('auto');
+        }
+    });
 
     function getTodayLocalString() {
         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
@@ -254,7 +262,7 @@
             } else {
                 await supabaseClient.from('configuracion_empresa').insert([empresaData]);
             }
-            alert("¡Datos de empresa guardados con éxito!");
+            alert("¡Logotipo y nombre de empresa guardados con éxito!");
         });
     }
 
