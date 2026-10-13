@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Diario de Obra</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-    <!-- Tailwind CSS v4 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
@@ -49,7 +48,7 @@
         </div>
     </header>
 
-    <!-- BLOQUE 2: AUTENTICACIÓN (MD3 Dialog Card) -->
+    <!-- BLOQUE 2: AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto overflow-y-auto">
         <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-8 rounded-3xl shadow-lg w-full flex flex-col gap-6">
             <div class="text-center">
@@ -82,6 +81,8 @@
 
     <!-- BLOQUE 3: CONTENIDO PRINCIPAL (Vistas de la PWA) -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
+        
+        <!-- Vista: Diario -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
@@ -97,6 +98,7 @@
             </button>
         </section>
 
+        <!-- Vista: Bitácora -->
         <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Bitácora General</h2>
@@ -112,6 +114,7 @@
             </button>
         </section>
 
+        <!-- Vista: Materiales -->
         <section id="view-materiales" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Solicitud de Materiales</h2>
@@ -127,61 +130,7 @@
             </button>
         </section>
 
-        <!-- Vista: Formulario Solicitud Material -->
-        <section id="view-form-material" class="hidden flex-col gap-4">
-            <h2 class="text-lg font-semibold" id="form-material-title">Nueva Solicitud de Materiales</h2>
-            <form id="form-material" class="flex flex-col gap-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
-                <input type="hidden" id="edit-material-id" value="">
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label>
-                    <input type="text" id="mat-cliente" list="clientes-datalist" required placeholder="Selecciona o escribe cliente" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra</label>
-                    <input type="text" id="mat-obra" list="obras-datalist" required placeholder="Selecciona o escribe obra" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
-                </div>
-                <div class="flex gap-4">
-                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="mat-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="mat-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                </div>
-                <div class="flex flex-col gap-3 border-t border-slate-200 dark:border-zinc-800 pt-4">
-                    <div class="flex justify-between items-center">
-                        <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400">Líneas de Materiales</h4>
-                        <button type="button" id="btn-add-linea-material" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition-colors">+ Añadir Material</button>
-                    </div>
-                    <div id="lineas-materiales-container" class="flex flex-col gap-3"></div>
-                </div>
-                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
-                    <button type="button" id="btn-cancel-material" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
-                    <button type="submit" id="btn-submit-material" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Solicitud</button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Vista: Detalle Solicitud Material PDF -->
-        <section id="view-detalle-material" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
-            <div class="flex justify-between items-center">
-                <h2 class="text-lg font-semibold">Detalle de Solicitud</h2>
-                <div class="flex gap-2">
-                    <button type="button" id="btn-export-pdf-material" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm">
-                        <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar PDF
-                    </button>
-                    <button type="button" id="btn-back-material-list" class="text-xs bg-slate-200 dark:bg-zinc-800 px-3 py-1.5 rounded-full font-medium">Volver</button>
-                </div>
-            </div>
-            <div id="pdf-export-container-material" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm flex flex-col gap-4">
-                <div class="flex justify-between items-center border-b border-slate-200 dark:border-zinc-800 pb-4 mb-2">
-                    <div>
-                        <h3 id="pdf-mat-emp-nombre" class="font-bold text-base text-blue-600 dark:text-blue-400">Solicitud de Materiales</h3>
-                        <p id="pdf-mat-emp-cif" class="text-xs text-slate-500"></p>
-                        <p id="pdf-mat-emp-dir" class="text-xs text-slate-500"></p>
-                    </div>
-                    <img id="pdf-mat-emp-logo" src="" alt="Logo" class="hidden h-12 object-contain max-w-[120px]">
-                </div>
-                <div id="detalle-material-content" class="flex flex-col gap-4"></div>
-            </div>
-        </section>
-
+        <!-- Vista: Clientes -->
         <section id="view-clientes" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Directorio de Clientes y Obras</h2>
@@ -197,6 +146,7 @@
             </button>
         </section>
 
+        <!-- Vista: Empleados -->
         <section id="view-empleados" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Agenda de Empleados</h2>
@@ -209,6 +159,7 @@
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
+        <!-- Vista: Perfil -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Mi Perfil y Ajustes</h2>
             <form id="form-perfil" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -226,6 +177,7 @@
             </form>
         </section>
 
+        <!-- Vista: Empresa -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Datos de la Empresa y Logotipo</h2>
             <form id="form-empresa" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -281,7 +233,7 @@
         </button>
     </nav>
 
-    <!-- SCRIPTS (Orden crítico) -->
+    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
