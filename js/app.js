@@ -28,12 +28,10 @@
     const menuItemEmpresa = document.getElementById('menu-item-empresa');
     const headerUsernameLabel = document.getElementById('header-username-label');
 
-    // Bitácora Elements
     const bitacoraContainer = document.getElementById('bitacora-container');
     const bitacoraCount = document.getElementById('bitacora-count');
     const searchBitacoraInput = document.getElementById('search-bitacora');
 
-    // Materiales Elements
     const materialesContainer = document.getElementById('materiales-container');
     const materialesCount = document.getElementById('materiales-count');
     const searchMaterialesInput = document.getElementById('search-materiales');
@@ -52,7 +50,6 @@
     const btnExportPdfMaterial = document.getElementById('btn-export-pdf-material');
     const datalistMateriales = document.getElementById('materiales-datalist');
 
-    // Clientes y Empleados
     const clientesContainer = document.getElementById('clientes-container');
     const clientesCount = document.getElementById('clientes-count');
     const searchClientesInput = document.getElementById('search-clientes');
@@ -71,7 +68,6 @@
     let allEmpleados = [];
     let currentMaterialItem = null;
 
-    // --- GESTIÓN DE TEMA Y MODO CLARO / OSCURO ---
     function aplicarTema(tema) {
         const isDark = tema === 'oscuro' || (tema === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if (isDark) {
@@ -100,7 +96,6 @@
         if (viewPerfil) { viewPerfil.classList.add('hidden'); viewPerfil.classList.remove('flex'); }
         if (viewEmpresa) { viewEmpresa.classList.add('hidden'); viewEmpresa.classList.remove('flex'); }
         
-        // Reset botones menú inferior (MD3)
         [navHome, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => {
             if (nav) {
                 nav.classList.remove('text-blue-600', 'dark:text-blue-400', 'font-bold');
@@ -124,14 +119,12 @@
         if (badge) badge.classList.add('bg-blue-100', 'dark:bg-blue-950');
     }
 
-    // --- NAVEGACIÓN INFERIOR ---
     if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); setActiveNav(navHome); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); loadTasks(); });
     if (navBitacora) navBitacora.addEventListener('click', () => { hideAllViews(); viewBitacora.classList.remove('hidden'); viewBitacora.classList.add('flex'); setActiveNav(navBitacora); fabNewBitacora.classList.remove('hidden'); fabNewBitacora.classList.add('flex'); loadBitacora(); });
     if (navMateriales) navMateriales.addEventListener('click', () => { hideAllViews(); viewMateriales.classList.remove('hidden'); viewMateriales.classList.add('flex'); setActiveNav(navMateriales); fabNewMaterial.classList.remove('hidden'); fabNewMaterial.classList.add('flex'); loadMaterialesSolicitudes(); });
     if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); setActiveNav(navClientes); fabNewCliente.classList.remove('hidden'); fabNewCliente.classList.add('flex'); loadClientes(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); setActiveNav(navEmpleados); loadEmpleados(); });
 
-    // --- INICIALIZACIÓN LOGIN ---
     function initAppAfterLogin() {
         loadTasks();
         loadBitacora();
@@ -151,7 +144,6 @@
     window.addEventListener('userLoggedIn', initAppAfterLogin);
     if (window.currentUserProfile) initAppAfterLogin();
 
-    // --- MENÚ HEADER ---
     if (btnMenuPerfil && dropdownMenuPerfil) {
         btnMenuPerfil.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenuPerfil.classList.toggle('hidden'); });
     }
@@ -173,7 +165,7 @@
         });
     }
 
-    // --- MÓDULO DE MATERIALES ---
+    // --- MATERIALES ---
     async function loadMaterialesCatalogo() {
         const { data } = await supabaseClient.from('materiales_catalogo').select('*');
         allMaterialesCatalogo = data || [];
@@ -494,7 +486,7 @@
         viewFormMaterial.classList.add('flex');
     };
 
-    // --- GESTIÓN DE EMPLEADOS ---
+    // --- EMPLEADOS ---
     async function loadEmpleados() {
         if (!empleadosContainer) return;
         empleadosContainer.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
