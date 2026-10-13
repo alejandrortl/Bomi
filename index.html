@@ -80,10 +80,8 @@
         </div>
     </main>
 
-    <!-- BLOQUE 3: CONTENIDO PRINCIPAL (Secciones de la App) -->
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL (Vistas de la PWA) -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
-        
-        <!-- Vista: Diario de Tareas -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
@@ -99,7 +97,6 @@
             </button>
         </section>
 
-        <!-- Vista: Bitácora -->
         <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Bitácora General</h2>
@@ -115,7 +112,6 @@
             </button>
         </section>
 
-        <!-- Vista: Materiales -->
         <section id="view-materiales" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Solicitud de Materiales</h2>
@@ -131,7 +127,6 @@
             </button>
         </section>
 
-        <!-- Vista: Clientes -->
         <section id="view-clientes" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Directorio de Clientes y Obras</h2>
@@ -147,7 +142,6 @@
             </button>
         </section>
 
-        <!-- Vista: Empleados -->
         <section id="view-empleados" class="hidden flex-col gap-4">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Agenda de Empleados</h2>
@@ -160,7 +154,6 @@
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
-        <!-- Vista: Perfil -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Mi Perfil y Ajustes</h2>
             <form id="form-perfil" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -178,7 +171,6 @@
             </form>
         </section>
 
-        <!-- Vista: Empresa -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Datos de la Empresa y Logotipo</h2>
             <form id="form-empresa" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -189,7 +181,6 @@
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-medium shadow-md mt-2">Guardar Empresa</button>
             </form>
         </section>
-
     </main>
 
     <!-- BLOQUE 4: MODALES DINÁMICOS -->
@@ -230,8 +221,8 @@
         </button>
     </nav>
 
-    <!-- SCRIPTS -->
-    <script src="https://cdn.jsdelivr.5net/npm/@supabase/supabase-js@2"></script>
+    <!-- SCRIPTS (Orden crítico de carga) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
