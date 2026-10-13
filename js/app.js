@@ -72,7 +72,7 @@
     let allOperarios = [];
     let currentParteItem = null;
 
-    // --- SINCRONIZACIÓN ROBUSTA MODO CLARO / OSCURO ---
+    // --- MODO CLARO / OSCURO ROBUSTO ---
     function aplicarTema(tema) {
         const root = document.documentElement;
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -315,9 +315,9 @@
         const div = document.createElement('div');
         div.className = "operario-row flex gap-2 items-center bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700";
         div.innerHTML = 
-            '<input type="text" placeholder="Operario" value="' + nombre + '" list="operarios-datalist" class="op-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
-            '<input type="text" placeholder="Horas (ej. 8h)" value="' + horas + '" class="op-horas w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
-            '<button type="button" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest(\'.operario-row\').remove()">delete</button>';
+            '<input type="text" aria-label="Nombre de operario" placeholder="Operario" value="' + nombre + '" list="operarios-datalist" class="op-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<input type="text" aria-label="Horas trabajadas" placeholder="Horas (ej. 8h)" value="' + horas + '" class="op-horas w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<button type="button" aria-label="Eliminar operario" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest(\'.operario-row\').remove()">delete</button>';
         operariosParteContainer.appendChild(div);
     }
 
@@ -325,10 +325,10 @@
         const div = document.createElement('div');
         div.className = "material-parte-row flex gap-2 items-center bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700";
         div.innerHTML = 
-            '<input type="number" step="any" placeholder="Unid." value="' + unidades + '" class="mp-unidades w-20 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
-            '<input type="text" placeholder="Material" value="' + material + '" class="mp-material flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
-            '<input type="text" placeholder="Referencia" value="' + referencia + '" class="mp-referencia w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm">' +
-            '<button type="button" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest(\'.material-parte-row\').remove()">delete</button>';
+            '<input type="number" step="any" aria-label="Unidades de material" placeholder="Unid." value="' + unidades + '" class="mp-unidades w-20 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<input type="text" aria-label="Nombre de material" placeholder="Material" value="' + material + '" class="mp-material flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<input type="text" aria-label="Referencia de material" placeholder="Referencia" value="' + referencia + '" class="mp-referencia w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm">' +
+            '<button type="button" aria-label="Eliminar material" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest(\'.material-parte-row\').remove()">delete</button>';
         materialesParteContainer.appendChild(div);
     }
 
