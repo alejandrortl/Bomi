@@ -28,10 +28,12 @@
     let allTareas = [];
     let allClientesCompletos = [];
     let allOperarios = [];
+    let allEmpleadosData = [];
     let currentTareaItem = null;
     
     const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
     const searchTareasInput = document.getElementById('search-tareas');
+    const searchEmpleadosInput = document.getElementById('search-empleados');
 
     // TEMA
     function aplicarTema(tema) {
@@ -128,7 +130,7 @@
     }
 
     async function loadOperariosList() {
-        const { data } = await supabaseClient.from('perfiles').select('nombre, apellido, username');
+        const { data } = await supabaseClient.from('empleados').select('nombre, apellido, username');
         allOperarios = data || [];
         const dl = document.getElementById('operarios-datalist');
         if (dl) {
@@ -139,7 +141,129 @@
         }
     }
 
-    // TAREAS: AUTOCOMPLETAR OBRA
+    // --- MÓDULO EMPLEADOS ---
+    async function loadEmpleados() {
+        const c = document.getElementById('empleados-container');
+        const countBadge = document.getElementById('empleados-count');
+        if (!c) return;
+        c.innerHTML = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
+
+        const { data, error } = await supabaseClient.from('empleados').select('*').order('nombre', { ascending: true });
+        if (error) {
+            c.innerHTML = `<p class="text-red-500 text-center">Error al cargar empleados: ${error.message}</p>`;
+            return;
+        }
+        allEmpleadosData = data || [];
+        renderEmpleados(allEmpleadosData);
+    }
+
+    if (searchEmpleadosInput) {
+        searchEmpleadosInput.addEventListener('input', (e) => {
+            const txt = e.target.value.toLowerCase().trim();
+            const filtrados = allEmpleadosData.filter(emp => `${emp.nombre || ''} ${emp.apellido || ''} ${emp.email || ''} ${emp.rol || ''} ${emp.telefono || ''}`.toLowerCase().includes(txt));
+            renderEmpleados(filtrados);
+        });
+    }
+
+    function renderEmpleados(lista) {
+        const c = document.getElementById('empleados-container');
+        const countBadge = document.getElementById('empleados-count');
+        if(!c) return;
+        c.innerHTML = '';
+        if(countBadge) countBadge.textContent = lista.length + ' empleados';
+
+        if (lista.length === 0) {
+            c.innerHTML = '<p class="text-slate-500 text-center mt-6">No hay empleados registrados.</p>';
+            return;
+        }
+
+        const userRol = window.currentUserProfile ? (window.currentUserProfile.rol || '').trim().toLowerCase() : '';
+        const isAdminOrSuper = userRol === 'admin' || userRol === 'superadmin';
+
+        lista.forEach(emp => {
+            const rol = (emp.rol || 'empleado').toLowerCase();
+            const isSuper = rol === 'superadmin';
+            const activo = emp.activo !== false; // por defecto activo
+
+            const card = document.createElement('div');
+            card.className = "bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm flex flex-col gap-3";
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-base">${emp.nombre || ''} ${emp.apellido || ''}</h3>
+                        <p class="text-xs text-slate-500">${emp.email || 'Sin correo'}</p>
+                    </div>
+                    <span class="text-xs px-2.5 py-1 rounded-full font-medium ${isSuper ? 'bg-purple-100 text-purple-800' : rol === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300'}">${rol.toUpperCase()}</span>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-zinc-800 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">call</span>
+                        <a href="tel:${emp.telefono || ''}" class="text-blue-600 dark:text-blue-400 font-medium hover:underline">${emp.telefono || 'Sin teléfono'}</a>
+                    </div>
+                    ${isAdminOrSuper ? `
+                        <div class="flex gap-2">
+                            ${!activo ? `<button onclick="window.aceptarEmpleado('${emp.id}')" class="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg font-medium">Aceptar</button>` : ''}
+                            <button onclick="window.abrirModalEmpleado('${emp.id}')" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1 rounded-lg font-medium">Modificar</button>
+                            ${!isSuper ? `<button onclick="window.eliminarEmpleado('${emp.id}')" class="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-lg font-medium">Eliminar</button>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            c.appendChild(card);
+        });
+    }
+
+    window.aceptarEmpleado = async function(id) {
+        await supabaseClient.from('empleados').update({ activo: true }).eq('id', id);
+        loadEmpleados();
+    };
+
+    window.abrirModalEmpleado = function(id) {
+        const emp = allEmpleadosData.find(e => e.id === id);
+        if(!emp) return;
+        document.getElementById('edit-empleado-id').value = emp.id;
+        document.getElementById('emp-nombre-modal').value = emp.nombre || '';
+        document.getElementById('emp-apellido-modal').value = emp.apellido || '';
+        document.getElementById('emp-telefono-modal').value = emp.telefono || '';
+        document.getElementById('emp-rol-modal').value = (emp.rol || 'empleado').toLowerCase();
+        document.getElementById('modal-empleado').classList.remove('hidden');
+    };
+
+    document.getElementById('btn-cancel-modal-empleado').addEventListener('click', () => {
+        document.getElementById('modal-empleado').classList.add('hidden');
+    });
+
+    document.getElementById('form-empleado').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-empleado-id').value;
+        const nombre = document.getElementById('emp-nombre-modal').value.trim();
+        const apellido = document.getElementById('emp-apellido-modal').value.trim();
+        const telefono = document.getElementById('emp-telefono-modal').value.trim();
+        const rol = document.getElementById('emp-rol-modal').value;
+
+        const { error } = await supabaseClient.from('empleados').update({ nombre, apellido, telefono, rol }).eq('id', id);
+        if (error) { alert("Error al modificar empleado: " + error.message); }
+        else {
+            document.getElementById('modal-empleado').classList.add('hidden');
+            loadEmpleados();
+            loadOperariosList();
+        }
+    });
+
+    window.eliminarEmpleado = async function(id) {
+        const emp = allEmpleadosData.find(e => e.id === id);
+        if (emp && (emp.rol || '').toLowerCase() === 'superadmin') {
+            alert("No se puede eliminar a un Superadmin.");
+            return;
+        }
+        if (confirm("¿Estás seguro de eliminar este empleado?")) {
+            const { error } = await supabaseClient.from('empleados').delete().eq('id', id);
+            if (error) alert("Error al eliminar: " + error.message);
+            else loadEmpleados();
+        }
+    };
+
+    // --- TAREAS (AUTOCOMPLETAR OBRA, PIZARRA, ETC) ---
     const inputTareaObra = document.getElementById('tarea-obra');
     if (inputTareaObra) {
         inputTareaObra.addEventListener('change', () => {
@@ -180,7 +304,7 @@
         } else { btnDictarVoz.style.display = 'none'; }
     }
 
-    // PIZARRA BUCKET
+    // PIZARRA
     const btnAbrirPizarra = document.getElementById('btn-abrir-pizarra');
     const modalPizarra = document.getElementById('modal-pizarra');
     const canvasPizarra = document.getElementById('canvas-pizarra');
@@ -191,10 +315,8 @@
         btnAbrirPizarra.addEventListener('click', () => {
             modalPizarra.classList.remove('hidden');
             const rect = canvasPizarra.parentElement.getBoundingClientRect();
-            canvasPizarra.width = rect.width;
-            canvasPizarra.height = rect.height;
-            ctxPiz.fillStyle = '#ffffff';
-            ctxPiz.fillRect(0, 0, canvasPizarra.width, canvasPizarra.height);
+            canvasPizarra.width = rect.width; canvasPizarra.height = rect.height;
+            ctxPiz.fillStyle = '#ffffff'; ctxPiz.fillRect(0, 0, canvasPizarra.width, canvasPizarra.height);
             ctxPiz.lineWidth = 3; ctxPiz.lineCap = 'round'; ctxPiz.strokeStyle = '#000000';
         });
 
@@ -305,8 +427,6 @@
     async function loadTasksFromDB() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
-        
-        // Consulta limpia y blindada a la tabla 'tareas' sin ordenar por columnas estrictas que puedan no existir
         const { data, error } = await supabaseClient.from('tareas').select('*');
         if (error) {
             c.innerHTML = `<p class="text-red-500 text-center mt-4">Error al cargar tareas: ${error.message}</p>`;
@@ -322,13 +442,11 @@
     function renderTareas() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
-        
-        const fechaSelect = filtroFechaDiario.value; // Formato YYYY-MM-DD
+        const fechaSelect = filtroFechaDiario.value;
         const searchTxt = searchTareasInput.value.toLowerCase().trim();
 
         let filtradas = allTareas.filter(t => {
             const tFecha = t.fecha ? t.fecha.split('T')[0] : '';
-            
             if (searchTxt === '') {
                 if (tFecha !== fechaSelect) return false;
             } else {
@@ -425,11 +543,4 @@
         viewFormTarea.classList.remove('hidden');
         viewFormTarea.classList.add('flex');
     };
-
-    async function loadEmpleados() {
-        const c = document.getElementById('empleados-container');
-        if (!c) return;
-        const { data } = await supabaseClient.from('perfiles').select('*').order('nombre', { ascending: true });
-        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay empleados.</p>' : data.map(emp => `<div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800"><h3 class="font-medium">${emp.nombre || ''} ${emp.apellido || ''} (${emp.rol || ''})</h3></div>`).join('');
-    }
 })();
