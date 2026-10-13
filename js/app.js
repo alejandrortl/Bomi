@@ -305,9 +305,11 @@
     async function loadTasksFromDB() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
-        const { data, error } = await supabaseClient.from('tareas').select('*').order('created_at', { ascending: false });
+        
+        // Consulta limpia y blindada a la tabla 'tareas' sin ordenar por columnas estrictas que puedan no existir
+        const { data, error } = await supabaseClient.from('tareas').select('*');
         if (error) {
-            c.innerHTML = '<p class="text-red-500 text-center">Error al cargar tareas de Supabase.</p>';
+            c.innerHTML = `<p class="text-red-500 text-center mt-4">Error al cargar tareas: ${error.message}</p>`;
             return;
         }
         allTareas = data || [];
@@ -325,21 +327,17 @@
         const searchTxt = searchTareasInput.value.toLowerCase().trim();
 
         let filtradas = allTareas.filter(t => {
-            // Normalizar fecha de la base de datos (cortando la hora si la tuviera YYYY-MM-DD)
             const tFecha = t.fecha ? t.fecha.split('T')[0] : '';
             
-            // Si hay texto en el buscador, ignoramos el filtro estricto de fecha para buscar en TODO el historial, o filtramos por ambos.
-            // Aquí permitimos buscar globalmente si el usuario escribe en el buscador, y por fecha si el buscador está vacío.
             if (searchTxt === '') {
                 if (tFecha !== fechaSelect) return false;
             } else {
-                const fullText = `${t.cliente} ${t.obra} ${t.direccion} ${t.localidad} ${t.operario_asignado} ${t.fecha} ${t.notas} ${t.created_by}`.toLowerCase();
+                const fullText = `${t.cliente || ''} ${t.obra || ''} ${t.direccion || ''} ${t.localidad || ''} ${t.operario_asignado || ''} ${t.fecha || ''} ${t.notas || ''} ${t.created_by || ''}`.toLowerCase();
                 if (!fullText.includes(searchTxt)) return false;
             }
             return true;
         });
 
-        // Ordenar: pendientes primero, completadas abajo
         filtradas.sort((a, b) => (a.completada === b.completada ? 0 : a.completada ? 1 : -1));
         c.innerHTML = '';
 
@@ -355,12 +353,12 @@
             div.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2`;
             div.innerHTML = `
                 <div class="flex justify-between items-start">
-                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${t.cliente} - ${t.obra}</span>
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${t.cliente || 'Sin cliente'} - ${t.obra || 'Sin obra'}</span>
                     <button onclick="window.toggleTareaCompletada('${t.id}', ${!isComp})" class="w-8 h-8 rounded-full flex items-center justify-center border-2 ${isComp ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-zinc-600 text-transparent hover:border-blue-500'}"><span class="material-symbols-outlined text-[18px]">check</span></button>
                 </div>
                 <div class="text-sm cursor-pointer" onclick="window.verDetalleTarea('${t.id}')">
-                    <p>📅 <strong>Fecha:</strong> ${t.fecha} | 👷 <strong>Operario:</strong> ${t.operario_asignado}</p>
-                    <p class="text-slate-500 truncate mt-1">📍 ${t.direccion}, ${t.localidad}</p>
+                    <p>📅 <strong>Fecha:</strong> ${t.fecha || 'N/D'} | 👷 <strong>Operario:</strong> ${t.operario_asignado || 'Sin asignar'}</p>
+                    <p class="text-slate-500 truncate mt-1">📍 ${t.direccion || ''}, ${t.localidad || ''}</p>
                     <p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${t.notas || 'Sin notas...'}</p>
                 </div>
             `;
@@ -385,12 +383,12 @@
 
         const sello = document.getElementById('sello-completada');
         if(item.completada) sello.classList.remove('hidden'); else sello.classList.add('hidden');
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion + ', ' + item.localidad)}`;
+        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.direccion || '') + ', ' + (item.localidad || ''))}`;
 
         document.getElementById('detalle-tarea-content').innerHTML = `
-            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${item.cliente} - ${item.obra}</p></div>
-            <div><span class="text-xs text-slate-500">Ubicación y Fecha:</span><div class="flex items-center justify-between mt-1"><p class="font-medium">${item.direccion}, ${item.localidad} (${item.fecha})</p><a href="${mapsLink}" target="_blank" class="text-blue-600 bg-blue-50 dark:bg-blue-950 p-1.5 rounded-full flex items-center"><span class="material-symbols-outlined text-[18px]">map</span></a></div></div>
-            <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${item.operario_asignado}</p></div>
+            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${item.cliente || ''} - ${item.obra || ''}</p></div>
+            <div><span class="text-xs text-slate-500">Ubicación y Fecha:</span><div class="flex items-center justify-between mt-1"><p class="font-medium">${item.direccion || ''}, ${item.localidad || ''} (${item.fecha || ''})</p><a href="${mapsLink}" target="_blank" class="text-blue-600 bg-blue-50 dark:bg-blue-950 p-1.5 rounded-full flex items-center"><span class="material-symbols-outlined text-[18px]">map</span></a></div></div>
+            <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${item.operario_asignado || ''}</p></div>
             <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1">${item.notas || 'N/A'}</p></div>
             ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span><img src="${item.dibujo_url}" class="mt-2 rounded-xl max-h-48 border border-slate-200"></div>` : ''}
             <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 flex justify-between mt-4">
@@ -402,7 +400,7 @@
 
     document.getElementById('btn-export-pdf-tarea').addEventListener('click', () => {
         const element = document.getElementById('pdf-export-container-tarea');
-        const opt = { margin: 10, filename: `Tarea_${currentTareaItem.obra}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+        const opt = { margin: 10, filename: `Tarea_${currentTareaItem.obra || 'trabajo'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
         html2pdf().from(element).set(opt).save();
     });
 
