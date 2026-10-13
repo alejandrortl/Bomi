@@ -9,6 +9,7 @@
         @custom-variant dark (&:where(.dark, .dark *));
     </style>
 
+    <!-- Script de ejecución inmediata para evitar parpadeos de Modo Oscuro -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'auto';
@@ -28,14 +29,14 @@
 </head>
 <body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- HEADER -->
+    <!-- BLOQUE 1: HEADER (Barra Superior MD3) -->
     <header id="app-header" class="hidden w-full bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3 justify-between items-center z-30 shrink-0 relative shadow-sm">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">engineering</span>
             <h1 id="header-app-title" class="text-xl font-semibold tracking-tight truncate max-w-[150px] sm:max-w-xs">Diario de Obra</h1>
         </div>
         <div class="flex items-center gap-3">
-            <button id="btn-notificaciones" aria-label="Notificaciones" class="relative text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+            <button id="btn-notificaciones" aria-label="Notificaciones" class="relative text-slate-600 dark:text-slate-300 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
                 <span id="badge-notificaciones" class="hidden absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full"></span>
             </button>
@@ -55,13 +56,13 @@
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil</button>
                     <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 items-center gap-2"><span class="material-symbols-outlined text-[18px]">business</span> Logotipo y empresa</button>
                     <div class="border-t border-slate-200 dark:border-zinc-800 my-1"></div>
-                    <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">logout</span> Cerrar Sesión</button>
+                    <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">logout</span> Cerrar Sesión</button>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- AUTENTICACIÓN -->
+    <!-- BLOQUE 2: AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto overflow-y-auto">
         <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-8 rounded-3xl shadow-lg w-full flex flex-col gap-6">
             <div class="text-center">
@@ -77,29 +78,29 @@
                 <div class="flex flex-col gap-1"><label for="auth-email" class="text-xs font-medium">Correo Electrónico</label><input type="email" id="auth-email" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <div class="flex flex-col gap-1"><label for="auth-password" class="text-xs font-medium">Contraseña</label><input type="password" id="auth-password" required minlength="6" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <button type="submit" id="btn-auth-submit" class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-full font-medium mt-2 shadow-md transition-colors">Ingresar</button>
-                <p id="auth-error" class="text-red-600 dark:text-red-400 text-sm text-center hidden"></p>
+                <p id="auth-error" class="text-red-600 text-sm text-center hidden"></p>
                 <p id="auth-success" class="text-emerald-600 text-sm text-center hidden"></p>
             </form>
             <div class="text-center mt-2 flex flex-col gap-3">
-                <button id="btn-toggle-auth" class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
-                <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver</button>
+                <button id="btn-toggle-auth" class="text-blue-600 text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
+                <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-slate-300 hover:bg-slate-100 flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver</button>
             </div>
         </div>
     </main>
 
-    <!-- CONTENIDO PRINCIPAL -->
+    <!-- BLOQUE 3: CONTENIDO PRINCIPAL Y VISTAS -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
-        <!-- VISTA: DIARIO DE TAREAS -->
+        <!-- Vista: Diario de Tareas (Con Buscador y Calendario Inteligente) -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="flex flex-col gap-3 sticky top-0 bg-slate-50 dark:bg-black z-10 pt-2 pb-3">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                     <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                    <input type="text" id="search-tareas" aria-label="Buscar tareas" placeholder="Buscar cliente, obra, notas, operario..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                    <input type="text" id="search-tareas" aria-label="Buscar tareas" placeholder="Buscar cliente, obra, dirección, fecha, operario, notas..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
                 </div>
                 <div class="flex justify-between items-center bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <h2 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600">calendar_month</span> Agenda de:</h2>
-                    <input type="date" id="filtro-fecha-diario" aria-label="Filtrar por fecha" class="bg-slate-100 dark:bg-zinc-800 border-none rounded-lg p-2 text-sm font-medium focus:ring-2 focus:ring-blue-600">
+                    <h2 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600">calendar_month</span> Agenda del Día:</h2>
+                    <input type="date" id="filtro-fecha-diario" aria-label="Filtrar por fecha" class="bg-slate-100 dark:bg-zinc-800 border-none rounded-lg p-2 text-sm font-medium focus:ring-2 focus:ring-blue-600 cursor-pointer">
                 </div>
             </div>
             
@@ -110,7 +111,7 @@
             </button>
         </section>
 
-        <!-- VISTA: FORMULARIO TAREA -->
+        <!-- Vista: Formulario Tarea -->
         <section id="view-form-tarea" class="hidden flex-col gap-4">
             <h2 class="text-lg font-semibold" id="form-tarea-title">Nueva Tarea</h2>
             <form id="form-tarea" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -127,7 +128,7 @@
                 </div>
 
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-operario" class="text-xs font-medium">Asignar a Operario</label><input type="text" id="tarea-operario" list="operarios-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-operario" class="text-xs font-medium">Operario Asignado</label><input type="text" id="tarea-operario" list="operarios-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-fecha" class="text-xs font-medium">Fecha</label><input type="date" id="tarea-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
@@ -160,7 +161,7 @@
             </form>
         </section>
 
-        <!-- VISTA: DETALLE TAREA -->
+        <!-- Vista: Detalle Tarea -->
         <section id="view-detalle-tarea" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Detalle de Tarea</h2>
@@ -176,7 +177,7 @@
             </div>
         </section>
 
-        <!-- RESTO DE VISTAS (Partes, Clientes, Empleados, Perfil, Empresa, etc - Intactas) -->
+        <!-- Resto de vistas operativas y de módulos (Partes, Bitácora, Materiales, Clientes, Empleados, Perfil, Empresa) -->
         <section id="view-partes" class="hidden flex-col gap-4 relative min-h-full"></section>
         <section id="view-form-parte" class="hidden flex-col gap-4"></section>
         <section id="view-detalle-parte" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full"></section>
@@ -188,7 +189,7 @@
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full"></section>
     </main>
 
-    <!-- MODAL PIZARRA -->
+    <!-- BLOQUE 4: MODALES DINÁMICOS -->
     <div id="modal-pizarra" class="hidden fixed inset-0 z-[60] flex justify-center items-center p-2 bg-black/90 backdrop-blur-sm">
         <div class="bg-white dark:bg-zinc-900 w-full h-full max-w-3xl rounded-3xl p-4 flex flex-col shadow-2xl relative">
             <div class="flex justify-between items-center mb-2 shrink-0">
@@ -212,13 +213,13 @@
         </div>
     </div>
 
-    <!-- DATALISTS -->
+    <!-- DATALISTS PARA AUTOCOMPLETAR -->
     <datalist id="clientes-datalist"></datalist>
     <datalist id="obras-datalist"></datalist>
     <datalist id="materiales-datalist"></datalist>
     <datalist id="operarios-datalist"></datalist>
 
-    <!-- NAVEGACIÓN INFERIOR (CON ID nav-empleados restaurado) -->
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (MD3 Bottom Nav) -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span><span class="text-[11px] font-medium">Diario</span></button>
         <button id="nav-partes" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">assignment</span><span class="text-[11px] font-medium">Partes</span></button>
@@ -228,6 +229,7 @@
         <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button>
     </nav>
 
+    <!-- SCRIPTS DE CONEXIÓN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
