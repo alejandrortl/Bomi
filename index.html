@@ -19,7 +19,7 @@
             <h1 class="text-xl font-semibold tracking-tight">Diario de Obra</h1>
         </div>
         <div class="flex items-center gap-3">
-            <select id="select-tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none cursor-pointer">
+            <select id="select-tema" aria-label="Seleccionar tema de visualización" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none cursor-pointer">
                 <option value="auto">🌓 Auto</option>
                 <option value="claro">☀️ Claro</option>
                 <option value="oscuro">🌙 Oscuro</option>
@@ -36,7 +36,6 @@
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil
                     </button>
-                    <!-- Actualizado: Logotipo y nombre de empresa -->
                     <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">business</span> Logotipo y nombre de empresa
                     </button>
@@ -60,11 +59,11 @@
             
             <form id="form-auth" class="flex flex-col gap-4">
                 <div id="register-fields" class="hidden flex-col gap-4">
-                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="auth-nombre" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="auth-apellido" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label for="auth-nombre" class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="auth-nombre" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label for="auth-apellido" class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="auth-apellido" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Correo Electrónico</label><input type="email" id="auth-email" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Contraseña</label><input type="password" id="auth-password" required minlength="6" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="auth-email" class="text-xs font-medium text-slate-600 dark:text-slate-400">Correo Electrónico</label><input type="email" id="auth-email" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="auth-password" class="text-xs font-medium text-slate-600 dark:text-slate-400">Contraseña</label><input type="password" id="auth-password" required minlength="6" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 
                 <button type="submit" id="btn-auth-submit" class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-full font-medium mt-2 shadow-md transition-colors">Ingresar</button>
                 <p id="auth-error" class="text-red-600 dark:text-red-400 text-sm text-center hidden"></p>
@@ -87,14 +86,14 @@
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                <input type="text" id="search-tareas" placeholder="Buscar tareas..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                <input type="text" id="search-tareas" aria-label="Buscar tareas" placeholder="Buscar tareas..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div class="flex justify-between items-center mt-2">
                 <h2 class="text-lg font-semibold">Diario de Tareas</h2>
-                <input type="date" id="filtro-fecha-diario" class="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-xl p-2 text-sm">
+                <input type="date" id="filtro-fecha-diario" aria-label="Filtrar por fecha en diario" class="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-xl p-2 text-sm">
             </div>
             <div id="tasks-container" class="flex flex-col gap-3"></div>
-            <button id="fab-new-task" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
+            <button id="fab-new-task" aria-label="Crear nueva tarea" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -107,10 +106,10 @@
             </div>
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                <input type="text" id="search-partes" placeholder="Buscar partes..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                <input type="text" id="search-partes" aria-label="Buscar partes de trabajo" placeholder="Buscar partes..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div id="partes-container" class="flex flex-col gap-3"></div>
-            <button id="fab-new-parte" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
+            <button id="fab-new-parte" aria-label="Crear nuevo parte de trabajo" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -123,22 +122,22 @@
                 
                 <div class="flex gap-4">
                     <div class="flex flex-col gap-1 flex-1">
-                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label>
+                        <label for="parte-cliente" class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label>
                         <input type="text" id="parte-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                     </div>
                     <div class="flex flex-col gap-1 flex-1">
-                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra</label>
+                        <label for="parte-obra" class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra</label>
                         <input type="text" id="parte-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                     </div>
                 </div>
 
                 <div class="flex gap-4">
-                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="parte-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="parte-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="parte-direccion" class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="parte-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="parte-localidad" class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="parte-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
                 <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Fecha del Parte</label>
+                    <label for="parte-fecha" class="text-xs font-medium text-slate-600 dark:text-slate-400">Fecha del Parte</label>
                     <input type="date" id="parte-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                 </div>
 
@@ -152,7 +151,7 @@
                 </div>
 
                 <div class="flex flex-col gap-1 border-t border-slate-200 dark:border-zinc-800 pt-4">
-                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Detalle de los Trabajos Realizados</label>
+                    <label for="parte-detalle" class="text-xs font-medium text-slate-600 dark:text-slate-400">Detalle de los Trabajos Realizados</label>
                     <textarea id="parte-detalle" rows="4" required class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm" placeholder="Describe los trabajos..."></textarea>
                 </div>
 
@@ -167,7 +166,7 @@
 
                 <!-- Firma Digital -->
                 <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-800 pt-4">
-                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Firma Digital del Cliente / Responsable</label>
+                    <span class="text-xs font-medium text-slate-600 dark:text-slate-400">Firma Digital del Cliente / Responsable</span>
                     <div class="border border-slate-300 dark:border-zinc-700 rounded-2xl p-2 flex flex-col items-center gap-2 bg-slate-50 dark:bg-zinc-800">
                         <canvas id="firma-canvas" width="500" height="200" class="w-full h-40 touch-none rounded-xl cursor-crosshair border border-slate-200 dark:border-zinc-700 bg-white dark:bg-black"></canvas>
                         <button type="button" id="btn-limpiar-firma" class="text-xs bg-slate-200 dark:bg-zinc-700 px-3 py-1.5 rounded-lg font-medium">Borrar Firma</button>
@@ -200,7 +199,7 @@
                         <p id="pdf-parte-emp-cif" class="text-xs text-slate-500"></p>
                         <p id="pdf-parte-emp-dir" class="text-xs text-slate-500"></p>
                     </div>
-                    <img id="pdf-parte-emp-logo" src="" alt="Logo" class="hidden h-12 object-contain max-w-[120px]">
+                    <img id="pdf-parte-emp-logo" src="" alt="Logo de empresa" class="hidden h-12 object-contain max-w-[120px]">
                 </div>
                 <div id="detalle-parte-content" class="flex flex-col gap-4"></div>
             </div>
@@ -214,10 +213,10 @@
             </div>
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                <input type="text" id="search-bitacora" placeholder="Buscar en bitácora..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                <input type="text" id="search-bitacora" aria-label="Buscar en bitácora" placeholder="Buscar en bitácora..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div id="bitacora-container" class="flex flex-col gap-3"></div>
-            <button id="fab-new-bitacora" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
+            <button id="fab-new-bitacora" aria-label="Crear nuevo registro en bitácora" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -230,10 +229,10 @@
             </div>
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                <input type="text" id="search-materiales" placeholder="Buscar materiales..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                <input type="text" id="search-materiales" aria-label="Buscar materiales" placeholder="Buscar materiales..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div id="materiales-container" class="flex flex-col gap-3"></div>
-            <button id="fab-new-material" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
+            <button id="fab-new-material" aria-label="Crear nueva solicitud de materiales" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -246,10 +245,10 @@
             </div>
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                <input type="text" id="search-clientes" placeholder="Buscar clientes..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                <input type="text" id="search-clientes" aria-label="Buscar clientes" placeholder="Buscar clientes..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div id="clientes-container" class="flex flex-col gap-3"></div>
-            <button id="fab-new-cliente" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
+            <button id="fab-new-cliente" aria-label="Crear nuevo cliente" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
                 <span class="material-symbols-outlined">add</span>
             </button>
         </section>
@@ -262,7 +261,7 @@
             </div>
             <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                 <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                <input type="text" id="search-empleados" placeholder="Buscar empleados..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                <input type="text" id="search-empleados" aria-label="Buscar empleados" placeholder="Buscar empleados..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
             </div>
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
@@ -278,14 +277,14 @@
                         <p id="perfil-email-header" class="text-xs text-slate-500"></p>
                     </div>
                 </div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="perfil-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="perfil-apellido" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</label><input type="tel" id="perfil-telefono" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="perfil-nombre" class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="perfil-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="perfil-apellido" class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="perfil-apellido" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="perfil-telefono" class="text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</label><input type="tel" id="perfil-telefono" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 
                 <div class="border-t border-slate-200 dark:border-zinc-800 pt-3 mt-1">
                     <h3 class="text-sm font-semibold mb-3">Cambiar Contraseña</h3>
-                    <div class="flex flex-col gap-1 mb-3"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nueva Contraseña</label><input type="password" id="perfil-new-pass" placeholder="Dejar en blanco para no cambiar" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Repetir Nueva Contraseña</label><input type="password" id="perfil-confirm-pass" placeholder="Repetir contraseña" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 mb-3"><label for="perfil-new-pass" class="text-xs font-medium text-slate-600 dark:text-slate-400">Nueva Contraseña</label><input type="password" id="perfil-new-pass" placeholder="Dejar en blanco para no cambiar" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label for="perfil-confirm-pass" class="text-xs font-medium text-slate-600 dark:text-slate-400">Repetir Nueva Contraseña</label><input type="password" id="perfil-confirm-pass" placeholder="Repetir contraseña" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-medium shadow-md mt-2">Guardar Cambios</button>
@@ -293,14 +292,14 @@
             </form>
         </section>
 
-        <!-- Vista: Empresa (Logotipo y Nombre de Empresa) -->
+        <!-- Vista: Empresa -->
         <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Logotipo y Nombre de Empresa</h2>
             <form id="form-empresa" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">CIF / NIF</label><input type="text" id="emp-cif" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="emp-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">URL del Logotipo</label><input type="url" id="emp-logo" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="emp-nombre" class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre Fiscal</label><input type="text" id="emp-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="emp-cif" class="text-xs font-medium text-slate-600 dark:text-slate-400">CIF / NIF</label><input type="text" id="emp-cif" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="emp-direccion" class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="emp-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="emp-logo" class="text-xs font-medium text-slate-600 dark:text-slate-400">URL del Logotipo</label><input type="url" id="emp-logo" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-medium shadow-md mt-2">Guardar Empresa</button>
             </form>
         </section>
@@ -311,6 +310,7 @@
         <div class="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-3xl p-6 shadow-2xl">
             <h3 class="font-semibold text-lg mb-4">Gestión de Clientes</h3>
             <form id="form-cliente" class="flex flex-col gap-4">
+                <label for="cli-nombre" class="sr-only">Nombre del Cliente</label>
                 <input type="text" id="cli-nombre" placeholder="Nombre del Cliente" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
                 <div class="flex justify-end gap-3">
                     <button type="button" id="btn-cancel-modal-cliente" class="px-4 py-2 rounded-full font-medium text-slate-600">Cancelar</button>
