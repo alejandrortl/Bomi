@@ -168,8 +168,8 @@
                 document.getElementById('perfil-nombre').value = window.currentUserProfile.nombre || '';
                 document.getElementById('perfil-apellido').value = window.currentUserProfile.apellido || '';
                 document.getElementById('perfil-telefono').value = window.currentUserProfile.telefono || '';
-                document.getElementById('perfil-nombre-header').textContent = `${window.currentUserProfile.nombre}${window.currentUserProfile.apellido}`;
-                document.getElementById('perfil-email-header').textContent = window.currentUserProfile.email;
+                document.getElementById('perfil-nombre-header').textContent = (window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '');
+                document.getElementById('perfil-email-header').textContent = window.currentUserProfile.email || '';
                 if (headerUsernameLabel) headerUsernameLabel.textContent = window.currentUserProfile.nombre || 'Cuenta';
                 if (perfilNewPass) perfilNewPass.value = '';
                 if (perfilConfirmPass) perfilConfirmPass.value = '';
@@ -266,7 +266,7 @@
             datalistOperarios.innerHTML = '';
             allOperarios.forEach(op => {
                 const opt = document.createElement('option');
-                opt.value = `${op.nombre || ''} ${op.apellido \vert{}\vert{} ''} (@${op.username})`.trim();
+                opt.value = (op.nombre || '') + ' ' + (op.apellido || '') + ' (@' + (op.username || '') + ')';
                 datalistOperarios.appendChild(opt);
             });
         }
@@ -281,7 +281,7 @@
             if (operariosParteContainer) operariosParteContainer.innerHTML = '';
             if (materialesParteContainer) materialesParteContainer.innerHTML = '';
             
-            const currentUserFull = window.currentUserProfile ? `${window.currentUserProfile.nombre}${window.currentUserProfile.apellido}` : 'Usuario';
+            const currentUserFull = window.currentUserProfile ? (window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '') : 'Usuario';
             agregarFilaOperario(currentUserFull, '8h');
             agregarFilaMaterialParte();
             limpiarFirmaCanvas();
@@ -306,23 +306,21 @@
     function agregarFilaOperario(nombre = '', horas = '') {
         const div = document.createElement('div');
         div.className = "operario-row flex gap-2 items-center bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700";
-        div.innerHTML = `
-            <input type="text" placeholder="Operario" value="${nombre}" list="operarios-datalist" class="op-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
-            <input type="text" placeholder="Horas (ej. 8h)" value="${horas}" class="op-horas w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
-            <button type="button" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest('.operario-row').remove()">delete</button>
-        `;
+        div.innerHTML = 
+            '<input type="text" placeholder="Operario" value="' + nombre + '" list="operarios-datalist" class="op-nombre flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<input type="text" placeholder="Horas (ej. 8h)" value="' + horas + '" class="op-horas w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<button type="button" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest(\'.operario-row\').remove()">delete</button>';
         operariosParteContainer.appendChild(div);
     }
 
     function agregarFilaMaterialParte(unidades = 1, material = '', referencia = '') {
         const div = document.createElement('div');
         div.className = "material-parte-row flex gap-2 items-center bg-slate-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-200 dark:border-zinc-700";
-        div.innerHTML = `
-            <input type="number" step="any" placeholder="Unid." value="${unidades}" class="mp-unidades w-20 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
-            <input type="text" placeholder="Material" value="${material}" class="mp-material flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>
-            <input type="text" placeholder="Referencia" value="${referencia}" class="mp-referencia w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm">
-            <button type="button" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest('.material-parte-row').remove()">delete</button>
-        `;
+        div.innerHTML = 
+            '<input type="number" step="any" placeholder="Unid." value="' + unidades + '" class="mp-unidades w-20 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<input type="text" placeholder="Material" value="' + material + '" class="mp-material flex-1 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm" required>' +
+            '<input type="text" placeholder="Referencia" value="' + referencia + '" class="mp-referencia w-32 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-lg p-2 text-sm">' +
+            '<button type="button" class="text-red-600 material-symbols-outlined text-sm p-1.5 hover:bg-red-100 rounded" onclick="this.closest(\'.material-parte-row\').remove()">delete</button>';
         materialesParteContainer.appendChild(div);
     }
 
@@ -393,7 +391,6 @@
             const lName = parteLocalidad.value.trim();
             const editId = editParteId.value;
 
-            // Autocrear cliente/obra si no existen
             let cliEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === cName.toLowerCase());
             let clienteId;
             if (!cliEncontrado) {
@@ -437,7 +434,6 @@
                 parteId = newP.id;
             }
 
-            // Guardar Operarios
             const filasOps = operariosParteContainer.querySelectorAll('.operario-row');
             for (const fOp of filasOps) {
                 const operario_nombre = fOp.querySelector('.op-nombre').value.trim();
@@ -447,7 +443,6 @@
                 }
             }
 
-            // Guardar Materiales del Parte
             const filasMats = materialesParteContainer.querySelectorAll('.material-parte-row');
             for (const fMat of filasMats) {
                 const unidades = parseFloat(fMat.querySelector('.mp-unidades').value) || 1;
@@ -485,7 +480,7 @@
 
     function renderPartes(items) {
         partesContainer.innerHTML = '';
-        if (partesCount) partesCount.textContent = `${items.length} partes`;
+        if (partesCount) partesCount.textContent = items.length + ' partes';
         if (items.length === 0) {
             partesContainer.innerHTML = '<p class="text-slate-500 text-center mt-4">No hay partes de trabajo registrados.</p>';
             return;
@@ -496,22 +491,21 @@
             const cardBg = isBloq ? 'bg-slate-100 dark:bg-zinc-800 opacity-90' : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
 
             const card = document.createElement('div');
-            card.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-3`;
-            card.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-md">${parte.cliente} -${parte.obra}</span>
-                    <span class="text-xs px-2.5 py-1 rounded-full font-bold ${isBloq ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${isBloq ? 'Bloqueado 🔒' : 'Abierto'}</span>
-                </div>
-                <p class="text-sm">📅 <strong>Fecha:</strong> ${parte.fecha} \vert{} 📍 <strong>Localidad:</strong> ${parte.localidad}</p>
-                <p class="text-sm line-clamp-2">💬 ${parte.detalle_trabajo || 'Sin detalle'}</p>
-                <div class="text-xs text-slate-500 pt-2 border-t border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-                    <span>Creado por: <strong>${parte.created_by || 'Desconocido'}</strong></span>
-                    <div class="flex gap-2">
-                        <button onclick="window.verDetalleParte('${parte.id}')" class="bg-slate-50 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 font-medium">Ver PDF</button>
-                        ${!isBloq ? `<button onclick="window.editarParte('${parte.id}')" class="bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium">Modificar</button>` : ''}
-                    </div>
-                </div>
-            `;
+            card.className = cardBg + ' p-4 rounded-2xl shadow-sm flex flex-col gap-3';
+            card.innerHTML = 
+                '<div class="flex justify-between items-start">' +
+                    '<span class="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-md">' + parte.cliente + ' - ' + parte.obra + '</span>' +
+                    '<span class="text-xs px-2.5 py-1 rounded-full font-bold ' + (isBloq ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800') + '">' + (isBloq ? 'Bloqueado 🔒' : 'Abierto') + '</span>' +
+                '</div>' +
+                '<p class="text-sm">📅 <strong>Fecha:</strong> ' + parte.fecha + ' | 📍 <strong>Localidad:</strong> ' + parte.localidad + '</p>' +
+                '<p class="text-sm line-clamp-2">💬 ' + (parte.detalle_trabajo || 'Sin detalle') + '</p>' +
+                '<div class="text-xs text-slate-500 pt-2 border-t border-slate-200 dark:border-zinc-800 flex justify-between items-center">' +
+                    '<span>Creado por: <strong>' + (parte.created_by || 'Desconocido') + '</strong></span>' +
+                    '<div class="flex gap-2">' +
+                        '<button onclick="window.verDetalleParte(\'' + parte.id + '\')" class="bg-slate-50 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 font-medium">Ver PDF</button>' +
+                        (!isBloq ? '<button onclick="window.editarParte(\'' + parte.id + '\')" class="bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium">Modificar</button>' : '') +
+                    '</div>' +
+                '</div>';
             partesContainer.appendChild(card);
         });
     }
@@ -528,7 +522,7 @@
         const logoImg = document.getElementById('pdf-parte-emp-logo');
         if (emp) {
             document.getElementById('pdf-parte-emp-nombre').textContent = emp.nombre_fiscal || 'Diario de Obra';
-            document.getElementById('pdf-parte-emp-cif').textContent = emp.cif ? `CIF: ${emp.cif}` : '';
+            document.getElementById('pdf-parte-emp-cif').textContent = emp.cif ? 'CIF: ' + emp.cif : '';
             document.getElementById('pdf-parte-emp-dir').textContent = emp.direccion || '';
             if (emp.logo_url && logoImg) {
                 logoImg.src = emp.logo_url;
@@ -538,23 +532,22 @@
             }
         }
 
-        const opsHtml = item.operarios.map(op => `<span class="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-xs">👷 ${op.operario_nombre} (${op.horas})</span>`).join(' ');
-        const matsHtml = item.materiales.map(m => `<tr class="border-b border-slate-200 dark:border-zinc-800"><td class="py-1 px-2 font-bold">${m.unidades}</td><td class="py-1 px-2">${m.material}</td><td class="py-1 px-2">${m.referencia || 'N/D'}</td></tr>`).join('');
+        const opsHtml = item.operarios.map(op => '<span class="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-xs">👷 ' + op.operario_nombre + ' (' + op.horas + ')</span>').join(' ');
+        const matsHtml = item.materiales.map(m => '<tr class="border-b border-slate-200 dark:border-zinc-800"><td class="py-1 px-2 font-bold">' + m.unidades + '</td><td class="py-1 px-2">' + m.material + '</td><td class="py-1 px-2">' + (m.referencia || 'N/D') + '</td></tr>').join('');
 
-        detalleParteContent.innerHTML = `
-            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${item.cliente} -${item.obra}</p></div>
-            <div><span class="text-xs text-slate-500">Dirección y Localidad:</span><p class="font-medium">${item.direccion}, ${item.localidad} (${item.fecha})</p></div>
-            <div><span class="text-xs text-slate-500">Operarios y Horas:</span><div class="flex flex-wrap gap-2 mt-1">${opsHtml}</div></div>
-            <div><span class="text-xs text-slate-500">Detalle de Trabajos:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-line">${item.detalle_trabajo || 'Sin detalle'}</p></div>
-            <div>
-                <span class="text-xs text-slate-500">Materiales:</span>
-                <table class="w-full text-left border-collapse mt-1 text-xs">
-                    <thead><tr class="bg-slate-100 dark:bg-zinc-800"><th class="p-2">Unid.</th><th class="p-2">Material</th><th class="p-2">Ref.</th></tr></thead>
-                    <tbody>${matsHtml}</tbody>
-                </table>
-            </div>
-            ${item.firma_digital ? `<div><span class="text-xs text-slate-500">Firma Digital:</span><div class="mt-1 border border-slate-200 rounded-xl p-2 bg-white inline-block"><img src="${item.firma_digital}" class="max-h-32 rounded"/></div></div>` : ''}
-        `;
+        detalleParteContent.innerHTML = 
+            '<div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">' + item.cliente + ' - ' + item.obra + '</p></div>' +
+            '<div><span class="text-xs text-slate-500">Dirección y Localidad:</span><p class="font-medium">' + item.direccion + ', ' + item.localidad + ' (' + item.fecha + ')</p></div>' +
+            '<div><span class="text-xs text-slate-500">Operarios y Horas:</span><div class="flex flex-wrap gap-2 mt-1">' + opsHtml + '</div></div>' +
+            '<div><span class="text-xs text-slate-500">Detalle de Trabajos:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-line">' + (item.detalle_trabajo || 'Sin detalle') + '</p></div>' +
+            '<div>' +
+                '<span class="text-xs text-slate-500">Materiales:</span>' +
+                '<table class="w-full text-left border-collapse mt-1 text-xs">' +
+                    '<thead><tr class="bg-slate-100 dark:bg-zinc-800"><th class="p-2">Unid.</th><th class="p-2">Material</th><th class="p-2">Ref.</th></tr></thead>' +
+                    '<tbody>' + matsHtml + '</tbody>' +
+                '</table>' +
+            '</div>' +
+            (item.firma_digital ? '<div><span class="text-xs text-slate-500">Firma Digital:</span><div class="mt-1 border border-slate-200 rounded-xl p-2 bg-white inline-block"><img src="' + item.firma_digital + '" class="max-h-32 rounded"/></div></div>' : '');
     };
 
     if (btnExportPdfParte) {
@@ -562,7 +555,7 @@
             const element = document.getElementById('pdf-export-container-parte');
             const opt = {
                 margin: 10,
-                filename: `Parte_Trabajo_${currentParteItem ? currentParteItem.cliente : 'obra'}.pdf`,
+                filename: 'Parte_Trabajo_' + (currentParteItem ? currentParteItem.cliente : 'obra') + '.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -616,19 +609,19 @@
         viewFormParte.classList.add('flex');
     };
 
-    // --- CARGAS BÁSICAS RESTANTES ---
+    // --- CARGAS BÁSICAS ---
     async function loadTasks() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
         const { data } = await supabaseClient.from('tareas').select('*').order('completada', { ascending: true });
-        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay tareas.</p>' : data.map(t => `<div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800"><h3 class="font-medium">${t.tarea}</h3></div>`).join('');
+        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay tareas.</p>' : data.map(t => '<div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800"><h3 class="font-medium">' + t.tarea + '</h3></div>').join('');
     }
 
     async function loadBitacora() {
         const c = document.getElementById('bitacora-container');
         if (!c) return;
         const { data } = await supabaseClient.from('bitacora').select('*').order('created_at', { ascending: false });
-        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay registros.</p>' : data.map(b => `<div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800"><p class="text-sm">${b.notas || 'Sin notas'}</p></div>`).join('');
+        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay registros.</p>' : data.map(b => '<div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800"><p class="text-sm">' + (b.notas || 'Sin notas') + '</p></div>').join('');
     }
 
     async function loadClientes() {
@@ -644,4 +637,6 @@
         const c = document.getElementById('empleados-container');
         if (!c) return;
         const { data } = await supabaseClient.from('perfiles').select('*').order('nombre', { ascending: true });
-        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay empleados.</p>' : data.map(emp => `<div class="p-4 rounded-2xl bg-white dark:
+        c.innerHTML = (!data || data.length === 0) ? '<p class="text-slate-500 text-center mt-4">No hay empleados.</p>' : data.map(emp => '<div class="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800"><h3 class="font-medium">' + (emp.nombre || '') + ' ' + (emp.apellido || '') + ' (' + (emp.rol || '') + ')</h3></div>').join('');
+    }
+})();
