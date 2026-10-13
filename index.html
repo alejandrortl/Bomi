@@ -98,6 +98,113 @@
             </button>
         </section>
 
+        <!-- Vista: Partes de Trabajo -->
+        <section id="view-partes" class="hidden flex-col gap-4 relative min-h-full">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold">Partes de Trabajo</h2>
+                <span id="partes-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium">Cargando...</span>
+            </div>
+            <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
+                <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
+                <input type="text" id="search-partes" placeholder="Buscar partes..." class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+            </div>
+            <div id="partes-container" class="flex flex-col gap-3"></div>
+            <button id="fab-new-parte" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95">
+                <span class="material-symbols-outlined">add</span>
+            </button>
+        </section>
+
+        <!-- Vista: Formulario Parte de Trabajo -->
+        <section id="view-form-parte" class="hidden flex-col gap-4">
+            <h2 class="text-lg font-semibold" id="form-parte-title">Nuevo Parte de Trabajo</h2>
+            <form id="form-parte" class="flex flex-col gap-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
+                <input type="hidden" id="edit-parte-id" value="">
+                
+                <div class="flex gap-4">
+                    <div class="flex flex-col gap-1 flex-1">
+                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label>
+                        <input type="text" id="parte-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
+                    </div>
+                    <div class="flex flex-col gap-1 flex-1">
+                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra</label>
+                        <input type="text" id="parte-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="parte-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="parte-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Fecha del Parte</label>
+                    <input type="date" id="parte-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
+                </div>
+
+                <!-- Sección Operarios y Horas -->
+                <div class="flex flex-col gap-3 border-t border-slate-200 dark:border-zinc-800 pt-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400">Operarios y Horas</h4>
+                        <button type="button" id="btn-add-operario-parte" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition-colors">+ Añadir Operario</button>
+                    </div>
+                    <div id="operarios-parte-container" class="flex flex-col gap-3"></div>
+                </div>
+
+                <div class="flex flex-col gap-1 border-t border-slate-200 dark:border-zinc-800 pt-4">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Detalle de los Trabajos Realizados</label>
+                    <textarea id="parte-detalle" rows="4" required class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm" placeholder="Describe los trabajos..."></textarea>
+                </div>
+
+                <!-- Sección Materiales del Parte -->
+                <div class="flex flex-col gap-3 border-t border-slate-200 dark:border-zinc-800 pt-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400">Materiales Utilizados</h4>
+                        <button type="button" id="btn-add-material-parte" class="text-xs bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition-colors">+ Añadir Material</button>
+                    </div>
+                    <div id="materiales-parte-container" class="flex flex-col gap-3"></div>
+                </div>
+
+                <!-- Firma Digital -->
+                <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-800 pt-4">
+                    <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Firma Digital del Cliente / Responsable</label>
+                    <div class="border border-slate-300 dark:border-zinc-700 rounded-2xl p-2 flex flex-col items-center gap-2 bg-slate-50 dark:bg-zinc-800">
+                        <canvas id="firma-canvas" width="500" height="200" class="w-full h-40 touch-none rounded-xl cursor-crosshair border border-slate-200 dark:border-zinc-700 bg-white dark:bg-black"></canvas>
+                        <button type="button" id="btn-limpiar-firma" class="text-xs bg-slate-200 dark:bg-zinc-700 px-3 py-1.5 rounded-lg font-medium">Borrar Firma</button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
+                    <button type="button" id="parte-btn-bloquear" class="px-4 py-2 rounded-full font-medium bg-amber-100 text-amber-800 hover:bg-amber-200">Bloquear Parte</button>
+                    <button type="button" id="btn-cancel-parte" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
+                    <button type="submit" id="btn-submit-parte" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Parte</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Vista: Detalle Parte PDF -->
+        <section id="view-detalle-parte" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold">Detalle del Parte de Trabajo</h2>
+                <div class="flex gap-2">
+                    <button type="button" id="btn-export-pdf-parte" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm">
+                        <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar PDF
+                    </button>
+                    <button type="button" id="btn-back-parte-list" class="text-xs bg-slate-200 dark:bg-zinc-800 px-3 py-1.5 rounded-full font-medium">Volver</button>
+                </div>
+            </div>
+            <div id="pdf-export-container-parte" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-slate-200 dark:border-zinc-800 pb-4 mb-2">
+                    <div>
+                        <h3 id="pdf-parte-emp-nombre" class="font-bold text-base text-blue-600 dark:text-blue-400">Parte de Trabajo</h3>
+                        <p id="pdf-parte-emp-cif" class="text-xs text-slate-500"></p>
+                        <p id="pdf-parte-emp-dir" class="text-xs text-slate-500"></p>
+                    </div>
+                    <img id="pdf-parte-emp-logo" src="" alt="Logo" class="hidden h-12 object-contain max-w-[120px]">
+                </div>
+                <div id="detalle-parte-content" class="flex flex-col gap-4"></div>
+            </div>
+        </section>
+
         <!-- Vista: Bitácora -->
         <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
@@ -114,7 +221,7 @@
             </button>
         </section>
 
-        <!-- Vista: Materiales -->
+        <!-- Vista: Materiales (Solicitudes) -->
         <section id="view-materiales" class="hidden flex-col gap-4 relative min-h-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Solicitud de Materiales</h2>
@@ -159,7 +266,7 @@
             <div id="empleados-container" class="flex flex-col gap-3"></div>
         </section>
 
-        <!-- Vista: Perfil -->
+        <!-- Vista: Perfil (Con Repetición de Contraseña) -->
         <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">
             <h2 class="text-lg font-semibold">Mi Perfil y Ajustes</h2>
             <form id="form-perfil" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
@@ -173,7 +280,15 @@
                 <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="perfil-nombre" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="perfil-apellido" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</label><input type="tel" id="perfil-telefono" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                
+                <div class="border-t border-slate-200 dark:border-zinc-800 pt-3 mt-1">
+                    <h3 class="text-sm font-semibold mb-3">Cambiar Contraseña</h3>
+                    <div class="flex flex-col gap-1 mb-3"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Nueva Contraseña</label><input type="password" id="perfil-new-pass" placeholder="Dejar en blanco para no cambiar" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label class="text-xs font-medium text-slate-600 dark:text-slate-400">Repetir Nueva Contraseña</label><input type="password" id="perfil-confirm-pass" placeholder="Repetir contraseña" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                </div>
+
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-medium shadow-md mt-2">Guardar Cambios</button>
+                <p id="perfil-mensaje" class="text-sm text-center hidden font-medium"></p>
             </form>
         </section>
 
@@ -208,12 +323,17 @@
     <datalist id="clientes-datalist"></datalist>
     <datalist id="obras-datalist"></datalist>
     <datalist id="materiales-datalist"></datalist>
+    <datalist id="operarios-datalist"></datalist>
 
-    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (MD3 Navigation Bar) -->
-    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-6 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
+    <!-- BLOQUE 5: NAVEGACIÓN INFERIOR (MD3 Navigation Bar con Módulo Partes entre Diario y Bitácora) -->
+    <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
         <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span>
             <span class="text-[11px] font-medium">Diario</span>
+        </button>
+        <button id="nav-partes" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
+            <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">assignment</span>
+            <span class="text-[11px] font-medium">Partes</span>
         </button>
         <button id="nav-bitacora" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors">
             <span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">menu_book</span>
