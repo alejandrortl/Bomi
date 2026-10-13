@@ -31,6 +31,7 @@
     const menuItemEmpresa = document.getElementById('menu-item-empresa');
     const headerUsernameLabel = document.getElementById('header-username-label');
     const btnNotificaciones = document.getElementById('btn-notificaciones');
+    const headerAppTitle = document.getElementById('header-app-title');
 
     // Partes Elements
     const partesContainer = document.getElementById('partes-container');
@@ -73,7 +74,7 @@
     let allOperarios = [];
     let currentParteItem = null;
 
-    // --- MANEJO DEL TEMA CLARO / OSCURO ROBUSTO ---
+    // --- MANEJO DEL TEMA CLARO / OSCURO ---
     function aplicarTema(tema) {
         const root = document.documentElement;
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -142,7 +143,15 @@
     if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); setActiveNav(navClientes); fabNewCliente.classList.remove('hidden'); fabNewCliente.classList.add('flex'); loadClientes(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); setActiveNav(navEmpleados); loadEmpleados(); });
 
-    // --- INICIALIZACIÓN Y ACTUALIZACIÓN DEL USUARIO ---
+    // --- INICIALIZACIÓN Y NOMBRE DE EMPRESA DINÁMICO ---
+    async function cargarNombreEmpresa() {
+        if (!headerAppTitle) return;
+        const { data } = await supabaseClient.from('configuracion_empresa').select('nombre_fiscal').limit(1).single();
+        if (data && data.nombre_fiscal) {
+            headerAppTitle.textContent = data.nombre_fiscal;
+        }
+    }
+
     function actualizarNombreHeader() {
         if (window.currentUserProfile && headerUsernameLabel) {
             const nombre = window.currentUserProfile.nombre || '';
@@ -154,6 +163,7 @@
 
     function initAppAfterLogin() {
         actualizarNombreHeader();
+        cargarNombreEmpresa();
         loadTasks();
         loadClientes();
         loadOperariosList();
@@ -281,6 +291,7 @@
             } else {
                 await supabaseClient.from('configuracion_empresa').insert([empresaData]);
             }
+            cargarNombreEmpresa(); // Actualizar el nombre arriba automáticamente
             alert("¡Logotipo y nombre de empresa guardados con éxito!");
         });
     }
