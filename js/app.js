@@ -30,6 +30,7 @@
     const menuItemPerfil = document.getElementById('menu-item-perfil');
     const menuItemEmpresa = document.getElementById('menu-item-empresa');
     const headerUsernameLabel = document.getElementById('header-username-label');
+    const btnNotificaciones = document.getElementById('btn-notificaciones');
 
     // Partes Elements
     const partesContainer = document.getElementById('partes-container');
@@ -72,7 +73,7 @@
     let allOperarios = [];
     let currentParteItem = null;
 
-    // --- MODO CLARO / OSCURO ROBUSTO ---
+    // --- MANEJO DEL TEMA CLARO / OSCURO ROBUSTO ---
     function aplicarTema(tema) {
         const root = document.documentElement;
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -141,8 +142,18 @@
     if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); setActiveNav(navClientes); fabNewCliente.classList.remove('hidden'); fabNewCliente.classList.add('flex'); loadClientes(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); setActiveNav(navEmpleados); loadEmpleados(); });
 
-    // --- INICIALIZACIÓN ---
+    // --- INICIALIZACIÓN Y ACTUALIZACIÓN DEL USUARIO ---
+    function actualizarNombreHeader() {
+        if (window.currentUserProfile && headerUsernameLabel) {
+            const nombre = window.currentUserProfile.nombre || '';
+            const apellido = window.currentUserProfile.apellido || '';
+            const nombreCompleto = (nombre + ' ' + apellido).trim();
+            headerUsernameLabel.textContent = nombreCompleto || window.currentUserProfile.email || 'Cuenta';
+        }
+    }
+
     function initAppAfterLogin() {
+        actualizarNombreHeader();
         loadTasks();
         loadClientes();
         loadOperariosList();
@@ -161,6 +172,13 @@
     window.addEventListener('userLoggedIn', initAppAfterLogin);
     if (window.currentUserProfile) initAppAfterLogin();
 
+    // Notificaciones
+    if (btnNotificaciones) {
+        btnNotificaciones.addEventListener('click', () => {
+            alert("No tienes notificaciones pendientes.");
+        });
+    }
+
     // --- MENÚ PERFIL & EMPRESA ---
     if (btnMenuPerfil && dropdownMenuPerfil) {
         btnMenuPerfil.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenuPerfil.classList.toggle('hidden'); });
@@ -176,9 +194,9 @@
                 document.getElementById('perfil-nombre').value = window.currentUserProfile.nombre || '';
                 document.getElementById('perfil-apellido').value = window.currentUserProfile.apellido || '';
                 document.getElementById('perfil-telefono').value = window.currentUserProfile.telefono || '';
-                document.getElementById('perfil-nombre-header').textContent = (window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '');
+                document.getElementById('perfil-nombre-header').textContent = ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() || 'Mi Perfil';
                 document.getElementById('perfil-email-header').textContent = window.currentUserProfile.email || '';
-                if (headerUsernameLabel) headerUsernameLabel.textContent = window.currentUserProfile.nombre || 'Cuenta';
+                actualizarNombreHeader();
                 if (perfilNewPass) perfilNewPass.value = '';
                 if (perfilConfirmPass) perfilConfirmPass.value = '';
                 if (perfilMensaje) perfilMensaje.classList.add('hidden');
@@ -224,6 +242,7 @@
                 window.currentUserProfile.nombre = nuevoNombre;
                 window.currentUserProfile.apellido = nuevoApellido;
                 window.currentUserProfile.telefono = nuevoTelefono;
+                actualizarNombreHeader();
                 perfilMensaje.textContent = "¡Perfil actualizado con éxito!";
                 perfilMensaje.className = "text-emerald-600 text-sm text-center font-medium";
                 perfilMensaje.classList.remove('hidden');
@@ -289,7 +308,7 @@
             if (operariosParteContainer) operariosParteContainer.innerHTML = '';
             if (materialesParteContainer) materialesParteContainer.innerHTML = '';
             
-            const currentUserFull = window.currentUserProfile ? (window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '') : 'Usuario';
+            const currentUserFull = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : 'Usuario';
             agregarFilaOperario(currentUserFull, '8h');
             agregarFilaMaterialParte();
             limpiarFirmaCanvas();
@@ -416,7 +435,7 @@
                 loadClientes();
             }
 
-            const username = window.currentUserProfile ? (window.currentUserProfile.nombre + ' ' + window.currentUserProfile.apellido) : 'Usuario';
+            const username = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : 'Usuario';
             const firmaDataURL = canvasFirma ? canvasFirma.toDataURL() : '';
 
             const parteData = {
