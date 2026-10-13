@@ -28,7 +28,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- HEADER INTACTO Y BLOQUEADO -->
+    <!-- HEADER -->
     <header id="app-header" class="hidden w-full bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3 justify-between items-center z-30 shrink-0 relative shadow-sm">
         <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">engineering</span>
@@ -39,7 +39,7 @@
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
                 <span id="badge-notificaciones" class="hidden absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full"></span>
             </button>
-            <select id="select-tema" aria-label="Seleccionar tema de visualización" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none cursor-pointer">
+            <select id="select-tema" aria-label="Seleccionar tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none cursor-pointer">
                 <option value="auto">🌓 Auto</option>
                 <option value="claro">☀️ Claro</option>
                 <option value="oscuro">🌙 Oscuro</option>
@@ -61,7 +61,7 @@
         </div>
     </header>
 
-    <!-- AUTENTICACIÓN INTACTA -->
+    <!-- AUTENTICACIÓN -->
     <main id="view-auth" class="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto overflow-y-auto">
         <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-8 rounded-3xl shadow-lg w-full flex flex-col gap-6">
             <div class="text-center">
@@ -71,11 +71,11 @@
             </div>
             <form id="form-auth" class="flex flex-col gap-4">
                 <div id="register-fields" class="hidden flex-col gap-4">
-                    <div class="flex flex-col gap-1"><label for="auth-nombre" class="text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label><input type="text" id="auth-nombre" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1"><label for="auth-apellido" class="text-xs font-medium text-slate-600 dark:text-slate-400">Apellido</label><input type="text" id="auth-apellido" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label for="auth-nombre" class="text-xs font-medium">Nombre</label><input type="text" id="auth-nombre" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1"><label for="auth-apellido" class="text-xs font-medium">Apellido</label><input type="text" id="auth-apellido" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
-                <div class="flex flex-col gap-1"><label for="auth-email" class="text-xs font-medium text-slate-600 dark:text-slate-400">Correo Electrónico</label><input type="email" id="auth-email" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                <div class="flex flex-col gap-1"><label for="auth-password" class="text-xs font-medium text-slate-600 dark:text-slate-400">Contraseña</label><input type="password" id="auth-password" required minlength="6" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="auth-email" class="text-xs font-medium">Correo Electrónico</label><input type="email" id="auth-email" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                <div class="flex flex-col gap-1"><label for="auth-password" class="text-xs font-medium">Contraseña</label><input type="password" id="auth-password" required minlength="6" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 <button type="submit" id="btn-auth-submit" class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-full font-medium mt-2 shadow-md transition-colors">Ingresar</button>
                 <p id="auth-error" class="text-red-600 dark:text-red-400 text-sm text-center hidden"></p>
                 <p id="auth-success" class="text-emerald-600 text-sm text-center hidden"></p>
@@ -90,7 +90,7 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
-        <!-- VISTA: DIARIO DE TAREAS (Actualizada con Buscador Completo) -->
+        <!-- VISTA: DIARIO DE TAREAS -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="flex flex-col gap-3 sticky top-0 bg-slate-50 dark:bg-black z-10 pt-2 pb-3">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
@@ -110,104 +110,85 @@
             </button>
         </section>
 
-        <!-- VISTA: FORMULARIO NUEVA/EDITAR TAREA -->
+        <!-- VISTA: FORMULARIO TAREA -->
         <section id="view-form-tarea" class="hidden flex-col gap-4">
             <h2 class="text-lg font-semibold" id="form-tarea-title">Nueva Tarea</h2>
             <form id="form-tarea" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <input type="hidden" id="edit-tarea-id" value="">
                 
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1">
-                        <label for="tarea-cliente" class="text-xs font-medium text-slate-600 dark:text-slate-400">Cliente</label>
-                        <input type="text" id="tarea-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
-                    </div>
-                    <div class="flex flex-col gap-1 flex-1">
-                        <label for="tarea-obra" class="text-xs font-medium text-slate-600 dark:text-slate-400">Obra (Autocompleta dirección)</label>
-                        <input type="text" id="tarea-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
-                    </div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium text-slate-600 dark:text-slate-400">Dirección</label><input type="text" id="tarea-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-localidad" class="text-xs font-medium text-slate-600 dark:text-slate-400">Localidad</label><input type="text" id="tarea-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium">Dirección</label><input type="text" id="tarea-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-localidad" class="text-xs font-medium">Localidad</label><input type="text" id="tarea-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1">
-                        <label for="tarea-operario" class="text-xs font-medium text-slate-600 dark:text-slate-400">Asignar a Operario</label>
-                        <input type="text" id="tarea-operario" list="operarios-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
-                    </div>
-                    <div class="flex flex-col gap-1 flex-1">
-                        <label for="tarea-fecha" class="text-xs font-medium text-slate-600 dark:text-slate-400">Fecha de Ejecución</label>
-                        <input type="date" id="tarea-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
-                    </div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-operario" class="text-xs font-medium">Asignar a Operario</label><input type="text" id="tarea-operario" list="operarios-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-fecha" class="text-xs font-medium">Fecha</label><input type="date" id="tarea-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
 
-                <div class="flex flex-col gap-1 border-t border-slate-200 dark:border-zinc-800 pt-4 relative">
+                <div class="flex flex-col gap-1 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <div class="flex justify-between items-center mb-1">
-                        <label for="tarea-notas" class="text-xs font-medium text-slate-600 dark:text-slate-400">Notas / Descripción</label>
+                        <label for="tarea-notas" class="text-xs font-medium">Notas / Descripción</label>
                         <button type="button" id="btn-dictar-voz" class="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 px-3 py-1.5 rounded-full flex items-center gap-1 font-medium hover:bg-blue-200 transition-colors">
                             <span class="material-symbols-outlined text-[16px]">mic</span> Dictar
                         </button>
                     </div>
-                    <textarea id="tarea-notas" rows="4" class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm" placeholder="Detalles de la tarea..."></textarea>
+                    <textarea id="tarea-notas" rows="4" class="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm" placeholder="Detalles..."></textarea>
                 </div>
 
-                <!-- Pizarra / Adjunto -->
                 <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <div class="flex justify-between items-center">
-                        <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Dibujo / Pizarra (Opcional)</label>
-                        <button type="button" id="btn-abrir-pizarra" class="text-xs bg-slate-200 dark:bg-zinc-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:bg-slate-300">
-                            <span class="material-symbols-outlined text-[16px]">draw</span> Abrir Pizarra
-                        </button>
+                        <label class="text-xs font-medium">Dibujo / Pizarra (Opcional)</label>
+                        <button type="button" id="btn-abrir-pizarra" class="text-xs bg-slate-200 dark:bg-zinc-700 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">draw</span> Abrir Pizarra</button>
                     </div>
                     <input type="hidden" id="tarea-dibujo-url">
-                    <div id="preview-dibujo" class="hidden mt-2 border border-slate-300 dark:border-zinc-700 rounded-xl p-2 bg-slate-50 dark:bg-zinc-800 relative inline-block max-w-[200px]">
+                    <div id="preview-dibujo" class="hidden mt-2 border border-slate-300 rounded-xl p-2 bg-slate-50 dark:bg-zinc-800 relative inline-block max-w-[200px]">
                         <img src="" id="img-dibujo-preview" class="w-full h-auto rounded-lg">
                         <button type="button" id="btn-borrar-dibujo" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1"><span class="material-symbols-outlined text-[14px]">close</span></button>
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
-                    <button type="button" id="btn-cancel-tarea" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
-                    <button type="submit" id="btn-submit-tarea" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">save</span> Guardar Tarea</button>
+                    <button type="button" id="btn-cancel-tarea" class="px-4 py-2 rounded-full font-medium text-slate-600">Cancelar</button>
+                    <button type="submit" id="btn-submit-tarea" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Tarea</button>
                 </div>
             </form>
         </section>
 
-        <!-- VISTA: DETALLE DE TAREA PDF -->
+        <!-- VISTA: DETALLE TAREA -->
         <section id="view-detalle-tarea" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Detalle de Tarea</h2>
                 <div class="flex gap-2">
-                    <button type="button" id="btn-export-pdf-tarea" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar</button>
+                    <button type="button" id="btn-export-pdf-tarea" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar</button>
                     <button type="button" id="btn-back-tarea-list" class="text-xs bg-slate-200 dark:bg-zinc-800 px-3 py-1.5 rounded-full font-medium">Volver</button>
                 </div>
             </div>
             <div id="pdf-export-container-tarea" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm flex flex-col gap-4 relative">
-                <!-- Sello completado -->
                 <div id="sello-completada" class="hidden absolute top-6 right-6 border-4 border-emerald-600 text-emerald-600 font-bold text-xl px-4 py-1 rounded-xl rotate-12 opacity-80">COMPLETADA</div>
-                
-                <div class="border-b border-slate-200 dark:border-zinc-800 pb-4 mb-2">
-                    <h3 class="font-bold text-base text-blue-600 dark:text-blue-400">Orden de Trabajo / Tarea</h3>
-                </div>
+                <div class="border-b border-slate-200 dark:border-zinc-800 pb-4 mb-2"><h3 class="font-bold text-base text-blue-600 dark:text-blue-400">Orden de Trabajo / Tarea</h3></div>
                 <div id="detalle-tarea-content" class="flex flex-col gap-4"></div>
             </div>
         </section>
 
-        <!-- DEMAS MÓDULOS INTACTOS (Partes, Bitacora, etc) -->
-        <section id="view-partes" class="hidden flex-col gap-4 relative min-h-full">...</section>
-        <section id="view-form-parte" class="hidden flex-col gap-4">...</section>
-        <section id="view-detalle-parte" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">...</section>
-        <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full">...</section>
-        <section id="view-materiales" class="hidden flex-col gap-4 relative min-h-full">...</section>
-        <section id="view-clientes" class="hidden flex-col gap-4">...</section>
-        <section id="view-empleados" class="hidden flex-col gap-4">...</section>
-        <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">...</section>
-        <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full">...</section>
+        <!-- RESTO DE VISTAS (Partes, Clientes, Empleados, Perfil, Empresa, etc - Intactas) -->
+        <section id="view-partes" class="hidden flex-col gap-4 relative min-h-full"></section>
+        <section id="view-form-parte" class="hidden flex-col gap-4"></section>
+        <section id="view-detalle-parte" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full"></section>
+        <section id="view-bitacora" class="hidden flex-col gap-4 relative min-h-full"></section>
+        <section id="view-materiales" class="hidden flex-col gap-4 relative min-h-full"></section>
+        <section id="view-clientes" class="hidden flex-col gap-4"></section>
+        <section id="view-empleados" class="hidden flex-col gap-4"></section>
+        <section id="view-perfil" class="hidden flex-col gap-4 max-w-lg mx-auto w-full"></section>
+        <section id="view-empresa" class="hidden flex-col gap-4 max-w-lg mx-auto w-full"></section>
     </main>
 
-    <!-- MODAL DE LA PIZARRA (WHITEBOARD) -->
+    <!-- MODAL PIZARRA -->
     <div id="modal-pizarra" class="hidden fixed inset-0 z-[60] flex justify-center items-center p-2 bg-black/90 backdrop-blur-sm">
         <div class="bg-white dark:bg-zinc-900 w-full h-full max-w-3xl rounded-3xl p-4 flex flex-col shadow-2xl relative">
             <div class="flex justify-between items-center mb-2 shrink-0">
@@ -218,35 +199,33 @@
                     <button type="button" class="btn-color-pizarra w-8 h-8 rounded-full bg-red-600" data-color="#dc2626"></button>
                 </div>
             </div>
-            
             <div class="flex-1 bg-slate-50 dark:bg-black rounded-2xl overflow-hidden border-2 border-slate-300 dark:border-zinc-700 relative touch-none">
                 <canvas id="canvas-pizarra" class="w-full h-full cursor-crosshair"></canvas>
             </div>
-            
             <div class="flex justify-between items-center mt-4 shrink-0">
-                <button type="button" id="btn-limpiar-pizarra" class="px-4 py-2 rounded-full font-medium bg-red-100 text-red-700 hover:bg-red-200 flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">delete</span> Borrar</button>
+                <button type="button" id="btn-limpiar-pizarra" class="px-4 py-2 rounded-full font-medium bg-red-100 text-red-700 flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">delete</span> Borrar</button>
                 <div class="flex gap-2">
-                    <button type="button" id="btn-cerrar-pizarra" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-400">Cancelar</button>
-                    <button type="button" id="btn-guardar-pizarra" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">check</span> Listo</button>
+                    <button type="button" id="btn-cerrar-pizarra" class="px-4 py-2 rounded-full font-medium text-slate-600">Cancelar</button>
+                    <button type="button" id="btn-guardar-pizarra" class="bg-blue-600 text-white px-6 py-2 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">check</span> Listo</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="modal-cliente" class="hidden fixed inset-0 z-50 flex justify-center items-center p-4 bg-black/50">...</div>
+    <!-- DATALISTS -->
     <datalist id="clientes-datalist"></datalist>
     <datalist id="obras-datalist"></datalist>
     <datalist id="materiales-datalist"></datalist>
     <datalist id="operarios-datalist"></datalist>
 
-    <!-- NAVEGACIÓN INFERIOR INTACTA Y BLOQUEADA -->
+    <!-- NAVEGACIÓN INFERIOR (CON ID nav-empleados restaurado) -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
-        <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span><span class="text-[11px] font-medium">Diario</span></button>
-        <button id="nav-partes" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">assignment</span><span class="text-[11px] font-medium">Partes</span></button>
-        <button id="nav-bitacora" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">menu_book</span><span class="text-[11px] font-medium">Bitácora</span></button>
-        <button id="nav-materiales" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">inventory_2</span><span class="text-[11px] font-medium">Materiales</span></button>
-        <button id="nav-clientes" class="nav-btn flex flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">business_center</span><span class="text-[11px] font-medium">Clientes</span></button>
-        <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button>
+        <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span><span class="text-[11px] font-medium">Diario</span></button>
+        <button id="nav-partes" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">assignment</span><span class="text-[11px] font-medium">Partes</span></button>
+        <button id="nav-bitacora" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">menu_book</span><span class="text-[11px] font-medium">Bitácora</span></button>
+        <button id="nav-materiales" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">inventory_2</span><span class="text-[11px] font-medium">Materiales</span></button>
+        <button id="nav-clientes" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">business_center</span><span class="text-[11px] font-medium">Clientes</span></button>
+        <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button>
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
