@@ -53,12 +53,16 @@
             </td></tr></table>`;
     }
 
-    // html2canvas no entiende los colores oklch() de Tailwind v4 (<html>/<body>): en la copia se quitan las clases.
+    // html2canvas (1.4) no entiende los colores oklch() de Tailwind v4 y falla con "unsupported color function".
+    // El contenido del PDF lleva todos sus estilos en línea (colores hex), así que en la copia que dibuja se quitan
+    // todas las hojas de estilo de la página (Tailwind incluido) y las clases: sin oklch no hay nada que falle.
     function limpiarClon(doc) {
-        doc.documentElement.className = '';
+        doc.querySelectorAll('style, link[rel~="stylesheet"]').forEach((n) => n.remove());
+        doc.documentElement.removeAttribute('class');
         doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
-        doc.body.className = '';
-        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
+        doc.body.removeAttribute('class');
+        doc.body.style.cssText = 'background:#ffffff;color:#0f172a;margin:0';
+        doc.querySelectorAll('[class]').forEach((n) => n.removeAttribute('class'));
     }
 
     function conTiempoMaximo(promesa) {
@@ -86,5 +90,5 @@
     }
 
     window.addEventListener('empresaActualizada', invalidar);
-    window.BomiPdf = { generar, cabecera, imagenDataUrl, invalidar, nombreSeguro };
+    window.BomiPdf = { limpiarClon, generar, cabecera, imagenDataUrl, invalidar, nombreSeguro };
 })();
