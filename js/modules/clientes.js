@@ -6,7 +6,8 @@
 (function () {
     'use strict';
 
-    const INPUT = 'w-full bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm';
+    const INPUT_BASE = 'bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm';
+    const INPUT = 'w-full ' + INPUT_BASE;
     const BTN_ICON = 'p-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors';
     const BTN_DANGER = 'p-1.5 rounded-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors';
     // Tablas con claves foráneas hacia clientes/obras: si hay filas, no se puede borrar.
@@ -190,11 +191,14 @@
     }
 
     // ---------- Formulario ----------
+    // Móvil: el nombre ocupa su línea y debajo van teléfono y "quitar". Pantalla ancha: todo en una línea.
+    // Estos campos usan INPUT_BASE (sin w-full): el ancho lo fijan solo las clases de aquí.
+    // El teléfono mide w-40 (10 rem), suficiente para 15 caracteres (maxlength).
     const filaContacto = (k = {}) => `
-        <div class="contacto-fila flex gap-2 items-center" data-id="${esc(k.id || '')}">
-            <input type="text" class="k-nombre flex-1 min-w-0 ${INPUT}" placeholder="Persona de contacto (opcional)" aria-label="Persona de contacto" value="${esc(k.nombre)}">
-            <input type="tel" class="k-tel w-36 shrink-0 ${INPUT}" placeholder="Teléfono" aria-label="Teléfono" value="${esc(k.telefono)}">
-            <button type="button" data-accion="quitar-contacto" aria-label="Quitar contacto" class="${BTN_ICON}"><span class="material-symbols-outlined text-[20px]">close</span></button>
+        <div class="contacto-fila flex flex-wrap items-center gap-2" data-id="${esc(k.id || '')}">
+            <input type="text" class="k-nombre w-full sm:w-auto sm:flex-1 min-w-0 ${INPUT_BASE}" placeholder="Persona de contacto (opcional)" aria-label="Persona de contacto" value="${esc(k.nombre)}">
+            <input type="tel" inputmode="tel" maxlength="15" autocomplete="tel" class="k-tel w-40 shrink-0 ${INPUT_BASE}" placeholder="Teléfono" aria-label="Teléfono" value="${esc(k.telefono)}">
+            <button type="button" data-accion="quitar-contacto" aria-label="Quitar contacto" class="${BTN_ICON} shrink-0 ml-auto sm:ml-0"><span class="material-symbols-outlined text-[20px]">close</span></button>
         </div>`;
 
     const editorContactos = (idContenedor, titulo, filas) => `
