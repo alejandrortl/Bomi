@@ -79,6 +79,7 @@
     if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); setActiveNav(navHome); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); renderTareas(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); setActiveNav(navEmpleados); if (window.BomiEmpleados) window.BomiEmpleados.abrir(); });
     if (navBitacora) navBitacora.addEventListener('click', () => { hideAllViews(); viewBitacora.classList.remove('hidden'); viewBitacora.classList.add('flex'); setActiveNav(navBitacora); if (window.BomiBitacora) window.BomiBitacora.abrir(); });
+    if (navPartes) navPartes.addEventListener('click', () => { hideAllViews(); viewPartes.classList.remove('hidden'); viewPartes.classList.add('flex'); setActiveNav(navPartes); if (window.BomiPartes) window.BomiPartes.abrir(); });
     if (navMateriales) navMateriales.addEventListener('click', () => { hideAllViews(); viewMateriales.classList.remove('hidden'); viewMateriales.classList.add('flex'); setActiveNav(navMateriales); if (window.BomiMateriales) window.BomiMateriales.abrir(); });
     if (navClientes) navClientes.addEventListener('click', () => { hideAllViews(); viewClientes.classList.remove('hidden'); viewClientes.classList.add('flex'); setActiveNav(navClientes); if (window.BomiClientes) window.BomiClientes.abrir(); });
 
@@ -231,7 +232,12 @@
         const dl = document.getElementById('tarea-obras-dl');
         if (!dl) return;
         const cli = clienteDeTarea();
-        dl.innerHTML = cli ? cli.obras.map(o => `<option value="${escT(o.nombre)}"></option>`).join('') : '';
+        let obras = [];
+        if (cli) obras = cli.obras;
+        else if (!document.getElementById('tarea-cliente').value.trim()) obras = allClientesCompletos.flatMap(c => c.obras);   // sin cliente: todas las obras
+        const vistos = new Set();
+        dl.innerHTML = obras.filter(o => { const k = normT(o.nombre); if (vistos.has(k)) return false; vistos.add(k); return true; })
+            .map(o => `<option value="${escT(o.nombre)}"></option>`).join('');
     }
 
     function sincronizarTarea(origen) {
@@ -241,7 +247,14 @@
         const inLoc = document.getElementById('tarea-localidad');
         const hint = document.getElementById('tarea-hint');
         if (!inCli || !inObra) return;
-        const cli = clienteDeTarea();
+        let cli = clienteDeTarea();
+        let obraAmbigua = false;
+        if (!cli && !inCli.value.trim() && inObra.value.trim() && origen === 'obra') {
+            // Sin cliente: si el nombre de la obra identifica una sola, se completa también el cliente.
+            const coinc = allClientesCompletos.filter(c => c.obras.some(o => normT(o.nombre) === normT(inObra.value)));
+            if (coinc.length === 1) { cli = coinc[0]; inCli.value = cli.nombre_cliente; }
+            else if (coinc.length > 1) obraAmbigua = true;
+        }
         const obra = cli ? cli.obras.find(o => normT(o.nombre) === normT(inObra.value)) : null;
         if (obra) {
             if (origen === 'inicio') {
@@ -264,7 +277,8 @@
         actualizarObrasDatalist();
         let msg = '';
         const nombreCli = inCli.value.trim();
-        if (nombreCli && !cli) msg = `«${nombreCli}» es un cliente nuevo: se creará junto con esta obra. Indica dirección y localidad.`;
+        if (obraAmbigua) msg = 'Hay varias obras con ese nombre en distintos clientes: elige primero el cliente.';
+        else if (nombreCli && !cli) msg = `«${nombreCli}» es un cliente nuevo: se creará junto con esta obra. Indica dirección y localidad.`;
         else if (cli && inObra.value.trim() && !obra) msg = `Obra nueva en «${cli.nombre_cliente}»: se creará con esta dirección y localidad.`;
         else if (cli && obra) msg = `Obra existente de «${cli.nombre_cliente}»: se usan su dirección y localidad.`;
         if (hint) { hint.textContent = msg; hint.classList.toggle('hidden', !msg); }

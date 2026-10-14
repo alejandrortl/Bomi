@@ -216,11 +216,13 @@
         let cli = clientePorNombre(inCli.value);
         const obraTxt = inObra.value;
         let obra = null;
+        let obraAmbigua = false;
         if (cli) obra = cli.obras.find((o) => norm(o.nombre) === norm(obraTxt)) || null;
         else if (!norm(inCli.value) && norm(obraTxt)) {
             // Sin cliente: si el nombre de la obra identifica una sola, se completa también el cliente.
             const coinc = clientes.flatMap((c) => c.obras.filter((o) => norm(o.nombre) === norm(obraTxt)).map((o) => ({ c, o })));
             if (coinc.length === 1 && origen === 'obra') { cli = coinc[0].c; obra = coinc[0].o; inCli.value = cli.nombre; }
+            else if (coinc.length > 1 && origen === 'obra') obraAmbigua = true;
         }
         if (obra) {
             inDir.value = obra.direccion; inLoc.value = obra.localidad;
@@ -234,8 +236,9 @@
         if (origen === 'obra' && cli) actualizarDatalists();
 
         let msg = '';
+        if (obraAmbigua) msg = 'Hay varias obras con ese nombre en distintos clientes: elige primero el cliente.';
         const nCli = norm(inCli.value);
-        if (nCli && !cli) msg = `«${inCli.value.trim()}» es un cliente nuevo: se creará junto con esta obra. Rellena dirección y localidad.`;
+        if (obraAmbigua) { /* ya avisado */ } else if (nCli && !cli) msg = `«${inCli.value.trim()}» es un cliente nuevo: se creará junto con esta obra. Rellena dirección y localidad.`;
         else if (cli && norm(obraTxt) && !obra) msg = `Obra nueva en «${cli.nombre}»: se creará con esta dirección y localidad.`;
         else if (cli && obra) msg = `Obra existente de «${cli.nombre}»: se usan su dirección y localidad.`;
         if (hint) { hint.textContent = msg; hint.classList.toggle('hidden', !msg); }
