@@ -47,6 +47,10 @@
         selectTema.value = savedTheme;
         aplicarTema(savedTheme);
         selectTema.addEventListener('change', (e) => aplicarTema(e.target.value));
+        // Cerrado: solo el icono (compacto). Abierto: icono + texto.
+        const textoTema = (largo) => Array.from(selectTema.options).forEach((o) => { o.textContent = largo ? o.dataset.largo : o.dataset.corto; });
+        ['mousedown', 'focus', 'touchstart'].forEach((ev) => selectTema.addEventListener(ev, () => textoTema(true)));
+        ['change', 'blur'].forEach((ev) => selectTema.addEventListener(ev, () => setTimeout(() => textoTema(false), 0)));
     }
 
     function getTodayLocalString() {

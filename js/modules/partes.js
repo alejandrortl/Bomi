@@ -713,15 +713,15 @@
         if (typeof html2pdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Revisa tu conexión e inténtalo de nuevo.'); return; }
         let imgFirma = '';
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
-        const cont = document.createElement('div');
-        cont.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;background:#ffffff;color:#0f172a;';
-        cont.innerHTML = htmlPdf(p, imgFirma);
-        document.body.appendChild(cont);
+        // Se entrega a html2pdf el propio bloque (sin envoltorio fixed/z-index negativo: html2pdf lo clona
+        // y un contenedor fuera de flujo dejaba la página en blanco).
+        const tmp = document.createElement('div');
+        tmp.innerHTML = htmlPdf(p, imgFirma);
+        const cont = tmp.firstElementChild;
         const nombre = ('parte_' + [p.fecha, p.cliente, p.obra].join('_')).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 90) + '.pdf';
         try {
-            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', onclone: limpiarClon }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
+            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, onclone: limpiarClon }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
         } catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
-        finally { cont.remove(); }
     }
 
     // ---------- Montaje ----------
