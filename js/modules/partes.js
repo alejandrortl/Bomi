@@ -1,7 +1,7 @@
 // js/modules/partes.js
 // Partes de trabajo: operarios y horas, descripción (escrita o dictada), materiales y firma del cliente.
 // Los admins pueden bloquear un parte (ya no se edita ni se elimina). Se descarga en PDF.
-// Script clásico: expone window.BomiPartes. Depende de `supabaseClient`, `window.currentUserProfile` y html2pdf.
+// Script clásico: expone window.BomiPartes. Depende de `supabaseClient`, `window.currentUserProfile`.
 (function () {
     'use strict';
 
@@ -682,24 +682,28 @@
     }
 
     // ---------- PDF ----------
-    function htmlPdf(p, imgFirma) {
-        const td = 'padding:6px 8px;border:1px solid #cbd5e1';
-        return `<div>
-            <h1 style="font-size:20px;margin:0 0 4px">Parte de trabajo</h1>
-            <p style="margin:0 0 14px;color:#475569">Fecha: ${esc(fechaES(p.fecha))}${p.bloqueado ? ' · Bloqueado' : ''}</p>
-            <p style="margin:2px 0"><strong>Cliente:</strong> ${esc(p.cliente)}</p>
-            <p style="margin:2px 0"><strong>Obra:</strong> ${esc(p.obra)}</p>
-            <p style="margin:2px 0"><strong>Dirección:</strong> ${esc(p.direccion || '—')}</p>
-            <p style="margin:2px 0 14px"><strong>Localidad:</strong> ${esc(p.localidad || '—')}</p>
-            <h2 style="font-size:14px;margin:0 0 6px">Operarios</h2>
-            <table style="border-collapse:collapse;width:100%;margin-bottom:14px"><thead><tr style="background:#e2e8f0"><th style="${td};text-align:left">Operario</th><th style="${td};text-align:left;width:100px">Horas</th></tr></thead><tbody>${ops(p).map((o) => `<tr><td style="${td}">${esc(o.operario_nombre)}</td><td style="${td}">${esc(o.horas || '')}</td></tr>`).join('')}</tbody></table>
-            <h2 style="font-size:14px;margin:0 0 6px">Trabajo realizado</h2>
-            <p style="margin:0 0 14px;white-space:pre-wrap">${esc(p.detalle_trabajo || '—')}</p>
-            ${mats(p).length ? `<h2 style="font-size:14px;margin:0 0 6px">Material utilizado</h2>
-            <table style="border-collapse:collapse;width:100%;margin-bottom:14px"><thead><tr style="background:#e2e8f0"><th style="${td};text-align:right;width:60px">Cant.</th><th style="${td};text-align:left">Material</th><th style="${td};text-align:left">Referencia</th></tr></thead><tbody>${mats(p).map((m) => `<tr><td style="${td};text-align:right">${esc(cant(m.unidades))}</td><td style="${td}">${esc(m.material)}</td><td style="${td}">${esc(m.referencia || '')}</td></tr>`).join('')}</tbody></table>` : ''}
-            ${imgFirma ? `<h2 style="font-size:14px;margin:0 0 6px">Firma del cliente</h2><img src="${esc(imgFirma)}" alt="Firma" style="max-height:120px;max-width:300px;border:1px solid #cbd5e1">` : ''}
-            <p style="margin:16px 0 0;font-size:11px;color:#64748b">Creado por ${esc(p.created_by || 'desconocido')} · ${esc(fechaHora(p.created_at))}${modificado(p) ? `<br>Modificado por ${esc(p.updated_by || 'desconocido')} · ${esc(fechaHora(p.updated_at))}` : ''}${p.bloqueado ? `<br>Bloqueado por ${esc(p.bloqueado_por || 'un administrador')}` : ''}</p>
-        </div>`;
+    // Contenido del PDF del parte (lo dibuja BomiPdf)
+    function itemsPdf(p, imgFirma) {
+        const it = [
+            { t: 'title', text: 'Parte de trabajo', sub: 'Fecha: ' + fechaES(p.fecha) + (p.bloqueado ? ' · Bloqueado' : '') },
+            { t: 'kv', label: 'Cliente', value: p.cliente },
+            { t: 'kv', label: 'Obra', value: p.obra },
+            { t: 'kv', label: 'Dirección', value: p.direccion || '—' },
+            { t: 'kv', label: 'Localidad', value: p.localidad || '—' },
+            { t: 'h', text: 'Operarios' },
+            { t: 'table', cols: [{ title: 'Operario', w: 4 }, { title: 'Horas', w: 1 }], rows: ops(p).map((o) => [o.operario_nombre, o.horas || '']) },
+            { t: 'h', text: 'Trabajo realizado' },
+            { t: 'p', text: p.detalle_trabajo || '—' },
+        ];
+        if (mats(p).length) {
+            it.push({ t: 'h', text: 'Material utilizado' });
+            it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: mats(p).map((m) => [cant(m.unidades), m.material, m.referencia || '']) });
+        }
+        if (imgFirma) { it.push({ t: 'h', text: 'Firma del cliente' }); it.push({ t: 'img', src: imgFirma, maxW: 240, maxH: 110 }); }
+        it.push({ t: 'note', text: 'Creado por ' + (p.created_by || 'desconocido') + ' · ' + fechaHora(p.created_at)
+            + (modificado(p) ? '\nModificado por ' + (p.updated_by || 'desconocido') + ' · ' + fechaHora(p.updated_at) : '')
+            + (p.bloqueado ? '\nBloqueado por ' + (p.bloqueado_por || 'un administrador') : '') });
+        return it;
     }
 
     async function descargarPdf(id) {
@@ -708,7 +712,7 @@
         let imgFirma = '';
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
         const nombre = window.BomiPdf.nombreSeguro(['parte', p.fecha, p.cliente, p.obra], 90);
-        try { await window.BomiPdf.generar(htmlPdf(p, imgFirma), nombre); }
+        try { await window.BomiPdf.generar(itemsPdf(p, imgFirma), nombre); }
         catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
 

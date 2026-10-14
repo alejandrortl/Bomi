@@ -613,24 +613,23 @@
         `;
     };
 
-    // PDF de la tarea: se construye con HTML propio (con logotipo y datos de la empresa arriba) en vez de
-    // capturar la pantalla, que dejaba la app bloqueada.
-    async function htmlPdfTarea(t) {
-        const campo = (et, val) => `<p style="margin:2px 0"><strong>${et}:</strong> ${escT(val || '—')}</p>`;
-        const contactos = contactosDeTarea(t).map(k => [k.nombre, k.telefono].filter(Boolean).join(' · ')).join('<br>');
-        let img = '';
-        if (t.dibujo_url) img = /^data:/.test(t.dibujo_url) ? t.dibujo_url : await window.BomiPdf.imagenDataUrl(t.dibujo_url);
-        return `<div>
-            <h1 style="font-size:20px;margin:0 0 4px">Orden de trabajo / Tarea${t.completada ? ' <span style="color:#059669;font-size:14px">· COMPLETADA</span>' : ''}</h1>
-            <p style="margin:0 0 14px;color:#475569">Fecha: ${escT(t.fecha || '')}</p>
-            ${campo('Cliente', t.cliente)}${campo('Obra', t.obra)}${campo('Dirección', t.direccion)}${campo('Localidad', t.localidad)}
-            ${contactos ? `<p style="margin:2px 0"><strong>Contacto:</strong> ${contactos}</p>` : ''}
-            <p style="margin:2px 0 14px"><strong>Asignada a:</strong> ${escT(t.operario_asignado || '—')}</p>
-            <h2 style="font-size:14px;margin:0 0 6px">Notas</h2>
-            <p style="margin:0 0 14px;white-space:pre-wrap;word-break:break-word">${escT(t.notas || 'N/A')}</p>
-            ${img ? `<h2 style="font-size:14px;margin:0 0 6px">Dibujo</h2><img src="${escT(img)}" alt="Dibujo" style="max-width:100%;max-height:300px;border:1px solid #cbd5e1">` : ''}
-            <p style="margin:16px 0 0;font-size:11px;color:#64748b">Creado por ${escT(t.created_by || '?')}${t.updated_by ? '<br>Editado por ' + escT(t.updated_by) : ''}</p>
-        </div>`;
+    // PDF de la tarea: BomiPdf lo dibuja directamente (con logotipo y datos de la empresa arriba), sin capturar la pantalla.
+    function itemsPdfTarea(t) {
+        const contactos = contactosDeTarea(t).map(k => [k.nombre, k.telefono].filter(Boolean).join(' · ')).join('\n');
+        const it = [
+            { t: 'title', text: 'Orden de trabajo / Tarea', badge: t.completada ? 'COMPLETADA' : '', sub: 'Fecha: ' + (t.fecha || '') },
+            { t: 'kv', label: 'Cliente', value: t.cliente },
+            { t: 'kv', label: 'Obra', value: t.obra },
+            { t: 'kv', label: 'Dirección', value: t.direccion },
+            { t: 'kv', label: 'Localidad', value: t.localidad },
+        ];
+        if (contactos) it.push({ t: 'kv', label: 'Contacto', value: contactos });
+        it.push({ t: 'kv', label: 'Asignada a', value: t.operario_asignado });
+        it.push({ t: 'h', text: 'Notas' });
+        it.push({ t: 'p', text: t.notas || 'N/A' });
+        if (t.dibujo_url) { it.push({ t: 'h', text: 'Dibujo' }); it.push({ t: 'img', src: t.dibujo_url, maxW: 420, maxH: 260 }); }
+        it.push({ t: 'note', text: 'Creado por ' + (t.created_by || '?') + (t.updated_by ? '\nEditado por ' + t.updated_by : '') });
+        return it;
     }
 
     document.getElementById('btn-export-pdf-tarea').addEventListener('click', async (e) => {
@@ -642,7 +641,7 @@
         btn.textContent = 'Creando PDF...';
         try {
             const nombre = window.BomiPdf.nombreSeguro(['Tarea', t.cliente, t.obra || 'trabajo'], 80);
-            await window.BomiPdf.generar(await htmlPdfTarea(t), nombre);
+            await window.BomiPdf.generar(itemsPdfTarea(t), nombre);
         } catch (ex) {
             alert('No se pudo crear el PDF: ' + (ex && ex.message ? ex.message : ex));
         } finally {

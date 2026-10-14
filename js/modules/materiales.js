@@ -2,7 +2,7 @@
 // Materiales: solicitudes de material (cliente/obra + líneas unidades/producto/referencia),
 // marcado como "pedido", PDF y catálogo de materiales (gestión solo Admin/SuperAdmin).
 // Script clásico: expone window.BomiMateriales. Depende de `supabaseClient`, `window.currentUserProfile`
-// y (para el PDF) html2pdf.
+// y (para el PDF) BomiPdf.
 (function () {
     'use strict';
 
@@ -532,26 +532,27 @@
     }
 
     // ---------- PDF ----------
-    function htmlPdf(r) {
-        const fila = (l) => `<tr><td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;white-space:nowrap">${esc(cant(l.cantidad))}</td><td style="padding:6px 8px;border:1px solid #cbd5e1">${esc(l.material)}</td><td style="padding:6px 8px;border:1px solid #cbd5e1">${esc(l.referencia || '')}</td></tr>`;
-        const ped = esPedido(r) ? `Pedido por ${esc(pedidoPor(r) || 'desconocido')}${pedidoEn(r) ? ' · ' + esc(fechaHora(pedidoEn(r))) : ''}` : 'Pendiente de pedir';
-        return `<div>
-            <h1 style="font-size:20px;margin:0 0 4px">Solicitud de material</h1>
-            <p style="margin:0 0 14px;color:#475569">${esc(ped)}</p>
-            <p style="margin:2px 0"><strong>Cliente:</strong> ${esc(r.cliente)}</p>
-            <p style="margin:2px 0"><strong>Obra:</strong> ${esc(r.obra)}</p>
-            <p style="margin:2px 0"><strong>Dirección:</strong> ${esc(r.direccion || '—')}</p>
-            <p style="margin:2px 0 14px"><strong>Localidad:</strong> ${esc(r.localidad || '—')}</p>
-            <table style="border-collapse:collapse;width:100%"><thead><tr style="background:#e2e8f0"><th style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right">Uds.</th><th style="padding:6px 8px;border:1px solid #cbd5e1;text-align:left">Producto</th><th style="padding:6px 8px;border:1px solid #cbd5e1;text-align:left">Referencia</th></tr></thead><tbody>${lineasDe(r).map(fila).join('')}</tbody></table>
-            <p style="margin:16px 0 0;font-size:11px;color:#64748b">Solicitado por ${esc(r.created_by || 'desconocido')} · ${esc(fechaHora(r.created_at))}${modificado(r) ? `<br>Modificado por ${esc(r.updated_by || 'desconocido')} · ${esc(fechaHora(r.updated_at))}` : ''}</p>
-        </div>`;
+    // Contenido del PDF de la solicitud (lo dibuja BomiPdf)
+    function itemsPdf(r) {
+        const ped = esPedido(r) ? `Pedido por ${pedidoPor(r) || 'desconocido'}${pedidoEn(r) ? ' · ' + fechaHora(pedidoEn(r)) : ''}` : 'Pendiente de pedir';
+        return [
+            { t: 'title', text: 'Solicitud de material', sub: ped },
+            { t: 'kv', label: 'Cliente', value: r.cliente },
+            { t: 'kv', label: 'Obra', value: r.obra },
+            { t: 'kv', label: 'Dirección', value: r.direccion || '—' },
+            { t: 'kv', label: 'Localidad', value: r.localidad || '—' },
+            { t: 'space', h: 8 },
+            { t: 'table', cols: [{ title: 'Uds.', w: 1, align: 'right' }, { title: 'Producto', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: lineasDe(r).map((l) => [cant(l.cantidad), l.material, l.referencia || '']) },
+            { t: 'note', text: 'Solicitado por ' + (r.created_by || 'desconocido') + ' · ' + fechaHora(r.created_at)
+                + (modificado(r) ? '\nModificado por ' + (r.updated_by || 'desconocido') + ' · ' + fechaHora(r.updated_at) : '') },
+        ];
     }
 
     async function descargarPdf(id) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
         const nombre = window.BomiPdf.nombreSeguro(['material', r.cliente, r.obra], 80);
-        try { await window.BomiPdf.generar(htmlPdf(r), nombre); }
+        try { await window.BomiPdf.generar(itemsPdf(r), nombre); }
         catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
 
