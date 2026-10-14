@@ -248,11 +248,71 @@
         document.getElementById('empresa-logo').innerHTML = logoHtml(URL.createObjectURL(f));
     }
 
+    // ---------- Iconos de la app (acceso directo / instalación) a partir del logotipo ----------
+    const TAM_ICONOS = [180, 192, 512];
+    const marcaDe = (url) => { const m = /\/logo_(\d+)\.[a-z0-9]+(?:\?.*)?$/i.exec(url || ''); return m ? m[1] : ''; };
+
+    function cargarImagen(blob) {
+        return new Promise((ok, ko) => {
+            const u = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => { URL.revokeObjectURL(u); ok(img); };
+            img.onerror = () => { URL.revokeObjectURL(u); ko(new Error('No se pudo leer la imagen del logotipo.')); };
+            img.src = u;
+        });
+    }
+
+    // Cuadrado con fondo blanco y el logotipo centrado con margen (zona segura de los iconos adaptables).
+    function dibujarIcono(img, lado) {
+        const c = document.createElement('canvas');
+        c.width = c.height = lado;
+        const g = c.getContext('2d');
+        g.fillStyle = '#ffffff';
+        g.fillRect(0, 0, lado, lado);
+        const w0 = img.naturalWidth || img.width || lado, h0 = img.naturalHeight || img.height || lado;
+        const k = Math.min((lado * 0.78) / w0, (lado * 0.78) / h0);
+        const w = w0 * k, h = h0 * k;
+        g.drawImage(img, (lado - w) / 2, (lado - h) / 2, w, h);
+        return new Promise((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error('No se pudo crear el icono.'))), 'image/png'));
+    }
+
+    async function generarIconos(blob, marca) {
+        const img = await cargarImagen(blob);
+        for (const t of TAM_ICONOS) {
+            const png = await dibujarIcono(img, t);
+            const { error } = await db().storage.from('empresa').upload(`icon${t}_${marca}.png`, png, { contentType: 'image/png', upsert: false });
+            // Si ya existía (otro administrador lo generó a la vez) no es un problema.
+            if (error && !/exist|duplicate/i.test(error.message || '')) throw error;
+        }
+    }
+
+    // Si el logotipo guardado aún no tiene iconos (p. ej. se subió antes de esta mejora), se generan.
+    async function asegurarIconos() {
+        try {
+            if (!esAdmin()) return;
+            let url = logoUrl;
+            if (!url) {
+                const { data } = await db().from('configuracion_empresa').select('logo_url').order('id', { ascending: true }).limit(1);
+                url = data && data[0] && data[0].logo_url;
+            }
+            const marca = marcaDe(url);
+            if (!marca) return;
+            const base = url.replace(/\/logo_\d+\.[a-z0-9]+(?:\?.*)?$/i, '');
+            const existe = await fetch(`${base}/icon512_${marca}.png`, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
+            if (existe) return;
+            const r = await fetch(url);
+            if (!r.ok) return;
+            await generarIconos(await r.blob(), marca);
+        } catch (e) { /* los iconos son un extra: nunca deben estorbar */ }
+    }
+
     async function subirLogo(f) {
         const ext = (f.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-        const ruta = `logo_${Date.now()}.${ext}`;
+        const marca = String(Date.now());
+        const ruta = `logo_${marca}.${ext}`;
         const { error } = await db().storage.from('empresa').upload(ruta, f, { contentType: f.type, upsert: false });
         if (error) throw error;
+        try { await generarIconos(f, marca); } catch (ex) { /* se reintentará al abrir esta pantalla */ }
         return db().storage.from('empresa').getPublicUrl(ruta).data.publicUrl;
     }
 
@@ -289,5 +349,6 @@
         }
     }
 
-    window.BomiCuenta = { abrirPerfil, abrirEmpresa };
+    window.addEventListener('userLoggedIn', () => { asegurarIconos(); });
+    window.BomiCuenta = { abrirPerfil, abrirEmpresa, asegurarIconos };
 })();
