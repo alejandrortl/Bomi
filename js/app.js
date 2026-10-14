@@ -156,15 +156,21 @@
     const normT = (v) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 
     async function loadClientes() {
-        const { data, error } = await supabaseClient.from('clientes').select('id, nombre, nombre_cliente, obras ( id, nombre, direccion, localidad )');
+        const { data, error } = await supabaseClient.from('clientes').select(`
+            id, nombre, nombre_cliente,
+            contactos_clientes ( id, nombre, telefono ),
+            obras ( id, nombre, direccion, localidad, contacto_nombre, contacto_telefono, contactos_obras ( id, nombre, telefono ) )
+        `);
         if (error) return;
         allClientesCompletos = (data || [])
-            .map(c => ({ id: c.id, nombre_cliente: String(c.nombre_cliente || c.nombre || '').trim(), obras: c.obras || [] }))
+            .map(c => ({ id: c.id, nombre_cliente: String(c.nombre_cliente || c.nombre || '').trim(), contactos: c.contactos_clientes || [], obras: c.obras || [] }))
             .filter(c => c.nombre_cliente)
             .sort((x, y) => x.nombre_cliente.localeCompare(y.nombre_cliente, 'es', { sensitivity: 'base' }));
         const dlClientes = document.getElementById('clientes-datalist');
         if (dlClientes) dlClientes.innerHTML = allClientesCompletos.map(c => `<option value="${escT(c.nombre_cliente)}"></option>`).join('');
         actualizarObrasDatalist();
+        // Los contactos se muestran en las tarjetas del Diario: se repinta al llegar los datos.
+        if (allTareas.length) renderTareas();
     }
 
     const nombreOperario = (op) => [op.nombre, op.apellido].filter(x => x && String(x).trim()).join(' ').trim() || op.username || '';
@@ -426,6 +432,45 @@
     if(searchTareasInput) searchTareasInput.addEventListener('input', renderTareas);
     if(filtroFechaDiario) filtroFechaDiario.addEventListener('change', renderTareas);
 
+    // ---- Dirección (Google Maps) y personas de contacto (llamada) en el Diario ----
+    const telHrefT = (t) => 'tel:' + String(t ?? '').replace(/[^\d+]/g, '');
+    const mapsHrefT = (dir, loc) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([dir, loc].filter(Boolean).join(', '));
+
+    function direccionLinkHtml(t, conIcono) {
+        const txt = [t.direccion, t.localidad].map(x => String(x || '').trim()).filter(Boolean).join(', ');
+        if (!txt) return '';
+        return `<a href="${escT(mapsHrefT(t.direccion, t.localidad))}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="inline-flex items-start gap-1 text-blue-600 dark:text-blue-400 hover:underline">${conIcono ? '<span class="material-symbols-outlined text-[16px] mt-0.5">location_on</span>' : ''}<span>${escT(txt)}</span></a>`;
+    }
+
+    // Contactos de la obra de la tarea (y del cliente), sin repetir teléfonos.
+    function contactosDeTarea(t) {
+        const cli = allClientesCompletos.find(c => normT(c.nombre_cliente) === normT(t.cliente));
+        if (!cli) return [];
+        const obra = cli.obras.find(o => normT(o.nombre) === normT(t.obra));
+        const lista = [];
+        if (obra) {
+            (obra.contactos_obras || []).forEach(k => lista.push({ nombre: k.nombre, telefono: k.telefono }));
+            if (!lista.length && (obra.contacto_nombre || obra.contacto_telefono)) lista.push({ nombre: obra.contacto_nombre, telefono: obra.contacto_telefono });
+        }
+        (cli.contactos || []).forEach(k => lista.push({ nombre: k.nombre, telefono: k.telefono }));
+        const vistos = new Set();
+        return lista
+            .map(k => ({ nombre: String(k.nombre || '').trim(), telefono: String(k.telefono || '').trim() }))
+            .filter(k => k.nombre || k.telefono)
+            .filter(k => { const clave = k.telefono ? k.telefono.replace(/\D/g, '') : normT(k.nombre); if (vistos.has(clave)) return false; vistos.add(clave); return true; });
+    }
+
+    function contactosHtmlT(t) {
+        const lista = contactosDeTarea(t);
+        if (!lista.length) return '';
+        return '<ul class="flex flex-col gap-1 mt-2">' + lista.map(k => `
+            <li class="flex items-center gap-1.5 text-sm">
+                <span class="material-symbols-outlined text-[16px] text-slate-400">call</span>
+                ${k.nombre ? `<span class="text-slate-600 dark:text-slate-300">${escT(k.nombre)}</span>` : ''}
+                ${k.telefono ? `<a href="${escT(telHrefT(k.telefono))}" onclick="event.stopPropagation()" class="text-blue-600 dark:text-blue-400 font-medium hover:underline">${escT(k.telefono)}</a>` : ''}
+            </li>`).join('') + '</ul>';
+    }
+
     function renderTareas() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
@@ -458,13 +503,14 @@
             div.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2`;
             div.innerHTML = `
                 <div class="flex justify-between items-start">
-                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${t.cliente || 'Sin cliente'} - ${t.obra || 'Sin obra'}</span>
-                    <button onclick="window.toggleTareaCompletada('${t.id}', ${!isComp})" class="w-8 h-8 rounded-full flex items-center justify-center border-2 ${isComp ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-zinc-600 text-transparent hover:border-blue-500'}"><span class="material-symbols-outlined text-[18px]">check</span></button>
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${escT(t.cliente || 'Sin cliente')} - ${escT(t.obra || 'Sin obra')}</span>
+                    <button onclick="window.toggleTareaCompletada('${escT(t.id)}', ${!isComp})" aria-label="${isComp ? 'Marcar como pendiente' : 'Marcar como completada'}" class="w-8 h-8 rounded-full flex items-center justify-center border-2 ${isComp ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-zinc-600 text-transparent hover:border-blue-500'}"><span class="material-symbols-outlined text-[18px]">check</span></button>
                 </div>
-                <div class="text-sm cursor-pointer" onclick="window.verDetalleTarea('${t.id}')">
-                    <p>📅 <strong>Fecha:</strong> ${t.fecha || 'N/D'} | 👷 <strong>Operario:</strong> ${t.operario_asignado || 'Sin asignar'}</p>
-                    <p class="text-slate-500 truncate mt-1">📍 ${t.direccion || ''}, ${t.localidad || ''}</p>
-                    <p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${t.notas || 'Sin notas...'}</p>
+                <div class="text-sm cursor-pointer" onclick="window.verDetalleTarea('${escT(t.id)}')">
+                    <p>📅 <strong>Fecha:</strong> ${escT(t.fecha || 'N/D')} | 👷 <strong>Operario:</strong> ${escT(t.operario_asignado || 'Sin asignar')}</p>
+                    <p class="mt-1 text-sm">${direccionLinkHtml(t, true) || '<span class="text-slate-500">Sin dirección</span>'}</p>
+                    ${contactosHtmlT(t)}
+                    <p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${escT(t.notas || 'Sin notas...')}</p>
                 </div>
             `;
             c.appendChild(div);
@@ -488,17 +534,18 @@
 
         const sello = document.getElementById('sello-completada');
         if(item.completada) sello.classList.remove('hidden'); else sello.classList.add('hidden');
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((item.direccion || '') + ', ' + (item.localidad || ''))}`;
+        const contactos = contactosHtmlT(item);
 
         document.getElementById('detalle-tarea-content').innerHTML = `
-            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${item.cliente || ''} - ${item.obra || ''}</p></div>
-            <div><span class="text-xs text-slate-500">Ubicación y Fecha:</span><div class="flex items-center justify-between mt-1"><p class="font-medium">${item.direccion || ''}, ${item.localidad || ''} (${item.fecha || ''})</p><a href="${mapsLink}" target="_blank" class="text-blue-600 bg-blue-50 dark:bg-blue-950 p-1.5 rounded-full flex items-center"><span class="material-symbols-outlined text-[18px]">map</span></a></div></div>
-            <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${item.operario_asignado || ''}</p></div>
-            <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1">${item.notas || 'N/A'}</p></div>
-            ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span><img src="${item.dibujo_url}" class="mt-2 rounded-xl max-h-48 border border-slate-200"></div>` : ''}
+            <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${escT(item.cliente || '')} - ${escT(item.obra || '')}</p></div>
+            <div><span class="text-xs text-slate-500">Ubicación y Fecha:</span><div class="flex items-center justify-between mt-1 gap-2"><p class="font-medium">${direccionLinkHtml(item, false) || '<span class="text-slate-500">Sin dirección</span>'} (${escT(item.fecha || '')})</p><a href="${escT(mapsHrefT(item.direccion, item.localidad))}" target="_blank" rel="noopener noreferrer" aria-label="Abrir en Google Maps" class="text-blue-600 bg-blue-50 dark:bg-blue-950 p-1.5 rounded-full flex items-center shrink-0"><span class="material-symbols-outlined text-[18px]">map</span></a></div></div>
+            ${contactos ? `<div><span class="text-xs text-slate-500">Contacto:</span>${contactos}</div>` : ''}
+            <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || '')}</p></div>
+            <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-wrap break-words">${escT(item.notas || 'N/A')}</p></div>
+            ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span><img src="${escT(item.dibujo_url)}" class="mt-2 rounded-xl max-h-48 border border-slate-200"></div>` : ''}
             <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 flex justify-between mt-4">
-                <span>Creado por: ${item.created_by || '?'} ${item.updated_by ? '<br>Editado por: ' + item.updated_by : ''}</span>
-                <button onclick="window.editarTarea('${item.id}')" class="bg-slate-100 dark:bg-zinc-800 px-4 py-2 rounded-xl font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Modificar</button>
+                <span>Creado por: ${escT(item.created_by || '?')} ${item.updated_by ? '<br>Editado por: ' + escT(item.updated_by) : ''}</span>
+                <button onclick="window.editarTarea('${escT(item.id)}')" class="bg-slate-100 dark:bg-zinc-800 px-4 py-2 rounded-xl font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Modificar</button>
             </div>
         `;
     };
