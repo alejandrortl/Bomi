@@ -34,6 +34,10 @@ $$;
 create or replace function public.proteger_bloqueo_parte() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
+  -- Desde el panel de Supabase / SQL Editor (sin usuario de la app) se puede corregir cualquier parte.
+  if auth.uid() is null then
+    return new;
+  end if;
   if coalesce(old.bloqueado, false) then
     raise exception 'Un parte bloqueado ya no se puede modificar ni desbloquear' using errcode = '42501';
   end if;
