@@ -223,63 +223,29 @@
         } else { btnDictarVoz.style.display = 'none'; }
     }
 
-    // PIZARRA
+    // PIZARRA (la misma que usa la Bitácora: js/modules/pizarra.js)
+    // El contenedor lleva "hidden" e "inline-block" a la vez; se alterna con style para que no compitan.
+    function setDibujo(url) {
+        document.getElementById('tarea-dibujo-url').value = url || '';
+        const prev = document.getElementById('preview-dibujo');
+        if (url) document.getElementById('img-dibujo-preview').src = url;
+        if (prev) prev.style.display = url ? 'inline-block' : 'none';
+    }
+
     const btnAbrirPizarra = document.getElementById('btn-abrir-pizarra');
-    const modalPizarra = document.getElementById('modal-pizarra');
-    const canvasPizarra = document.getElementById('canvas-pizarra');
-    const ctxPiz = canvasPizarra ? canvasPizarra.getContext('2d') : null;
-    let pizarraDrawing = false;
-
-    if (btnAbrirPizarra && modalPizarra && canvasPizarra) {
-        btnAbrirPizarra.addEventListener('click', () => {
-            modalPizarra.classList.remove('hidden');
-            const rect = canvasPizarra.parentElement.getBoundingClientRect();
-            canvasPizarra.width = rect.width; canvasPizarra.height = rect.height;
-            ctxPiz.fillStyle = '#ffffff'; ctxPiz.fillRect(0, 0, canvasPizarra.width, canvasPizarra.height);
-            ctxPiz.lineWidth = 3; ctxPiz.lineCap = 'round'; ctxPiz.strokeStyle = '#000000';
+    if (btnAbrirPizarra) {
+        btnAbrirPizarra.addEventListener('click', async () => {
+            if (!window.BomiPizarra) { alert('La pizarra no está disponible.'); return; }
+            const actualUrl = document.getElementById('tarea-dibujo-url').value;
+            const res = await window.BomiPizarra.abrir({ imagen: actualUrl });
+            if (!res) return;
+            if (res.vacia) { setDibujo(''); return; }
+            const fileName = `diario_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
+            const { error } = await supabaseClient.storage.from('pizarras').upload(fileName, res.blob, { contentType: 'image/png' });
+            if (error) { alert('No se pudo guardar el dibujo: ' + error.message); return; }
+            setDibujo(supabaseClient.storage.from('pizarras').getPublicUrl(fileName).data.publicUrl);
         });
-
-        document.querySelectorAll('.btn-color-pizarra').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.btn-color-pizarra').forEach(b => b.classList.remove('ring-2', 'ring-blue-500', 'scale-110'));
-                ctxPiz.strokeStyle = e.target.dataset.color;
-                e.target.classList.add('ring-2', 'ring-blue-500', 'scale-110');
-            });
-        });
-
-        document.getElementById('btn-limpiar-pizarra').addEventListener('click', () => ctxPiz.fillRect(0, 0, canvasPizarra.width, canvasPizarra.height));
-        document.getElementById('btn-cerrar-pizarra').addEventListener('click', () => modalPizarra.classList.add('hidden'));
-
-        const getPizPos = (e) => {
-            const rect = canvasPizarra.getBoundingClientRect();
-            return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top };
-        };
-
-        canvasPizarra.addEventListener('mousedown', (e) => { pizarraDrawing = true; ctxPiz.beginPath(); ctxPiz.moveTo(getPizPos(e).x, getPizPos(e).y); });
-        canvasPizarra.addEventListener('mousemove', (e) => { if (pizarraDrawing) { ctxPiz.lineTo(getPizPos(e).x, getPizPos(e).y); ctxPiz.stroke(); } });
-        canvasPizarra.addEventListener('mouseup', () => pizarraDrawing = false);
-        canvasPizarra.addEventListener('touchstart', (e) => { e.preventDefault(); pizarraDrawing = true; ctxPiz.beginPath(); ctxPiz.moveTo(getPizPos(e).x, getPizPos(e).y); }, {passive: false});
-        canvasPizarra.addEventListener('touchmove', (e) => { e.preventDefault(); if (pizarraDrawing) { ctxPiz.lineTo(getPizPos(e).x, getPizPos(e).y); ctxPiz.stroke(); } }, {passive: false});
-        canvasPizarra.addEventListener('touchend', () => pizarraDrawing = false);
-
-        document.getElementById('btn-guardar-pizarra').addEventListener('click', () => {
-            canvasPizarra.toBlob(async (blob) => {
-                const fileName = `pizarra_${Date.now()}.png`;
-                const { error } = await supabaseClient.storage.from('pizarras').upload(fileName, blob, { contentType: 'image/png' });
-                if (!error) {
-                    const { data: pubData } = supabaseClient.storage.from('pizarras').getPublicUrl(fileName);
-                    document.getElementById('tarea-dibujo-url').value = pubData.publicUrl;
-                    document.getElementById('img-dibujo-preview').src = pubData.publicUrl;
-                    document.getElementById('preview-dibujo').classList.remove('hidden');
-                } else { alert("Error al subir a bucket: " + error.message); }
-                modalPizarra.classList.add('hidden');
-            });
-        });
-
-        document.getElementById('btn-borrar-dibujo').addEventListener('click', () => {
-            document.getElementById('tarea-dibujo-url').value = '';
-            document.getElementById('preview-dibujo').classList.add('hidden');
-        });
+        document.getElementById('btn-borrar-dibujo').addEventListener('click', () => setDibujo(''));
     }
 
     if (fabNewTask) {
@@ -289,8 +255,7 @@
             document.getElementById('edit-tarea-id').value = "";
             document.getElementById('tarea-fecha').value = getTodayLocalString();
             document.getElementById('tarea-operario').value = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : '';
-            document.getElementById('tarea-dibujo-url').value = '';
-            document.getElementById('preview-dibujo').classList.add('hidden');
+            setDibujo('');
             hideAllViews();
             viewFormTarea.classList.remove('hidden');
             viewFormTarea.classList.add('flex');
@@ -453,11 +418,7 @@
         document.getElementById('tarea-operario').value = item.operario_asignado || '';
         document.getElementById('tarea-fecha').value = item.fecha ? item.fecha.split('T')[0] : getTodayLocalString();
         document.getElementById('tarea-notas').value = item.notas || '';
-        document.getElementById('tarea-dibujo-url').value = item.dibujo_url || '';
-        if (item.dibujo_url) {
-            document.getElementById('img-dibujo-preview').src = item.dibujo_url;
-            document.getElementById('preview-dibujo').classList.remove('hidden');
-        } else { document.getElementById('preview-dibujo').classList.add('hidden'); }
+        setDibujo(item.dibujo_url || '');
         hideAllViews();
         viewFormTarea.classList.remove('hidden');
         viewFormTarea.classList.add('flex');

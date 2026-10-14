@@ -1,6 +1,6 @@
 // js/modules/pizarra.js
 // Pizarra de dibujo a mano alzada. Script clásico: expone window.BomiPizarra.abrir(opciones).
-// Herramientas: lápiz, línea recta, círculo y óvalo; 4 colores; 2 grosores; deshacer y borrar todo.
+// Herramientas: lápiz, línea recta, círculo, óvalo y borrador; 4 colores; 2 grosores; deshacer y borrar todo.
 // abrir({ imagen }) devuelve una promesa con:
 //   null                      -> el usuario canceló
 //   { blob, vacia: false }    -> imagen PNG lista para subir
@@ -21,7 +21,9 @@
         ['linea', 'horizontal_rule', 'Línea recta'],
         ['circulo', 'circle', 'Círculo'],
         ['ovalo', 'egg', 'Óvalo'],
+        ['borrador', 'ink_eraser', 'Borrador'],
     ];
+    const FACTOR_BORRADOR = 4;   // el borrador es 4 veces más ancho que el lápiz
     const ANCHOS = [['Fino', 3], ['Grueso', 8]];
     const BTN = 'shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800';
     const ACTIVO = ['ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-950'];
@@ -104,7 +106,7 @@
         ctx.lineJoin = 'round';
         const [a, b] = [f.puntos[0], f.puntos[f.puntos.length - 1]];
         ctx.beginPath();
-        if (f.tipo === 'lapiz') {
+        if (f.tipo === 'lapiz' || f.tipo === 'borrador') {
             if (f.puntos.length === 1) { ctx.arc(a.x, a.y, f.ancho / 2, 0, Math.PI * 2); ctx.fill(); return; }
             ctx.moveTo(a.x, a.y);
             f.puntos.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
@@ -143,14 +145,16 @@
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
         canvas.setPointerCapture(e.pointerId);
-        st.actual = { tipo: st.herramienta, color: st.color, ancho: st.ancho, puntos: [pos(e)] };
+        const borra = st.herramienta === 'borrador';
+        // El borrador pinta de blanco (el fondo del lienzo), también sobre un dibujo anterior; se puede deshacer.
+        st.actual = { tipo: st.herramienta, color: borra ? '#ffffff' : st.color, ancho: borra ? st.ancho * FACTOR_BORRADOR : st.ancho, puntos: [pos(e)] };
         dibujar();
     }
 
     function mover(e) {
         if (!st || !st.actual) return;
         const p = pos(e);
-        if (st.actual.tipo === 'lapiz') st.actual.puntos.push(p);
+        if (st.actual.tipo === 'lapiz' || st.actual.tipo === 'borrador') st.actual.puntos.push(p);
         else st.actual.puntos = [st.actual.puntos[0], p];
         dibujar();
     }
@@ -161,7 +165,7 @@
         st.actual = null;
         const [a, b] = [f.puntos[0], f.puntos[f.puntos.length - 1]];
         // Una línea, círculo u óvalo sin recorrido (un simple toque) no se guarda.
-        if (f.tipo === 'lapiz' || Math.hypot(b.x - a.x, b.y - a.y) > 3) st.formas.push(f);
+        if (f.tipo === 'lapiz' || f.tipo === 'borrador' || Math.hypot(b.x - a.x, b.y - a.y) > 3) st.formas.push(f);
         dibujar();
     }
 
