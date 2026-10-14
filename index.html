@@ -34,12 +34,12 @@
 <body class="bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 antialiased h-screen h-[100dvh] flex flex-col overflow-hidden">
 
     <!-- BLOQUE 1: HEADER -->
-    <header id="app-header" class="hidden w-full bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3 justify-between items-center z-30 shrink-0 relative shadow-sm">
-        <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">engineering</span>
-            <h1 id="header-app-title" class="text-xl font-semibold tracking-tight truncate max-w-[150px] sm:max-w-xs">Diario de Obra</h1>
+    <header id="app-header" class="hidden w-full bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-3 sm:px-4 py-3 justify-between items-center gap-2 z-30 shrink-0 relative shadow-sm">
+        <div class="flex items-center gap-2 min-w-0">
+            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 shrink-0">engineering</span>
+            <h1 id="header-app-title" class="hidden min-[480px]:block text-xl font-semibold tracking-tight truncate max-w-[150px] sm:max-w-xs">Diario de Obra</h1>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1 sm:gap-3 min-w-0">
             <button id="btn-mensajes" aria-label="Mensajes" class="relative text-slate-600 dark:text-slate-300 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
                 <span class="material-symbols-outlined text-[22px]">chat</span>
                 <span id="badge-mensajes" class="hidden absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full"></span>
@@ -48,19 +48,19 @@
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
                 <span id="badge-notificaciones" class="hidden absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full"></span>
             </button>
-            <select id="select-tema" aria-label="Seleccionar tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1.5 focus:outline-none cursor-pointer">
-                <option value="auto">🌓 Auto</option>
-                <option value="claro">☀️ Claro</option>
-                <option value="oscuro">🌙 Oscuro</option>
+            <select id="select-tema" aria-label="Seleccionar tema" title="Tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-2 sm:px-3 py-1.5 focus:outline-none cursor-pointer">
+                <option value="auto" title="Auto">🌓</option>
+                <option value="claro" title="Claro">☀️</option>
+                <option value="oscuro" title="Oscuro">🌙</option>
             </select>
             <span id="user-role-badge" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-2.5 py-1 rounded-full font-medium hidden sm:inline-block"></span>
-            <div class="relative">
-                <button id="btn-menu-perfil" aria-haspopup="true" aria-expanded="false" aria-controls="dropdown-menu-perfil" class="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
+            <div class="relative min-w-0">
+                <button id="btn-menu-perfil" aria-haspopup="true" aria-expanded="false" aria-controls="dropdown-menu-perfil" class="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 px-2 sm:px-3 py-1.5 rounded-full text-xs font-medium hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
-                    <span id="header-username-label">Cargando...</span>
+                    <span id="header-username-label" class="truncate max-w-[4.5rem] min-[400px]:max-w-[5.5rem] sm:max-w-none">Cargando...</span>
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
                 </button>
-                <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 flex-col">
+                <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-1rem)] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 flex-col">
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil</button>
                     <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 items-center gap-2"><span class="material-symbols-outlined text-[18px]">business</span> Logotipo y empresa</button>
                     <div class="border-t border-slate-200 dark:border-zinc-800 my-1"></div>
