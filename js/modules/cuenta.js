@@ -29,6 +29,57 @@
     }
     const ocultar = (id) => { const el = document.getElementById(id); if (el) { el.textContent = ''; el.className = 'hidden'; } };
 
+    // ---------- Preferencias de notificaciones ----------
+    // Cada tipo se puede desactivar; una clave ausente cuenta como activada.
+    const TIPOS_AVISO = [
+        { clave: 'aprobaciones', titulo: 'Aprobación de nuevos empleados', desc: 'Cuando alguien se registra y espera aprobación.', soloAdmin: true },
+        { clave: 'tareas', titulo: 'Tareas asignadas a mí', desc: 'Cuando alguien me asigna una tarea en el Diario.' },
+        { clave: 'material', titulo: 'Solicitudes de material', desc: 'Aún no se envían avisos de este tipo.' },
+        { clave: 'generales', titulo: 'Notificaciones generales y personales', desc: 'Aún no se envían avisos de este tipo.' },
+    ];
+
+    function htmlPreferencias(p) {
+        // Si la base de datos aún no tiene la columna, el perfil no la trae: se muestra bloqueado y se explica.
+        const disponible = p.preferencias_notificaciones !== undefined;
+        const prefs = (disponible && p.preferencias_notificaciones) || {};
+        const filas = TIPOS_AVISO.filter((t) => !t.soloAdmin || esAdmin()).map((t) => `
+            <label class="flex items-start justify-between gap-4 cursor-pointer">
+                <span class="flex flex-col"><span class="text-sm font-medium">${esc(t.titulo)}</span><span class="text-xs text-slate-500">${esc(t.desc)}</span></span>
+                <input type="checkbox" role="switch" data-clave="${t.clave}" ${prefs[t.clave] === false ? '' : 'checked'} ${disponible ? '' : 'disabled'} class="mt-1 w-5 h-5 shrink-0 accent-blue-600">
+            </label>`).join('');
+        return `
+            <form id="form-notif" class="${tarjeta}" onsubmit="return false">
+                <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">notifications</span> Notificaciones que quiero recibir</h3>
+                ${filas}
+                ${disponible ? '' : '<p class="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 rounded-xl p-3">Estas opciones necesitan una actualización de la base de datos que aún no se ha aplicado. Mientras tanto recibes todos los avisos.</p>'}
+                <p id="notif-msg" class="hidden" role="status"></p>
+            </form>`;
+    }
+
+    async function cambiarPreferencia(e) {
+        const caja = e.target;
+        const clave = caja.dataset && caja.dataset.clave;
+        if (!clave) return;
+        const p = yo();
+        const form = document.getElementById('form-notif');
+        const cajas = [...form.querySelectorAll('input[type=checkbox]')];
+        const nuevo = { ...(p.preferencias_notificaciones || {}), [clave]: caja.checked };
+        ocultar('notif-msg');
+        cajas.forEach((c) => { c.disabled = true; });
+        try {
+            const { data, error } = await db().from('perfiles').update({ preferencias_notificaciones: nuevo }).eq('id', p.id).select('id');
+            if (error) throw error;
+            if (!data || !data.length) throw new Error('No se pudo guardar tu preferencia.');
+            p.preferencias_notificaciones = nuevo;
+            mensaje('notif-msg', 'Preferencia guardada.', true);
+        } catch (ex) {
+            caja.checked = !caja.checked;   // vuelve a como estaba
+            mensaje('notif-msg', ex.message || 'No se pudo guardar.', false);
+        } finally {
+            cajas.forEach((c) => { c.disabled = false; });
+        }
+    }
+
     // ---------- Mi Perfil ----------
     function abrirPerfil() {
         const p = yo();
@@ -44,6 +95,7 @@
                 <p id="perfil-msg" class="hidden" role="status"></p>
                 <button type="submit" id="perfil-guardar" class="${BTN}">Guardar</button>
             </form>
+            ${htmlPreferencias(p)}
             <form id="form-password" class="${tarjeta}" autocomplete="off">
                 <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">lock</span> Cambiar contraseña</h3>
                 ${campo('pass-nueva', 'Nueva contraseña', '', 'type="password" required minlength="6" autocomplete="new-password"')}
@@ -53,6 +105,8 @@
             </form>`;
         document.getElementById('form-perfil').addEventListener('submit', guardarPerfil);
         document.getElementById('form-password').addEventListener('submit', cambiarPassword);
+        const fn = document.getElementById('form-notif');
+        if (fn) fn.addEventListener('change', cambiarPreferencia);
     }
 
     async function guardarPerfil(e) {

@@ -202,6 +202,9 @@
 
     // Avisa al empleado de que tiene una tarea asignada (aparece en su campana).
     async function notificarAsignacion(operario, tarea, quien) {
+        // Respeta la preferencia del empleado. Si no se puede leer (p. ej. columna aún inexistente), se avisa.
+        const { data: pref, error: errPref } = await supabaseClient.from('perfiles').select('preferencias_notificaciones').eq('id', operario.id).single();
+        if (!errPref && pref && pref.preferencias_notificaciones && pref.preferencias_notificaciones.tareas === false) return true;
         const { error } = await supabaseClient.from('notificaciones').insert([{
             user_id: operario.id,
             titulo: 'Nueva tarea asignada',
