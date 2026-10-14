@@ -44,7 +44,10 @@
     };
     const cant = (n) => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 3 });
     const modificado = (r) => !!r.updated_at && !!r.created_at && (new Date(r.updated_at) - new Date(r.created_at) > 5000);
-    const esPedido = (r) => norm(r.estado) === 'pedido';
+    const esRecibido = (r) => norm(r.estado) === 'recibido';
+    const esPedido = (r) => norm(r.estado) === 'pedido' || (esRecibido(r) && !!r.pedido_por);
+    const recibidoPor = (r) => r.recibido_por || (esRecibido(r) ? r.updated_by : '') || '';
+    const recibidoEn = (r) => r.recibido_at || (esRecibido(r) ? r.updated_at : '') || '';
     const pedidoPor = (r) => r.pedido_por || (esPedido(r) ? r.updated_by : '') || '';
     const pedidoEn = (r) => r.pedido_at || (esPedido(r) ? r.updated_at : '') || '';
     const lineasDe = (r) => (r.materiales_solicitud_items || []).slice().sort((a, b) => 0);
@@ -55,7 +58,7 @@
         if (ex && ex.code === '23503') return 'Hay registros que dependen de este elemento.';
         return (ex && ex.message) ? ex.message : 'Ha ocurrido un error inesperado.';
     }
-    const columnaFalta = (ex) => !!ex && (ex.code === '42703' || ex.code === 'PGRST204' || /pedido_(por|at)/.test(ex.message || ''));
+    const columnaFalta = (ex) => !!ex && (ex.code === '42703' || ex.code === 'PGRST204' || /(pedido|recibido)_(por|at)/.test(ex.message || ''));
 
     async function exigir(consulta, mensajeSinFilas) {
         const { data, error } = await consulta;
@@ -93,16 +96,19 @@
         } catch (ex) { return false; }
     }
 
-    // Material pedido: al creador y a quien la editó por última vez (un solo aviso si son la misma persona).
-    async function avisarPedido(r, quien) {
+    // Aviso a quien creó la solicitud (pedido / recibido). No se avisa a uno mismo.
+    async function avisarCreador(r, titulo, mensaje) {
         try {
             const yo = window.currentUserProfile && window.currentUserProfile.id;
-            const nombres = new Set([r.created_by, r.updated_by].filter(Boolean).map(norm));
+            const creador = norm(r.created_by);
+            if (!creador) return true;
             const todos = await perfilesActivos();
-            const dest = todos.filter((p) => p.id !== yo && nombres.has(norm(nombrePerfil(p))));
-            return await avisar(dest, 'Material pedido', `${quien} ha marcado como pedido el material de ${r.cliente} · ${r.obra}.`);
+            const dest = todos.filter((p) => p.id !== yo && norm(nombrePerfil(p)) === creador);
+            return await avisar(dest, titulo, mensaje);
         } catch (ex) { return false; }
     }
+    const avisarPedido = (r, quien) => avisarCreador(r, 'Material pedido', `${quien} ha marcado como pedido el material de ${r.cliente} · ${r.obra}.`);
+    const avisarRecibido = (r, quien) => avisarCreador(r, 'Material recibido', `${quien} ha marcado como recibido el material de ${r.cliente} · ${r.obra}.`);
 
     // ---------- Búsqueda ----------
     const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r)]
@@ -150,15 +156,24 @@
         return `<a href="${esc(mapsHref(dir, loc))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-start gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"><span class="material-symbols-outlined text-[16px] mt-0.5">location_on</span><span>${esc(txt)}</span></a>`;
     }
 
-    const estadoHtml = (r) => esPedido(r)
+    const estadoHtml = (r) => esRecibido(r)
+        ? '<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200">Recibido</span>'
+        : esPedido(r)
         ? '<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200">Pedido</span>'
         : '<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">Pendiente</span>';
 
     function autoriaHtml(r) {
         const l = [`Solicitado por <strong>${esc(r.created_by || 'desconocido')}</strong> · ${esc(fechaHora(r.created_at))}`];
         if (esPedido(r)) l.push(`Pedido por <strong>${esc(pedidoPor(r) || 'desconocido')}</strong>${pedidoEn(r) ? ' · ' + esc(fechaHora(pedidoEn(r))) : ''}`);
-        if (modificado(r) && !(esPedido(r) && !r.pedido_por)) l.push(`Modificado por <strong>${esc(r.updated_by || 'desconocido')}</strong> · ${esc(fechaHora(r.updated_at))}`);
+        if (esRecibido(r)) l.push(`Recibido por <strong>${esc(recibidoPor(r) || 'desconocido')}</strong>${recibidoEn(r) ? ' · ' + esc(fechaHora(recibidoEn(r))) : ''}`);
+        if (modificado(r) && !((esPedido(r) || esRecibido(r)) && !(r.pedido_por || r.recibido_por))) l.push(`Modificado por <strong>${esc(r.updated_by || 'desconocido')}</strong> · ${esc(fechaHora(r.updated_at))}`);
         return l.map((x) => `<p class="text-xs text-slate-500">${x}</p>`).join('');
+    }
+
+    // Checkmark de "recibido": vacío si no, relleno en verde si sí.
+    function botonRecibido(r) {
+        const si = esRecibido(r);
+        return `<button type="button" data-accion="${si ? 'norecibido' : 'recibido'}" data-id="${esc(r.id)}" aria-pressed="${si}" aria-label="${si ? 'Quitar marca de recibido' : 'Marcar como recibido'}" title="${si ? 'Recibido (pulsa para quitar)' : 'Marcar como recibido'}" class="${BTN_ICON} ${si ? '!text-green-600 dark:!text-green-400' : ''}"><span class="material-symbols-outlined text-[22px]" style="${si ? "font-variation-settings:'FILL' 1" : ''}">${si ? 'check_circle' : 'radio_button_unchecked'}</span></button>`;
     }
 
     function htmlSolicitud(r) {
@@ -173,6 +188,7 @@
                     ${direccionHtml(r.direccion, r.localidad)}
                 </div>
                 <div class="flex gap-1 shrink-0 flex-wrap justify-end">
+                    ${botonRecibido(r)}
                     ${btnAccion('ver', r.id, 'visibility', 'Ver solicitud')}
                     ${btnAccion('editar', r.id, 'edit', 'Editar solicitud')}
                     ${btnAccion('eliminar', r.id, 'delete', 'Eliminar solicitud', BTN_DANGER)}
@@ -419,9 +435,12 @@
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
                 <button type="button" data-accion="pdf" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
                 <button type="button" data-accion="editar-desde-ver" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
-                ${esPedido(r)
+                ${esRecibido(r)
+                    ? `<button type="button" data-accion="norecibido" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">undo</span> Quitar recibido</button>`
+                    : `<button type="button" data-accion="recibido" data-id="${esc(r.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-medium text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">task_alt</span> Marcar como recibido</button>`}
+                ${esPedido(r) && !esRecibido(r)
                     ? `<button type="button" data-accion="pendiente" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">undo</span> Volver a pendiente</button>`
-                    : `<button type="button" data-accion="pedido" data-id="${esc(r.id)}" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">check_circle</span> Marcar como pedido</button>`}
+                    : esRecibido(r) ? '' : `<button type="button" data-accion="pedido" data-id="${esc(r.id)}" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">check_circle</span> Marcar como pedido</button>`}
             </div>`;
         mostrar('modal-materiales', 'Solicitud de material');
     }
@@ -509,13 +528,19 @@
 
     // Marca como pedido guardando quién y cuándo. Si la BD aún no tiene las columnas pedido_por/pedido_at,
     // se guarda el estado y se registra a la persona en "modificado por".
-    async function cambiarEstado(id, pedido) {
+    // tipo: 'pedido' | 'pendiente' | 'recibido' | 'norecibido'
+    async function cambiarEstado(id, tipo, desdeLista) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
         const err = document.getElementById('m-error');
         const quien = nombreUsuario();
         const ahora = new Date().toISOString();
-        const completo = pedido ? { estado: 'Pedido', pedido_por: quien, pedido_at: ahora } : { estado: 'Pendiente', pedido_por: null, pedido_at: null };
+        const sinRecibido = { recibido_por: null, recibido_at: null };
+        let completo;
+        if (tipo === 'pedido') completo = { estado: 'Pedido', pedido_por: quien, pedido_at: ahora, ...sinRecibido };
+        else if (tipo === 'recibido') completo = { estado: 'Recibido', recibido_por: quien, recibido_at: ahora };
+        else if (tipo === 'norecibido') completo = { estado: r.pedido_por ? 'Pedido' : 'Pendiente', ...sinRecibido };
+        else completo = { estado: 'Pendiente', pedido_por: null, pedido_at: null, ...sinRecibido };
         const msg = 'No se pudo actualizar: no tienes permiso o la solicitud ya no existe.';
         try {
             try {
@@ -524,14 +549,13 @@
                 if (!columnaFalta(ex)) throw ex;
                 await exigir(db().from('materiales_solicitudes').update({ estado: completo.estado, updated_by: quien, updated_at: ahora }).eq('id', id).select('id'), msg);
             }
-            const avisado = pedido ? await avisarPedido(r, quien) : true;
+            const avisado = tipo === 'pedido' ? await avisarPedido(r, quien) : tipo === 'recibido' ? await avisarRecibido(r, quien) : true;
             await cargar();
-            abrirVista(id);
-            if (!avisado) alert('Se marcó como pedido, pero no se pudo avisar al creador o a quien la editó.');
+            if (!desdeLista) abrirVista(id);
+            if (!avisado) alert(`Se marcó como ${tipo === 'recibido' ? 'recibido' : 'pedido'}, pero no se pudo avisar a quien creó la solicitud.`);
         } catch (ex) { if (err) fallo(err, mensajeError(ex)); else alert(mensajeError(ex)); }
     }
 
-    // ---------- PDF ----------
     // Contenido del PDF de la solicitud (lo dibuja BomiPdf)
     function itemsPdf(r) {
         const ped = esPedido(r) ? `Pedido por ${pedidoPor(r) || 'desconocido'}${pedidoEn(r) ? ' · ' + fechaHora(pedidoEn(r)) : ''}` : 'Pendiente de pedir';
@@ -789,6 +813,7 @@
             else if (accion === 'editar') abrirFormulario('editar', id);
             else if (accion === 'eliminar') eliminar(id);
             else if (accion === 'pdf') descargarPdf(id);
+            else if (accion === 'recibido' || accion === 'norecibido') cambiarEstado(id, accion, true);
             else if (accion === 'catalogo') abrirCatalogo();
             else if (accion === 'reintentar') cargar();
         });
@@ -813,8 +838,7 @@
                 if (ls.length > 1) l.remove();
                 else l.querySelectorAll('input').forEach((i) => { i.value = ''; i.dataset.auto = ''; });
             } else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
-            else if (a === 'pedido') cambiarEstado(id, true);
-            else if (a === 'pendiente') cambiarEstado(id, false);
+            else if (a === 'pedido' || a === 'pendiente' || a === 'recibido' || a === 'norecibido') cambiarEstado(id, a);
             else if (a === 'pdf') descargarPdf(id);
         });
         const alCambiar = (e) => {

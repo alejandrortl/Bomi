@@ -34,7 +34,7 @@
     const TIPOS_AVISO = [
         { clave: 'aprobaciones', titulo: 'Aprobación de nuevos empleados', desc: 'Cuando alguien se registra y espera aprobación.', soloAdmin: true },
         { clave: 'tareas', titulo: 'Tareas asignadas a mí', desc: 'Cuando alguien me asigna una tarea en el Diario.' },
-        { clave: 'material', titulo: 'Solicitudes de material', desc: 'Cuando alguien pide material o se marca como pedido.' },
+        { clave: 'material', titulo: 'Solicitudes de material', desc: 'Cuando alguien pide material, o se marca como pedido o recibido.' },
         { clave: 'generales', titulo: 'Mensajes y avisos generales', desc: 'Cuando un compañero me envía un mensaje.' },
     ];
 

@@ -68,7 +68,9 @@
             .order('created_at', { ascending: false })
             .limit(30);
         if (error || !data) return;
-        lista = data;
+        // Los avisos de "registro pendiente" son solo para Admin/SuperAdmin: a los demás nunca se les muestran.
+        const admin = ['admin', 'superadmin'].includes(String(p.rol || '').trim().toLowerCase());
+        lista = admin ? data : data.filter((x) => !norm(x.titulo).includes('registro pendiente'));
         pintarInsignia();
         if (abierto()) pintarPanel();
     }
