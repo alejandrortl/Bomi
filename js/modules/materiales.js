@@ -499,7 +499,7 @@
     function htmlPdf(r) {
         const fila = (l) => `<tr><td style="padding:6px 8px;border:1px solid #cbd5e1;text-align:right;white-space:nowrap">${esc(cant(l.cantidad))}</td><td style="padding:6px 8px;border:1px solid #cbd5e1">${esc(l.material)}</td><td style="padding:6px 8px;border:1px solid #cbd5e1">${esc(l.referencia || '')}</td></tr>`;
         const ped = esPedido(r) ? `Pedido por ${esc(pedidoPor(r) || 'desconocido')}${pedidoEn(r) ? ' · ' + esc(fechaHora(pedidoEn(r))) : ''}` : 'Pendiente de pedir';
-        return `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff;padding:8px;width:700px;font-size:13px">
+        return `<div>
             <h1 style="font-size:20px;margin:0 0 4px">Solicitud de material</h1>
             <p style="margin:0 0 14px;color:#475569">${esc(ped)}</p>
             <p style="margin:2px 0"><strong>Cliente:</strong> ${esc(r.cliente)}</p>
@@ -511,27 +511,12 @@
         </div>`;
     }
 
-    // html2canvas no entiende los colores oklch() de Tailwind v4: en la copia que dibuja se fijan colores simples.
-    function limpiarClon(doc) {
-        doc.documentElement.className = '';
-        doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
-        doc.body.className = '';
-        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
-    }
-
     async function descargarPdf(id) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
-        if (typeof html2pdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Revisa tu conexión e inténtalo de nuevo.'); return; }
-        // Se entrega a html2pdf el propio bloque (sin envoltorio fixed/z-index negativo: html2pdf lo clona
-        // y un contenedor fuera de flujo dejaba la página en blanco).
-        const tmp = document.createElement('div');
-        tmp.innerHTML = htmlPdf(r);
-        const cont = tmp.firstElementChild;
-        const nombre = ('material_' + [r.cliente, r.obra].join('_')).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80) + '.pdf';
-        try {
-            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, onclone: limpiarClon }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
-        } catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
+        const nombre = window.BomiPdf.nombreSeguro(['material', r.cliente, r.obra], 80);
+        try { await window.BomiPdf.generar(htmlPdf(r), nombre); }
+        catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
 
     // ---------- Catálogo (solo Admin / SuperAdmin) ----------

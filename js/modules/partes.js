@@ -678,9 +678,7 @@
     // ---------- PDF ----------
     function htmlPdf(p, imgFirma) {
         const td = 'padding:6px 8px;border:1px solid #cbd5e1';
-        const empresa = (document.getElementById('header-app-title')?.textContent || '').trim();
-        return `<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;background:#fff;padding:8px;width:700px;font-size:13px">
-            ${empresa ? `<p style="margin:0 0 2px;color:#475569;font-size:12px">${esc(empresa)}</p>` : ''}
+        return `<div>
             <h1 style="font-size:20px;margin:0 0 4px">Parte de trabajo</h1>
             <p style="margin:0 0 14px;color:#475569">Fecha: ${esc(fechaES(p.fecha))}${p.bloqueado ? ' · Bloqueado' : ''}</p>
             <p style="margin:2px 0"><strong>Cliente:</strong> ${esc(p.cliente)}</p>
@@ -698,30 +696,14 @@
         </div>`;
     }
 
-    // html2canvas no entiende los colores oklch() de Tailwind v4 (los del <body> y <html>): en la copia que
-    // dibuja se quitan las clases y se fijan colores simples. El contenido del PDF ya lleva sus propios colores.
-    function limpiarClon(doc) {
-        doc.documentElement.className = '';
-        doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
-        doc.body.className = '';
-        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
-    }
-
     async function descargarPdf(id) {
         const p = partes.find((x) => x.id === id);
         if (!p) return;
-        if (typeof html2pdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Revisa tu conexión e inténtalo de nuevo.'); return; }
         let imgFirma = '';
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
-        // Se entrega a html2pdf el propio bloque (sin envoltorio fixed/z-index negativo: html2pdf lo clona
-        // y un contenedor fuera de flujo dejaba la página en blanco).
-        const tmp = document.createElement('div');
-        tmp.innerHTML = htmlPdf(p, imgFirma);
-        const cont = tmp.firstElementChild;
-        const nombre = ('parte_' + [p.fecha, p.cliente, p.obra].join('_')).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 90) + '.pdf';
-        try {
-            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, onclone: limpiarClon }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
-        } catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
+        const nombre = window.BomiPdf.nombreSeguro(['parte', p.fecha, p.cliente, p.obra], 90);
+        try { await window.BomiPdf.generar(htmlPdf(p, imgFirma), nombre); }
+        catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
 
     // ---------- Montaje ----------

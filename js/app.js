@@ -574,32 +574,42 @@
         `;
     };
 
-    // html2canvas (v1.4) no entiende los colores oklch() de Tailwind v4: en la copia que dibuja se fijan
-    // colores simples en <html>/<body> y se convierten a rgb los colores modernos del contenido del PDF.
-    function limpiarClonPdf(doc) {
-        doc.documentElement.className = '';
-        doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
-        doc.body.className = '';
-        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
-        const ctx = document.createElement('canvas').getContext('2d');
-        const vista = doc.defaultView || window;
-        const props = ['color', 'backgroundColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'outlineColor', 'textDecorationColor'];
-        doc.querySelectorAll('#pdf-export-container-tarea, #pdf-export-container-tarea *').forEach(el => {
-            const cs = vista.getComputedStyle(el);
-            props.forEach(pr => {
-                const v = cs[pr];
-                if (v && /oklch|oklab|color-mix|lab\(|lch\(|color\(/.test(v)) {
-                    ctx.fillStyle = '#000000'; ctx.fillStyle = v;
-                    el.style.setProperty(pr.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), ctx.fillStyle, 'important');
-                }
-            });
-        });
+    // PDF de la tarea: se construye con HTML propio (con logotipo y datos de la empresa arriba) en vez de
+    // capturar la pantalla, que dejaba la app bloqueada.
+    async function htmlPdfTarea(t) {
+        const campo = (et, val) => `<p style="margin:2px 0"><strong>${et}:</strong> ${escT(val || '—')}</p>`;
+        const contactos = contactosDeTarea(t).map(k => [k.nombre, k.telefono].filter(Boolean).join(' · ')).join('<br>');
+        let img = '';
+        if (t.dibujo_url) img = /^data:/.test(t.dibujo_url) ? t.dibujo_url : await window.BomiPdf.imagenDataUrl(t.dibujo_url);
+        return `<div>
+            <h1 style="font-size:20px;margin:0 0 4px">Orden de trabajo / Tarea${t.completada ? ' <span style="color:#059669;font-size:14px">· COMPLETADA</span>' : ''}</h1>
+            <p style="margin:0 0 14px;color:#475569">Fecha: ${escT(t.fecha || '')}</p>
+            ${campo('Cliente', t.cliente)}${campo('Obra', t.obra)}${campo('Dirección', t.direccion)}${campo('Localidad', t.localidad)}
+            ${contactos ? `<p style="margin:2px 0"><strong>Contacto:</strong> ${contactos}</p>` : ''}
+            <p style="margin:2px 0 14px"><strong>Asignada a:</strong> ${escT(t.operario_asignado || '—')}</p>
+            <h2 style="font-size:14px;margin:0 0 6px">Notas</h2>
+            <p style="margin:0 0 14px;white-space:pre-wrap;word-break:break-word">${escT(t.notas || 'N/A')}</p>
+            ${img ? `<h2 style="font-size:14px;margin:0 0 6px">Dibujo</h2><img src="${escT(img)}" alt="Dibujo" style="max-width:100%;max-height:300px;border:1px solid #cbd5e1">` : ''}
+            <p style="margin:16px 0 0;font-size:11px;color:#64748b">Creado por ${escT(t.created_by || '?')}${t.updated_by ? '<br>Editado por ' + escT(t.updated_by) : ''}</p>
+        </div>`;
     }
 
-    document.getElementById('btn-export-pdf-tarea').addEventListener('click', () => {
-        const element = document.getElementById('pdf-export-container-tarea');
-        const opt = { margin: 10, filename: `Tarea_${currentTareaItem.obra || 'trabajo'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', onclone: limpiarClonPdf }, jsPDF: { unit: 'mm', format: 'a4' } };
-        html2pdf().from(element).set(opt).save();
+    document.getElementById('btn-export-pdf-tarea').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const t = currentTareaItem;
+        if (!t || btn.disabled) return;
+        const textoOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.textContent = 'Creando PDF...';
+        try {
+            const nombre = window.BomiPdf.nombreSeguro(['Tarea', t.cliente, t.obra || 'trabajo'], 80);
+            await window.BomiPdf.generar(await htmlPdfTarea(t), nombre);
+        } catch (ex) {
+            alert('No se pudo crear el PDF: ' + (ex && ex.message ? ex.message : ex));
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+        }
     });
 
     window.editarTarea = function(id) {
