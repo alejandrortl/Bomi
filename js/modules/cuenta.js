@@ -34,8 +34,8 @@
     const TIPOS_AVISO = [
         { clave: 'aprobaciones', titulo: 'Aprobación de nuevos empleados', desc: 'Cuando alguien se registra y espera aprobación.', soloAdmin: true },
         { clave: 'tareas', titulo: 'Tareas asignadas a mí', desc: 'Cuando alguien me asigna una tarea en el Diario.' },
-        { clave: 'material', titulo: 'Solicitudes de material', desc: 'Aún no se envían avisos de este tipo.' },
-        { clave: 'generales', titulo: 'Notificaciones generales y personales', desc: 'Aún no se envían avisos de este tipo.' },
+        { clave: 'material', titulo: 'Solicitudes de material', desc: 'Cuando alguien pide material o se marca como pedido.' },
+        { clave: 'generales', titulo: 'Mensajes y avisos generales', desc: 'Cuando un compañero me envía un mensaje.' },
     ];
 
     function htmlPreferencias(p) {
@@ -96,6 +96,7 @@
                 <button type="submit" id="perfil-guardar" class="${BTN}">Guardar</button>
             </form>
             ${htmlPreferencias(p)}
+            <div id="push-tarjeta" class="${tarjeta}"></div>
             <form id="form-password" class="${tarjeta}" autocomplete="off">
                 <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">lock</span> Cambiar contraseña</h3>
                 ${campo('pass-nueva', 'Nueva contraseña', '', 'type="password" required minlength="6" autocomplete="new-password"')}
@@ -107,6 +108,34 @@
         document.getElementById('form-password').addEventListener('submit', cambiarPassword);
         const fn = document.getElementById('form-notif');
         if (fn) fn.addEventListener('change', cambiarPreferencia);
+        pintarPush();
+    }
+
+    // ---------- Avisos en este dispositivo (push) ----------
+    async function pintarPush(msgTxt, msgOk) {
+        const cont = document.getElementById('push-tarjeta');
+        if (!cont) return;
+        const est = window.BomiPush ? await window.BomiPush.estado() : 'no-soportado';
+        const textos = {
+            activo: 'Este dispositivo recibe los avisos aunque la app esté cerrada.',
+            inactivo: 'Activa los avisos para recibir una notificación en el móvil, como en cualquier otra aplicación, aunque la app esté cerrada.',
+            bloqueado: 'Los avisos están bloqueados en este dispositivo. Actívalos en los ajustes del navegador o del móvil y vuelve aquí.',
+            instalar: 'En iPhone/iPad primero añade la app a la pantalla de inicio (Compartir → Añadir a pantalla de inicio), ábrela desde ese icono y vuelve aquí para activar los avisos.',
+            'no-soportado': 'Este navegador no permite avisos push.',
+        };
+        cont.innerHTML = `
+            <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">phonelink_ring</span> Avisos en este dispositivo</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300">${esc(textos[est] || textos['no-soportado'])}</p>
+            ${est === 'inactivo' ? `<button type="button" data-push="activar" class="${BTN}">Activar avisos</button>` : ''}
+            ${est === 'activo' ? `<button type="button" data-push="desactivar" class="text-sm text-slate-600 dark:text-slate-300 underline self-end">Desactivar en este dispositivo</button>` : ''}
+            <p id="push-msg" class="${msgTxt ? '' : 'hidden'} text-sm ${msgOk ? 'text-green-700 dark:text-green-300' : 'text-red-600 dark:text-red-400'}" role="status">${esc(msgTxt || '')}</p>`;
+        cont.querySelectorAll('[data-push]').forEach((b) => b.addEventListener('click', async () => {
+            b.disabled = true;
+            try {
+                if (b.dataset.push === 'activar') { await window.BomiPush.activar(); await pintarPush('Avisos activados en este dispositivo.', true); }
+                else { await window.BomiPush.desactivar(); await pintarPush('Avisos desactivados en este dispositivo.', true); }
+            } catch (ex) { await pintarPush(ex.message || 'No se pudo completar.', false); }
+        }));
     }
 
     async function guardarPerfil(e) {

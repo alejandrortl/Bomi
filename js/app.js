@@ -56,7 +56,7 @@
     if(filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
 
     function hideAllViews() {
-        [viewTaskList, viewFormTarea, viewDetalleTarea, viewPartes, viewBitacora, viewMateriales, viewClientes, viewEmpleados, viewPerfil, viewEmpresa].forEach(v => {
+        [viewTaskList, viewFormTarea, viewDetalleTarea, viewPartes, viewBitacora, viewMateriales, document.getElementById('view-mensajes'), viewClientes, viewEmpleados, viewPerfil, viewEmpresa].forEach(v => {
             if (v) { v.classList.add('hidden'); v.classList.remove('flex'); }
         });
         [navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => {
@@ -112,6 +112,8 @@
     }
     const itemPerfil = document.getElementById('menu-item-perfil');
     const itemEmpresa = document.getElementById('menu-item-empresa');
+    const btnMensajes = document.getElementById('btn-mensajes');
+    if (btnMensajes) btnMensajes.addEventListener('click', () => abrirVistaCuenta(document.getElementById('view-mensajes'), () => window.BomiMensajes && window.BomiMensajes.abrir()));
     if (itemPerfil) itemPerfil.addEventListener('click', () => abrirVistaCuenta(viewPerfil, () => window.BomiCuenta && window.BomiCuenta.abrirPerfil()));
     if (itemEmpresa) itemEmpresa.addEventListener('click', () => abrirVistaCuenta(viewEmpresa, () => window.BomiCuenta && window.BomiCuenta.abrirEmpresa()));
     window.addEventListener('perfilActualizado', actualizarNombreHeader);

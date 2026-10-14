@@ -30,7 +30,10 @@
         const badge = document.getElementById('badge-notificaciones');
         const btn = document.getElementById('btn-notificaciones');
         const sinLeer = lista.filter((n) => !n.leida).length;
-        if (badge) badge.classList.toggle('hidden', sinLeer === 0);
+        const sinLeerMsg = lista.filter((n) => !n.leida && esMensaje(n)).length;
+        const bm = document.getElementById('badge-mensajes');
+        if (bm) bm.classList.toggle('hidden', sinLeerMsg === 0);
+        if (badge) badge.classList.toggle('hidden', sinLeer - sinLeerMsg === 0);
         if (btn) btn.setAttribute('aria-label', sinLeer ? `Notificaciones (${sinLeer} sin leer)` : 'Notificaciones');
     }
 
@@ -79,6 +82,22 @@
         pintarPanel();
     }
 
+    // Lleva a la pantalla relacionada con el aviso (según su título).
+    function irA(titulo) {
+        const t = norm(titulo);
+        const id = t.startsWith('mensaje de') ? 'btn-mensajes'
+            : t.includes('tarea asignada') ? 'nav-home'
+            : t.includes('material') ? 'nav-materiales'
+            : t.includes('registro pendiente') ? 'nav-empleados' : '';
+        const el = id && document.getElementById(id);
+        if (el) el.click();
+    }
+
+    const esMensaje = (n) => norm(n.titulo).startsWith('mensaje de');
+
+    // Al abrir la mensajería, los avisos de mensajes dejan de contar como pendientes.
+    function marcarMensajesLeidos() { return marcarLeidas(lista.filter((n) => !n.leida && esMensaje(n)).map((n) => n.id)); }
+
     function cerrar() {
         if (!panel) return;
         panel.classList.add('hidden');
@@ -116,26 +135,8 @@
             const n = lista.find((x) => x.id === item.dataset.id);
             if (!n) return;
             marcarLeidas([n.id]);
-            // Aviso de tarea asignada: lleva al Diario.
-            if (norm(n.titulo).includes('tarea asignada')) {
-                cerrar();
-                const nav = document.getElementById('nav-home');
-                if (nav) nav.click();
-                return;
-            }
-            // Avisos de material (nueva solicitud / material pedido): llevan a Materiales.
-            if (norm(n.titulo).includes('material')) {
-                cerrar();
-                const nav = document.getElementById('nav-materiales');
-                if (nav) nav.click();
-                return;
-            }
-            // Aviso de registro pendiente: lleva directamente a Empleados para aprobarlo.
-            if (norm(n.titulo).includes('registro pendiente')) {
-                cerrar();
-                const nav = document.getElementById('nav-empleados');
-                if (nav) nav.click();
-            }
+            cerrar();
+            irA(n.titulo);
         });
     }
 
@@ -147,5 +148,5 @@
     }
 
     document.addEventListener('visibilitychange', () => { if (!document.hidden && yo() && iniciado) cargar(); });
-    window.BomiNotificaciones = { arrancar, recargar: cargar };
+    window.BomiNotificaciones = { arrancar, recargar: cargar, irA, marcarMensajesLeidos };
 })();
