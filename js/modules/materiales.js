@@ -64,6 +64,46 @@
         return data;
     }
 
+    // ---------- Notificaciones ----------
+    const nombrePerfil = (p) => [p.nombre, p.apellido].filter((x) => x && String(x).trim()).join(' ').trim();
+
+    // Perfiles activos con su preferencia de avisos (si la columna aún no existe, se avisa a todos).
+    async function perfilesActivos() {
+        let r = await db().from('perfiles').select('id, nombre, apellido, activo, preferencias_notificaciones');
+        if (r.error) r = await db().from('perfiles').select('id, nombre, apellido, activo');
+        if (r.error) throw r.error;
+        return (r.data || []).filter((p) => p.activo !== false);
+    }
+    const quiereAviso = (p) => !(p.preferencias_notificaciones && p.preferencias_notificaciones.material === false);
+
+    // Devuelve false si no se pudo avisar (la solicitud ya está guardada; no se revierte).
+    async function avisar(destinatarios, titulo, mensaje) {
+        const filas = destinatarios.filter(quiereAviso).map((p) => ({ user_id: p.id, titulo, mensaje }));
+        if (!filas.length) return true;
+        const { error } = await db().from('notificaciones').insert(filas);
+        return !error;
+    }
+
+    // Solicitud nueva: a todos los empleados que no hayan desactivado este aviso (menos a quien la crea).
+    async function avisarNuevaSolicitud(datos, quien) {
+        try {
+            const yo = window.currentUserProfile && window.currentUserProfile.id;
+            const todos = await perfilesActivos();
+            return await avisar(todos.filter((p) => p.id !== yo), 'Nueva solicitud de material', `${quien} ha pedido material para ${datos.cliente} · ${datos.obra}.`);
+        } catch (ex) { return false; }
+    }
+
+    // Material pedido: al creador y a quien la editó por última vez (un solo aviso si son la misma persona).
+    async function avisarPedido(r, quien) {
+        try {
+            const yo = window.currentUserProfile && window.currentUserProfile.id;
+            const nombres = new Set([r.created_by, r.updated_by].filter(Boolean).map(norm));
+            const todos = await perfilesActivos();
+            const dest = todos.filter((p) => p.id !== yo && nombres.has(norm(nombrePerfil(p))));
+            return await avisar(dest, 'Material pedido', `${quien} ha marcado como pedido el material de ${r.cliente} · ${r.obra}.`);
+        } catch (ex) { return false; }
+    }
+
     // ---------- Búsqueda ----------
     const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r)]
         .concat(lineasDe(r).flatMap((l) => [l.material, l.referencia])).join(' ');
@@ -405,8 +445,10 @@
                 throw ex;
             }
             if (viejos.length) await exigir(db().from('materiales_solicitud_items').delete().in('id', viejos).select('id'), 'No se pudieron sustituir las líneas anteriores.');
+            const avisoNuevo = modo === 'nuevo' ? await avisarNuevaSolicitud(datos, quien) : true;
             cerrarModal();
             await cargar();
+            if (!avisoNuevo) alert('La solicitud se guardó, pero no se pudo avisar al resto del equipo.');
             if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
         } catch (ex) {
             fallo(err, mensajeError(ex));
@@ -443,8 +485,10 @@
                 if (!columnaFalta(ex)) throw ex;
                 await exigir(db().from('materiales_solicitudes').update({ estado: completo.estado, updated_by: quien, updated_at: ahora }).eq('id', id).select('id'), msg);
             }
+            const avisado = pedido ? await avisarPedido(r, quien) : true;
             await cargar();
             abrirVista(id);
+            if (!avisado) alert('Se marcó como pedido, pero no se pudo avisar al creador o a quien la editó.');
         } catch (ex) { if (err) fallo(err, mensajeError(ex)); else alert(mensajeError(ex)); }
     }
 

@@ -123,6 +123,13 @@
                 if (nav) nav.click();
                 return;
             }
+            // Avisos de material (nueva solicitud / material pedido): llevan a Materiales.
+            if (norm(n.titulo).includes('material')) {
+                cerrar();
+                const nav = document.getElementById('nav-materiales');
+                if (nav) nav.click();
+                return;
+            }
             // Aviso de registro pendiente: lleva directamente a Empleados para aprobarlo.
             if (norm(n.titulo).includes('registro pendiente')) {
                 cerrar();
