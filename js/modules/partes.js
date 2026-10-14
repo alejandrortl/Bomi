@@ -68,7 +68,8 @@
 
     // ---------- Permisos ----------
     const figuro = (p) => ops(p).some((o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === norm(miNombre()));
-    const puedeEditar = (p) => !p.bloqueado && (p.created_by_id === yo().id || figuro(p));
+    // Un parte bloqueado no se toca nunca más. Mientras no lo esté: Admin/SuperAdmin, quien lo creó o los operarios que figuran.
+    const puedeEditar = (p) => !p.bloqueado && (esAdmin() || p.created_by_id === yo().id || figuro(p));
 
     // ---------- Preferencia: todos / míos (se guarda en el usuario) ----------
     function leerSoloMios() {
@@ -550,25 +551,27 @@
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
                 <button type="button" data-accion="pdf" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
-                ${esAdmin() ? `<button type="button" data-accion="${p.bloqueado ? 'desbloquear' : 'bloquear'}" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">${p.bloqueado ? 'lock_open' : 'lock'}</span> ${p.bloqueado ? 'Desbloquear' : 'Bloquear'}</button>` : ''}
+                ${esAdmin() && !p.bloqueado ? `<button type="button" data-accion="bloquear" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">lock</span> Bloquear</button>` : ''}
                 ${puedeEditar(p) ? `<button type="button" data-accion="eliminar-desde-ver" data-id="${esc(p.id)}" class="${BTN_SEC} text-red-600 dark:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span> Eliminar</button>` : ''}
                 ${puedeEditar(p) ? `<button type="button" data-accion="editar-desde-ver" data-id="${esc(p.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>` : ''}
             </div>`;
         mostrarModal('Parte de trabajo');
     }
 
-    async function cambiarBloqueo(id, bloquear) {
+    // El bloqueo es definitivo: un parte bloqueado ya no se puede editar, eliminar ni desbloquear.
+    async function bloquear(id) {
         if (!esAdmin()) return;
+        const p = partes.find((x) => x.id === id);
+        if (!p || p.bloqueado) return;
+        if (!confirm('¿Bloquear este parte?\n\nUna vez bloqueado NO se podrá editar, eliminar ni desbloquear.')) return;
         const err = document.getElementById('par-error');
-        const quien = miNombre();
-        const msg = 'No se pudo cambiar el bloqueo: no tienes permiso o el parte ya no existe.';
+        const msg = 'No se pudo bloquear: no tienes permiso o el parte ya no existe.';
         try {
-            const completo = bloquear ? { bloqueado: true, bloqueado_por: quien, bloqueado_at: new Date().toISOString() } : { bloqueado: false, bloqueado_por: null, bloqueado_at: null };
             try {
-                await exigir(db().from('partes_trabajo').update(completo).eq('id', id).select('id'), msg);
+                await exigir(db().from('partes_trabajo').update({ bloqueado: true, bloqueado_por: miNombre(), bloqueado_at: new Date().toISOString() }).eq('id', id).select('id'), msg);
             } catch (ex) {
                 if (!columnaFalta(ex)) throw ex;
-                await exigir(db().from('partes_trabajo').update({ bloqueado: bloquear }).eq('id', id).select('id'), msg);
+                await exigir(db().from('partes_trabajo').update({ bloqueado: true }).eq('id', id).select('id'), msg);
             }
             await cargar();
             await abrirVista(id);
@@ -604,7 +607,7 @@
         if (!f.fecha) return fallo(err, 'Indica la fecha.');
         if (!operarios.length || operarios.some((o) => !o.nombre)) return fallo(err, 'Indica el nombre de cada operario (o quita las líneas vacías).');
         const yoEstoy = operarios.some((o) => norm(o.nombre) === norm(miNombre()));
-        if (modo === 'editar' && actual.created_by_id !== yo().id && !yoEstoy) return fallo(err, 'Tu nombre debe seguir figurando entre los operarios para poder guardar el parte.');
+        if (modo === 'editar' && !esAdmin() && actual.created_by_id !== yo().id && !yoEstoy) return fallo(err, 'Tu nombre debe seguir figurando entre los operarios para poder guardar el parte.');
         const items = [];
         for (const [i, m] of materiales.entries()) {
             const n = Number(String(m.cantidad).replace(',', '.'));
@@ -695,6 +698,15 @@
         </div>`;
     }
 
+    // html2canvas no entiende los colores oklch() de Tailwind v4 (los del <body> y <html>): en la copia que
+    // dibuja se quitan las clases y se fijan colores simples. El contenido del PDF ya lleva sus propios colores.
+    function limpiarClon(doc) {
+        doc.documentElement.className = '';
+        doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
+        doc.body.className = '';
+        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
+    }
+
     async function descargarPdf(id) {
         const p = partes.find((x) => x.id === id);
         if (!p) return;
@@ -702,12 +714,12 @@
         let imgFirma = '';
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
         const cont = document.createElement('div');
-        cont.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;background:#fff;';
+        cont.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;background:#ffffff;color:#0f172a;';
         cont.innerHTML = htmlPdf(p, imgFirma);
         document.body.appendChild(cont);
         const nombre = ('parte_' + [p.fecha, p.cliente, p.obra].join('_')).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 90) + '.pdf';
         try {
-            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
+            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', onclone: limpiarClon }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
         } catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
         finally { cont.remove(); }
     }
@@ -810,8 +822,7 @@
             else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'eliminar-desde-ver') eliminar(id);
             else if (a === 'pdf') descargarPdf(id);
-            else if (a === 'bloquear') cambiarBloqueo(id, true);
-            else if (a === 'desbloquear') cambiarBloqueo(id, false);
+            else if (a === 'bloquear') bloquear(id);
         });
         const alCambiar = (e) => {
             const t = e.target;

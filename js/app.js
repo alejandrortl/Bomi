@@ -570,9 +570,31 @@
         `;
     };
 
+    // html2canvas (v1.4) no entiende los colores oklch() de Tailwind v4: en la copia que dibuja se fijan
+    // colores simples en <html>/<body> y se convierten a rgb los colores modernos del contenido del PDF.
+    function limpiarClonPdf(doc) {
+        doc.documentElement.className = '';
+        doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
+        doc.body.className = '';
+        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
+        const ctx = document.createElement('canvas').getContext('2d');
+        const vista = doc.defaultView || window;
+        const props = ['color', 'backgroundColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor', 'outlineColor', 'textDecorationColor'];
+        doc.querySelectorAll('#pdf-export-container-tarea, #pdf-export-container-tarea *').forEach(el => {
+            const cs = vista.getComputedStyle(el);
+            props.forEach(pr => {
+                const v = cs[pr];
+                if (v && /oklch|oklab|color-mix|lab\(|lch\(|color\(/.test(v)) {
+                    ctx.fillStyle = '#000000'; ctx.fillStyle = v;
+                    el.style.setProperty(pr.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), ctx.fillStyle, 'important');
+                }
+            });
+        });
+    }
+
     document.getElementById('btn-export-pdf-tarea').addEventListener('click', () => {
         const element = document.getElementById('pdf-export-container-tarea');
-        const opt = { margin: 10, filename: `Tarea_${currentTareaItem.obra || 'trabajo'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+        const opt = { margin: 10, filename: `Tarea_${currentTareaItem.obra || 'trabajo'}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', onclone: limpiarClonPdf }, jsPDF: { unit: 'mm', format: 'a4' } };
         html2pdf().from(element).set(opt).save();
     });
 

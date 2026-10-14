@@ -511,17 +511,25 @@
         </div>`;
     }
 
+    // html2canvas no entiende los colores oklch() de Tailwind v4: en la copia que dibuja se fijan colores simples.
+    function limpiarClon(doc) {
+        doc.documentElement.className = '';
+        doc.documentElement.style.cssText = 'background:#ffffff;color:#0f172a';
+        doc.body.className = '';
+        doc.body.style.cssText = 'background:#ffffff;color:#0f172a';
+    }
+
     async function descargarPdf(id) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
         if (typeof html2pdf === 'undefined') { alert('No se pudo cargar el generador de PDF. Revisa tu conexión e inténtalo de nuevo.'); return; }
         const cont = document.createElement('div');
-        cont.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;background:#fff;';
+        cont.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;background:#ffffff;color:#0f172a;';
         cont.innerHTML = htmlPdf(r);
         document.body.appendChild(cont);
         const nombre = ('material_' + [r.cliente, r.obra].join('_')).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80) + '.pdf';
         try {
-            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
+            await html2pdf().from(cont).set({ margin: 10, filename: nombre, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, backgroundColor: '#ffffff', onclone: limpiarClon }, jsPDF: { unit: 'mm', format: 'a4' } }).save();
         } catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
         finally { cont.remove(); }
     }
