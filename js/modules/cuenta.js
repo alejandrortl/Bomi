@@ -41,11 +41,18 @@
                 ${campo('perfil-apellido', 'Apellido', p.apellido, 'type="text" autocomplete="family-name"')}
                 ${campo('perfil-telefono', 'Teléfono', p.telefono, 'type="tel" inputmode="tel" maxlength="15" autocomplete="tel"')}
                 ${solo('Correo', p.email)}
-                ${solo('Rol', p.rol)}
                 <p id="perfil-msg" class="hidden" role="status"></p>
                 <button type="submit" id="perfil-guardar" class="${BTN}">Guardar</button>
+            </form>
+            <form id="form-password" class="${tarjeta}" autocomplete="off">
+                <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">lock</span> Cambiar contraseña</h3>
+                ${campo('pass-nueva', 'Nueva contraseña', '', 'type="password" required minlength="6" autocomplete="new-password"')}
+                ${campo('pass-repite', 'Repite la nueva contraseña', '', 'type="password" required minlength="6" autocomplete="new-password"')}
+                <p id="pass-msg" class="hidden" role="status"></p>
+                <button type="submit" id="pass-guardar" class="${BTN}">Cambiar contraseña</button>
             </form>`;
         document.getElementById('form-perfil').addEventListener('submit', guardarPerfil);
+        document.getElementById('form-password').addEventListener('submit', cambiarPassword);
     }
 
     async function guardarPerfil(e) {
@@ -73,6 +80,37 @@
         } finally {
             btn.disabled = false;
             btn.textContent = 'Guardar';
+        }
+    }
+
+    function traducirErrorPassword(m) {
+        const t = String(m || '').toLowerCase();
+        if (t.includes('different from the old')) return 'La nueva contraseña debe ser distinta de la actual.';
+        if (t.includes('at least') || t.includes('weak') || t.includes('too short')) return 'La contraseña es demasiado débil o corta. Usa al menos 6 caracteres.';
+        if (t.includes('reauth') || t.includes('session') || t.includes('jwt')) return 'Tu sesión ha caducado. Cierra sesión, vuelve a entrar e inténtalo otra vez.';
+        return m || 'No se pudo cambiar la contraseña.';
+    }
+
+    async function cambiarPassword(e) {
+        e.preventDefault();
+        const btn = document.getElementById('pass-guardar');
+        const nueva = document.getElementById('pass-nueva').value;
+        const repite = document.getElementById('pass-repite').value;
+        ocultar('pass-msg');
+        if (nueva.length < 6) { mensaje('pass-msg', 'La contraseña debe tener al menos 6 caracteres.', false); return; }
+        if (nueva !== repite) { mensaje('pass-msg', 'Las contraseñas no coinciden.', false); return; }
+        btn.disabled = true;
+        btn.textContent = 'Cambiando...';
+        try {
+            const { error } = await db().auth.updateUser({ password: nueva });
+            if (error) throw error;
+            document.getElementById('form-password').reset();
+            mensaje('pass-msg', 'Contraseña cambiada correctamente.', true);
+        } catch (ex) {
+            mensaje('pass-msg', traducirErrorPassword(ex.message), false);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Cambiar contraseña';
         }
     }
 

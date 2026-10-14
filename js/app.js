@@ -134,6 +134,7 @@
         loadClientes();
         loadOperariosList();
         loadTasksFromDB();
+        if (window.BomiNotificaciones) window.BomiNotificaciones.arrancar();
 
         if (navEmpleados) { navEmpleados.classList.remove('hidden'); navEmpleados.classList.add('flex'); }
         const empresaItem = document.getElementById('menu-item-empresa');

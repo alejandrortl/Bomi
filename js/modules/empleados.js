@@ -243,7 +243,7 @@
             <div class="sticky top-0 z-10 bg-slate-50 dark:bg-black pt-1 pb-2">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                     <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                    <input type="text" id="search-empleados" aria-label="Buscar empleados" placeholder="Buscar por nombre, apellido o rol..." autocomplete="off" class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                    <input type="text" id="search-empleados" aria-label="Buscar empleados" placeholder="Buscar empleado..." autocomplete="off" class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
                 </div>
             </div>
             <div id="empleados-container" class="flex flex-col gap-3 pb-6"></div>`;
