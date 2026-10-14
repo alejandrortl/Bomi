@@ -149,7 +149,6 @@
                 </div>
                 <div class="flex gap-1 shrink-0 flex-wrap justify-end">
                     ${btnAccion('ver', r.id, 'visibility', 'Ver solicitud')}
-                    ${btnAccion('pdf', r.id, 'picture_as_pdf', 'Descargar PDF')}
                     ${btnAccion('editar', r.id, 'edit', 'Editar solicitud')}
                     ${btnAccion('eliminar', r.id, 'delete', 'Eliminar solicitud', BTN_DANGER)}
                 </div>

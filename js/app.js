@@ -512,7 +512,8 @@
             return true;
         });
 
-        filtradas.sort((a, b) => (a.completada === b.completada ? 0 : a.completada ? 1 : -1));
+        // Las tareas realizadas van al final (completada puede venir null/false/true: se compara como booleano)
+        filtradas.sort((a, b) => Number(!!a.completada) - Number(!!b.completada));
         c.innerHTML = '';
 
         if (filtradas.length === 0) {
@@ -542,7 +543,8 @@
     }
 
     window.toggleTareaCompletada = async function(id, status) {
-        await supabaseClient.from('tareas').update({ completada: status }).eq('id', id);
+        const { error } = await supabaseClient.from('tareas').update({ completada: status }).eq('id', id);
+        if (error) { alert('No se pudo actualizar la tarea: ' + error.message); return; }
         const t = allTareas.find(x => x.id === id);
         if(t) t.completada = status;
         renderTareas();
