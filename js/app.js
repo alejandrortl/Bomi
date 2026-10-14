@@ -495,12 +495,12 @@
             </li>`).join('') + '</ul>';
     }
 
-    // Todas las tareas / solo las asignadas al usuario actual (la elección se guarda en su perfil)
+    // Todas las tareas / solo las asignadas al usuario actual (la elección se guarda en su perfil; por defecto, las suyas)
     const CLAVE_LOCAL_DIARIO = 'bomi_diario_solo_mias';
     function leerSoloMias() {
         const pref = window.currentUserProfile && window.currentUserProfile.ui_preferencias;
         if (pref && pref.diario_solo_mias !== undefined) return !!pref.diario_solo_mias;
-        try { return localStorage.getItem(CLAVE_LOCAL_DIARIO) === '1'; } catch (e) { return false; }
+        try { const v = localStorage.getItem(CLAVE_LOCAL_DIARIO); return v === null ? true : v === '1'; } catch (e) { return true; } // por defecto: mis tareas
     }
     function pintarInterruptorDiario() {
         const mias = leerSoloMias();

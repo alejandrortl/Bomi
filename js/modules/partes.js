@@ -157,9 +157,15 @@
     }
     const claveDe = (m) => m.referencia ? `${m.nombre_material} · ${m.referencia}` : m.nombre_material;
     async function cargarCatalogo() {
-        const { data, error } = await db().from('materiales_catalogo').select('id, nombre_material, referencia');
-        if (error) throw error;
-        catalogo = (data || []).slice().sort((a, b) => String(a.nombre_material).localeCompare(String(b.nombre_material), 'es', { sensitivity: 'base' }));
+        // Supabase devuelve como máximo 1000 filas por consulta: se lee por páginas.
+        const data = [];
+        for (let desde = 0; ; desde += 1000) {
+            const { data: pag, error } = await db().from('materiales_catalogo').select('id, nombre_material, referencia').order('id', { ascending: true }).range(desde, desde + 999);
+            if (error) throw error;
+            data.push(...(pag || []));
+            if (!pag || pag.length < 1000) break;
+        }
+        catalogo = data.slice().sort((a, b) => String(a.nombre_material).localeCompare(String(b.nombre_material), 'es', { sensitivity: 'base' }));
         claveCat = new Map(catalogo.map((m) => [norm(claveDe(m)), m]));
         const dm = document.getElementById('par-materiales-dl');
         if (dm) dm.innerHTML = catalogo.map((m) => `<option value="${esc(claveDe(m))}"></option>`).join('');

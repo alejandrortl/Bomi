@@ -107,10 +107,35 @@
     // ---------- Búsqueda ----------
     const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r)]
         .concat(lineasDe(r).flatMap((l) => [l.material, l.referencia])).join(' ');
+    // ---------- Preferencia: todas / las pedidas por mí (se guarda en el usuario; por defecto, las mías) ----------
+    const CLAVE_LOCAL = 'bomi_materiales_solo_mias';
+    const yoPerfil = () => window.currentUserProfile || {};
+    function leerSoloMias() {
+        const pref = yoPerfil().ui_preferencias;
+        if (pref && pref.materiales_solo_mias !== undefined) return !!pref.materiales_solo_mias;
+        try { const v = localStorage.getItem(CLAVE_LOCAL); return v === null ? true : v === '1'; } catch (e) { return true; }
+    }
+    async function guardarSoloMias(v) {
+        const p = yoPerfil();
+        p.ui_preferencias = { ...(p.ui_preferencias || {}), materiales_solo_mias: v };
+        try { localStorage.setItem(CLAVE_LOCAL, v ? '1' : '0'); } catch (e) { /* sin almacenamiento local */ }
+        try { await db().from('perfiles').update({ ui_preferencias: p.ui_preferencias }).eq('id', p.id); } catch (e) { /* queda en el dispositivo */ }
+    }
+    const esMia = (r) => !!r.created_by && norm(r.created_by) === norm(nombrePerfil(yoPerfil()));
+    function pintarInterruptor() {
+        const mias = leerSoloMias();
+        document.querySelectorAll('#view-materiales [data-filtro]').forEach((b) => {
+            const act = (b.dataset.filtro === 'mias') === mias;
+            b.className = 'flex-1 py-2 rounded-full text-sm font-medium transition-colors ' + (act ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300');
+            b.setAttribute('aria-pressed', act ? 'true' : 'false');
+        });
+    }
+
     function filtrar() {
+        const base = leerSoloMias() ? solicitudes.filter(esMia) : solicitudes;
         const tokens = norm(busqueda).split(' ').filter(Boolean);
-        if (!tokens.length) return solicitudes;
-        return solicitudes.filter((r) => { const t = norm(texto(r)); return tokens.every((k) => t.includes(k)); });
+        if (!tokens.length) return base;
+        return base.filter((r) => { const t = norm(texto(r)); return tokens.every((k) => t.includes(k)); });
     }
 
     // ---------- Lista ----------
@@ -164,8 +189,10 @@
         if (!cont) return;
         const lista = filtrar();
         if (badge) badge.textContent = `${lista.length} ${lista.length === 1 ? 'solicitud' : 'solicitudes'}`;
+        pintarInterruptor();
+        const mias = leerSoloMias();
         if (!solicitudes.length) { cont.innerHTML = aviso('Aún no hay solicitudes. Pulsa + para pedir material.'); return; }
-        if (!lista.length) { cont.innerHTML = aviso('No se encontraron resultados.'); return; }
+        if (!lista.length) { cont.innerHTML = aviso(mias && !busqueda.trim() ? 'No has pedido material todavía. Pulsa + para pedirlo o cambia a "Todas las solicitudes".' : 'No se encontraron resultados.'); return; }
         cont.innerHTML = lista.map(htmlSolicitud).join('');
     }
 
@@ -187,9 +214,19 @@
         pintarLista();
     }
 
+    // Supabase devuelve como máximo 1000 filas por consulta: se lee por páginas para traer el catálogo completo.
+    async function leerTodo(tabla, columnas) {
+        const todo = [];
+        for (let desde = 0; ; desde += 1000) {
+            const { data, error } = await db().from(tabla).select(columnas).order('id', { ascending: true }).range(desde, desde + 999);
+            if (error) throw error;
+            todo.push(...(data || []));
+            if (!data || data.length < 1000) break;
+        }
+        return todo;
+    }
     async function cargarCatalogo() {
-        const { data, error } = await db().from('materiales_catalogo').select('id, nombre_material, referencia').order('nombre_material', { ascending: true });
-        if (error) throw error;
+        const data = await leerTodo('materiales_catalogo', 'id, nombre_material, referencia');
         catalogo = (data || []).slice().sort((a, b) => String(a.nombre_material).localeCompare(String(b.nombre_material), 'es', { sensitivity: 'base' }));
         claveCat = new Map();
         catalogo.forEach((m) => { claveCat.set(norm(claveDe(m)), m); });
@@ -526,13 +563,99 @@
         const lista = catalogo.filter((m) => { const t = norm(m.nombre_material + ' ' + (m.referencia || '')); return tokens.every((k) => t.includes(k)); });
         if (!catalogo.length) { cont.innerHTML = aviso('El catálogo está vacío. Añade el primer material.'); return; }
         if (!lista.length) { cont.innerHTML = aviso('No se encontraron resultados.'); return; }
-        cont.innerHTML = lista.map((m) => `
+        const MAX = 100;
+        const resto = lista.length - MAX;
+        cont.innerHTML = lista.slice(0, MAX).map((m) => `
             <div class="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-zinc-800 last:border-0">
                 <div class="min-w-0 flex-1"><p class="text-sm font-medium break-words">${esc(m.nombre_material)}</p><p class="text-xs text-slate-500 break-words">${m.referencia ? 'Ref.: ' + esc(m.referencia) : 'Sin referencia'}</p></div>
                 ${btnAccion('cat-editar', m.id, 'edit', 'Modificar material')}
                 ${btnAccion('cat-eliminar', m.id, 'delete', 'Eliminar material', BTN_DANGER)}
-            </div>`).join('');
+            </div>`).join('') + (resto > 0 ? `<p class="text-xs text-slate-500 text-center p-3">Se muestran ${MAX} de ${lista.length} materiales. Usa el buscador para encontrar el resto.</p>` : '');
     }
+
+    // ---------- Importar la lista de materiales desde un CSV (referencia;nombre) ----------
+    function parseCsv(texto) {
+        const t = texto.replace(/^\uFEFF/, '');
+        const primera = t.split(/\r?\n/, 1)[0] || '';
+        const sep = [';', '\t', ','].map((s) => [s, primera.split(s).length]).sort((a, b) => b[1] - a[1])[0][0];
+        const filas = []; let fila = [], campo = '', comillas = false;
+        for (let i = 0; i < t.length; i++) {
+            const c = t[i];
+            if (comillas) {
+                if (c === '"') { if (t[i + 1] === '"') { campo += '"'; i++; } else comillas = false; } else campo += c;
+            } else if (c === '"') comillas = true;
+            else if (c === sep) { fila.push(campo); campo = ''; }
+            else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; fila.push(campo); filas.push(fila); fila = []; campo = ''; }
+            else campo += c;
+        }
+        if (campo !== '' || fila.length) { fila.push(campo); filas.push(fila); }
+        return filas;
+    }
+    const limpiarTexto = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+
+    async function importarCsv(archivo) {
+        const err = document.getElementById('cat-error');
+        const info = document.getElementById('cat-info');
+        err.classList.add('hidden'); info.classList.add('hidden');
+        if (!esAdmin() || !archivo) return;
+        if (archivo.size > 5 * 1024 * 1024) return fallo(err, 'El archivo es demasiado grande (máximo 5 MB).');
+        let filas;
+        try { filas = parseCsv(await archivo.text()); } catch (ex) { return fallo(err, 'No se pudo leer el archivo.'); }
+        const cab = (filas[0] || []).map((c) => norm(c));
+        const iRef = cab.findIndex((c) => c === 'referencia' || c === 'ref');
+        const iNom = cab.findIndex((c) => ['nombre', 'material', 'nombre_material', 'nombre material', 'producto', 'descripcion'].includes(c));
+        if (iRef < 0 || iNom < 0) return fallo(err, 'La primera fila debe tener las columnas "referencia" y "nombre".');
+        // Se limpia: espacios sobrantes, filas vacías y referencias repetidas dentro del archivo (se queda la primera).
+        const vistos = new Set(); const lista = []; let vacias = 0, repetidas = 0;
+        filas.slice(1).forEach((f) => {
+            const ref = limpiarTexto(f[iRef]); const nombre = limpiarTexto(f[iNom]);
+            if (!nombre) { vacias++; return; }
+            if (ref) { const k = ref.toUpperCase(); if (vistos.has(k)) { repetidas++; return; } vistos.add(k); }
+            lista.push({ nombre_material: nombre, referencia: ref || null });
+        });
+        if (!lista.length) return fallo(err, 'El archivo no contiene materiales.');
+        try { await cargarCatalogo(); } catch (ex) { return fallo(err, 'No se pudo leer el catálogo actual: ' + mensajeError(ex)); }
+        const porRef = new Map(catalogo.filter((c) => c.referencia).map((c) => [String(c.referencia).toUpperCase(), c]));
+        const sinRef = new Set(catalogo.filter((c) => !c.referencia).map((c) => norm(c.nombre_material)));
+        const nuevos = [], cambios = []; let iguales = 0;
+        lista.forEach((it) => {
+            if (it.referencia) {
+                const ex = porRef.get(it.referencia.toUpperCase());
+                if (!ex) nuevos.push(it);
+                else if (limpiarTexto(ex.nombre_material) !== it.nombre_material) cambios.push({ id: ex.id, nombre_material: it.nombre_material });
+                else iguales++;
+            } else if (sinRef.has(norm(it.nombre_material))) iguales++;
+            else nuevos.push(it);
+        });
+        if (!nuevos.length && !cambios.length) return mensajeInfo(info, `No hay nada que cambiar: los ${iguales} materiales del archivo ya están en el catálogo.`);
+        const resumen = `Archivo: ${lista.length} materiales` + (repetidas ? ` (${repetidas} con referencia repetida ignorados)` : '') + `.\n\n• Nuevos: ${nuevos.length}\n• Con el nombre cambiado: ${cambios.length}\n• Ya iguales: ${iguales}\n\nLos materiales que ya están en el catálogo y no aparecen en el archivo no se tocan. ¿Importar?`;
+        if (!window.confirm(resumen)) return;
+        const btn = document.getElementById('cat-importar');
+        btn.disabled = true;
+        const total = nuevos.length + cambios.length; let hechos = 0;
+        const progreso = () => { btn.textContent = `Importando ${hechos}/${total}...`; };
+        try {
+            progreso();
+            for (let i = 0; i < nuevos.length; i += 400) {
+                const trozo = nuevos.slice(i, i + 400);
+                await exigir(db().from('materiales_catalogo').insert(trozo).select('id'), 'No se pudieron guardar los materiales (¿tienes permiso?).');
+                hechos += trozo.length; progreso();
+            }
+            for (let i = 0; i < cambios.length; i += 20) {
+                const trozo = cambios.slice(i, i + 20);
+                await Promise.all(trozo.map((c) => exigir(db().from('materiales_catalogo').update({ nombre_material: c.nombre_material }).eq('id', c.id).select('id'), 'No se pudo actualizar un material.')));
+                hechos += trozo.length; progreso();
+            }
+            mensajeInfo(info, `Importación terminada: ${nuevos.length} nuevos y ${cambios.length} actualizados.`);
+        } catch (ex) {
+            fallo(err, `La importación se interrumpió tras ${hechos} de ${total}: ${mensajeError(ex)}. Puedes volver a importar el mismo archivo: solo se añadirá lo que falte.`);
+        } finally {
+            btn.disabled = false; btn.textContent = 'Importar lista (CSV)';
+            try { await cargarCatalogo(); } catch (e) { /* se verá al reabrir */ }
+            pintarCatalogo();
+        }
+    }
+    const mensajeInfo = (el, txt) => { el.textContent = txt; el.classList.remove('hidden'); };
 
     function pintarFormCatalogo() {
         const m = catalogo.find((x) => x.id === catEditando);
@@ -547,6 +670,7 @@
         catEditando = null; busquedaCat = '';
         document.getElementById('cat-buscar').value = '';
         document.getElementById('cat-error').classList.add('hidden');
+        document.getElementById('cat-info').classList.add('hidden');
         mostrar('modal-mat-catalogo');
         pintarFormCatalogo();
         try { await cargarCatalogo(); } catch (ex) { fallo(document.getElementById('cat-error'), 'No se pudo cargar el catálogo: ' + mensajeError(ex)); }
@@ -601,6 +725,10 @@
                     <span id="materiales-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium"></span>
                 </div>
             </div>
+            <div class="flex gap-1 bg-slate-100 dark:bg-zinc-800 rounded-full p-1" role="group" aria-label="Qué solicitudes ver">
+                <button type="button" data-filtro="todas" class="flex-1 py-2 rounded-full text-sm font-medium">Todas las solicitudes</button>
+                <button type="button" data-filtro="mias" class="flex-1 py-2 rounded-full text-sm font-medium">Mis solicitudes</button>
+            </div>
             <div class="sticky top-0 z-10 bg-slate-50 dark:bg-black pt-1 pb-2">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                     <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
@@ -631,6 +759,12 @@
                                 <button type="submit" id="cat-guardar" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-5 py-2 rounded-full font-medium text-sm">Añadir</button>
                             </div>
                         </form>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <button type="button" id="cat-importar" data-accion="cat-importar" class="${BTN_SEC} !py-1.5 text-sm"><span class="material-symbols-outlined text-[18px]">upload_file</span> Importar lista (CSV)</button>
+                            <input id="cat-archivo" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" aria-label="Elegir archivo CSV">
+                            <span class="text-xs text-slate-500">Columnas: referencia;nombre</span>
+                        </div>
+                        <p id="cat-info" class="hidden text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 rounded-xl p-3" role="status"></p>
                         <p id="cat-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
                         <input id="cat-buscar" type="text" autocomplete="off" placeholder="Buscar en el catálogo..." aria-label="Buscar en el catálogo" class="${INPUT}">
                         <div id="cat-lista" class="border border-slate-200 dark:border-zinc-800 rounded-xl"></div>
@@ -641,6 +775,12 @@
 
     function enlazarEventos() {
         document.getElementById('view-materiales').addEventListener('click', (e) => {
+            const fl = e.target.closest('[data-filtro]');
+            if (fl) {
+                const mias = fl.dataset.filtro === 'mias';
+                if (mias !== leerSoloMias()) { guardarSoloMias(mias); pintarLista(); }
+                return;
+            }
             const btn = e.target.closest('[data-accion]');
             if (!btn) return;
             const { accion, id } = btn.dataset;
@@ -696,9 +836,11 @@
             if (a === 'cerrar') ocultar('modal-mat-catalogo');
             else if (a === 'cat-editar') { catEditando = btn.dataset.id; pintarFormCatalogo(); document.getElementById('cat-error').classList.add('hidden'); document.getElementById('cat-material').focus(); }
             else if (a === 'cat-cancelar') { catEditando = null; pintarFormCatalogo(); }
+            else if (a === 'cat-importar') document.getElementById('cat-archivo').click();
             else if (a === 'cat-eliminar') eliminarCatalogo(btn.dataset.id);
         });
         document.getElementById('form-catalogo').addEventListener('submit', guardarCatalogo);
+        document.getElementById('cat-archivo').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) importarCsv(f); });
         document.getElementById('cat-buscar').addEventListener('input', (e) => { busquedaCat = e.target.value; pintarCatalogo(); });
 
         document.addEventListener('keydown', (e) => {
