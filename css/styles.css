@@ -77,3 +77,7 @@
   border-color: var(--md-sys-color-primary);
   border-width: 2px;
 }
+
+/* Modo noche: que el navegador pinte en claro sus controles nativos
+   (icono del calendario, selector de hora, barras de scroll). */
+.dark { color-scheme: dark; }
