@@ -167,16 +167,41 @@
         actualizarObrasDatalist();
     }
 
+    const nombreOperario = (op) => [op.nombre, op.apellido].filter(x => x && String(x).trim()).join(' ').trim() || op.username || '';
+
     async function loadOperariosList() {
-        const { data } = await supabaseClient.from('perfiles').select('nombre, apellido, username').eq('activo', true);
-        allOperarios = data || [];
-        const dl = document.getElementById('operarios-datalist');
-        if (dl) {
-            dl.innerHTML = '';
-            allOperarios.forEach(op => {
-                dl.insertAdjacentHTML('beforeend', `<option value="${(op.nombre || '') + ' ' + (op.apellido || '')}"></option>`);
-            });
-        }
+        const { data, error } = await supabaseClient.from('perfiles').select('id, nombre, apellido, username').eq('activo', true);
+        if (error) return;
+        allOperarios = (data || []).filter(op => nombreOperario(op))
+            .sort((a, b) => nombreOperario(a).localeCompare(nombreOperario(b), 'es', { sensitivity: 'base' }));
+        poblarSelectOperarios();
+    }
+
+    // El operario se elige de la lista de empleados activos. Si una tarea antigua tiene a alguien que ya no está,
+    // se añade como opción para no perder el dato al editarla.
+    function poblarSelectOperarios(extra) {
+        const sel = document.getElementById('tarea-operario');
+        if (!sel) return;
+        const actual = extra !== undefined ? extra : sel.value;
+        sel.innerHTML = '<option value="">Selecciona un empleado</option>' +
+            allOperarios.map(op => `<option value="${escT(nombreOperario(op))}">${escT(nombreOperario(op))}</option>`).join('');
+        if (actual && ![...sel.options].some(o => o.value === actual)) sel.insertAdjacentHTML('beforeend', `<option value="${escT(actual)}">${escT(actual)} (ya no activo)</option>`);
+        sel.value = actual || '';
+    }
+
+    function fechaES(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+        return m ? `${m[3]}/${m[2]}/${m[1]}` : (iso || '');
+    }
+
+    // Avisa al empleado de que tiene una tarea asignada (aparece en su campana).
+    async function notificarAsignacion(operario, tarea, quien) {
+        const { error } = await supabaseClient.from('notificaciones').insert([{
+            user_id: operario.id,
+            titulo: 'Nueva tarea asignada',
+            mensaje: `${quien} te ha asignado una tarea para el ${fechaES(tarea.fecha)}: ${tarea.cliente} · ${tarea.obra}.`
+        }]);
+        return !error;
     }
 
     // --- TAREAS (AUTOCOMPLETAR OBRA, PIZARRA, ETC) ---
@@ -296,7 +321,9 @@
             document.getElementById('form-tarea').reset();
             document.getElementById('edit-tarea-id').value = "";
             document.getElementById('tarea-fecha').value = getTodayLocalString();
-            document.getElementById('tarea-operario').value = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : '';
+            // Por defecto, quien crea la tarea (si es un empleado activo de la lista); se puede cambiar.
+            const yoNombre = window.currentUserProfile ? nombreOperario(window.currentUserProfile) : '';
+            poblarSelectOperarios(allOperarios.some(op => nombreOperario(op) === yoNombre) ? yoNombre : '');
             setDibujo('');
             sincronizarTarea('inicio');
             hideAllViews();
@@ -340,12 +367,22 @@
         // Clientes/obras nuevos: refresca autocompletados y las demás pantallas.
         if (creados) window.dispatchEvent(new CustomEvent('clientesActualizados'));
 
-        const username = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : 'Usuario';
+        const username = window.currentUserProfile ? nombreOperario(window.currentUserProfile) || 'Usuario' : 'Usuario';
+        const operarioNombre = document.getElementById('tarea-operario').value.trim();
+        const itemOriginal = editId ? allTareas.find(t => t.id === editId) : null;
+        const operario = allOperarios.find(op => nombreOperario(op) === operarioNombre);
+        const mantieneOperario = !!itemOriginal && itemOriginal.operario_asignado === operarioNombre;
+        if (!operarioNombre || (!operario && !mantieneOperario)) {
+            alert('Selecciona un empleado de la lista como operario asignado.');
+            return;
+        }
+        const notas = document.getElementById('tarea-notas').value.trim();
         const tareaData = {
             cliente: cName, obra: oName, direccion: dName, localidad: lName,
-            operario_asignado: document.getElementById('tarea-operario').value.trim(),
+            operario_asignado: operarioNombre,
+            operario_username: operario ? operario.username : itemOriginal.operario_username,
             fecha: document.getElementById('tarea-fecha').value,
-            notas: document.getElementById('tarea-notas').value.trim(),
+            notas,
             dibujo_url: document.getElementById('tarea-dibujo-url').value
         };
 
@@ -354,10 +391,20 @@
             const { error } = await supabaseClient.from('tareas').update(tareaData).eq('id', editId);
             if (error) { alert('No se pudo guardar la tarea: ' + error.message); return; }
         } else {
+            // La tabla exige un título de la tarea y el usuario que la crea (la política de acceso lo comprueba).
+            tareaData.tarea = (notas.split('\n')[0] || '').slice(0, 120) || `${oName}`;
+            tareaData.user_id = window.currentUserProfile ? window.currentUserProfile.id : null;
             tareaData.created_by = username;
             tareaData.completada = false;
             const { error } = await supabaseClient.from('tareas').insert([tareaData]);
             if (error) { alert('No se pudo guardar la tarea: ' + error.message); return; }
+        }
+
+        // Aviso al empleado asignado: al crear la tarea, o al cambiar de empleado al editarla.
+        const cambioOperario = !itemOriginal || itemOriginal.operario_asignado !== operarioNombre;
+        if (cambioOperario && operario && (!window.currentUserProfile || operario.id !== window.currentUserProfile.id)) {
+            const enviado = await notificarAsignacion(operario, tareaData, username);
+            if (!enviado) alert('La tarea se guardó, pero no se pudo avisar a ' + operarioNombre + '.');
         }
 
         await loadTasksFromDB();
@@ -471,7 +518,7 @@
         document.getElementById('tarea-obra').value = item.obra || '';
         document.getElementById('tarea-direccion').value = item.direccion || '';
         document.getElementById('tarea-localidad').value = item.localidad || '';
-        document.getElementById('tarea-operario').value = item.operario_asignado || '';
+        poblarSelectOperarios(item.operario_asignado || '');
         document.getElementById('tarea-fecha').value = item.fecha ? item.fecha.split('T')[0] : getTodayLocalString();
         document.getElementById('tarea-notas').value = item.notas || '';
         setDibujo(item.dibujo_url || '');

@@ -116,6 +116,13 @@
             const n = lista.find((x) => x.id === item.dataset.id);
             if (!n) return;
             marcarLeidas([n.id]);
+            // Aviso de tarea asignada: lleva al Diario.
+            if (norm(n.titulo).includes('tarea asignada')) {
+                cerrar();
+                const nav = document.getElementById('nav-home');
+                if (nav) nav.click();
+                return;
+            }
             // Aviso de registro pendiente: lleva directamente a Empleados para aprobarlo.
             if (norm(n.titulo).includes('registro pendiente')) {
                 cerrar();
