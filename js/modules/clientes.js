@@ -63,7 +63,7 @@
     }
 
     // ---------- Búsqueda ----------
-    const textoCliente = (c) => [nombreCliente(c), c.direccion, c.localidad, ...contactosCliente(c).flatMap((k) => [k.nombre, k.telefono])].join(' ');
+    const textoCliente = (c) => [nombreCliente(c), ...contactosCliente(c).flatMap((k) => [k.nombre, k.telefono])].join(' ');
     const textoObra = (o) => [o.nombre, o.direccion, o.localidad, ...contactosObra(o).flatMap((k) => [k.nombre, k.telefono])].join(' ');
     const coincide = (texto, tokens) => { const t = norm(texto); return tokens.every((k) => t.includes(k)); };
 
@@ -131,7 +131,6 @@
             <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0 flex flex-col gap-1">
                     <h3 class="font-bold text-base break-words">${esc(nombreCliente(c))}</h3>
-                    ${direccionHtml(c.direccion, c.localidad)}
                 </div>
                 <div class="flex gap-1 shrink-0">
                     ${btnAccion('editar-cliente', c.id, 'edit', 'Editar cliente')}
@@ -170,7 +169,7 @@
         const cont = document.getElementById('clientes-lista');
         if (cont && !clientes.length) cont.innerHTML = spinner;
         const { data, error } = await db().from('clientes').select(`
-            id, nombre, nombre_cliente, direccion, localidad,
+            id, nombre, nombre_cliente,
             contactos_clientes ( id, nombre, telefono ),
             obras ( id, nombre, direccion, localidad, contacto_nombre, contacto_telefono,
                     contactos_obras ( id, nombre, telefono ) )
@@ -227,12 +226,6 @@
                     <input id="f-cliente" type="text" required autocomplete="off" ${esNuevo ? 'list="clientes-modal-datalist"' : ''} value="${esc(cli ? nombreCliente(cli) : '')}" placeholder="${esNuevo ? 'Elige uno existente o escribe uno nuevo' : ''}" class="${INPUT}">
                     ${esNuevo ? '<p id="f-cliente-hint" class="text-xs text-slate-500 dark:text-slate-400"></p>' : ''}
                 </div>
-                <div id="f-cliente-datos">
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <div class="flex flex-col gap-1 flex-1"><label for="f-cli-direccion" class="text-xs font-medium">Dirección (opcional)</label><input id="f-cli-direccion" type="text" value="${esc(esNuevo ? '' : cli?.direccion)}" class="${INPUT}"></div>
-                        <div class="flex flex-col gap-1 flex-1"><label for="f-cli-localidad" class="text-xs font-medium">Localidad (opcional)</label><input id="f-cli-localidad" type="text" value="${esc(esNuevo ? '' : cli?.localidad)}" class="${INPUT}"></div>
-                    </div>
-                </div>
                 ${editorContactos('f-contactos-cliente', esNuevo ? 'Persona de contacto y teléfono (opcional)' : 'Personas de contacto y teléfonos', esNuevo ? [] : contactosCliente(cli))}
             </section>`;
         }
@@ -257,17 +250,15 @@
         return h;
     }
 
-    // En "nuevo": avisa si el cliente escrito ya existe y oculta sus datos propios.
+    // En "nuevo": avisa si el cliente escrito ya existe o se va a crear.
     function actualizarHint() {
         const input = document.getElementById('f-cliente');
         const hint = document.getElementById('f-cliente-hint');
-        const datos = document.getElementById('f-cliente-datos');
-        if (!input || !hint || !datos) return;
+        if (!input || !hint) return;
         const existente = buscarClientePorNombre(input.value);
         if (!input.value.trim()) hint.textContent = '';
         else if (existente) hint.textContent = `Cliente existente: la obra se añadirá a «${nombreCliente(existente)}».`;
         else hint.textContent = 'Cliente nuevo: se creará junto con esta obra.';
-        datos.classList.toggle('hidden', !!existente);
     }
 
     function abrirFormulario(modo, { clienteId = null, obraId = null } = {}) {
@@ -333,11 +324,7 @@
         if (existente) {
             clienteId = existente.id;
         } else {
-            const [fila] = await exigir(db().from('clientes').insert([{
-                nombre_cliente: nombre, nombre,
-                direccion: val('f-cli-direccion') || null,
-                localidad: val('f-cli-localidad') || null,
-            }]).select('id'), 'No se pudo crear el cliente.');
+            const [fila] = await exigir(db().from('clientes').insert([{ nombre_cliente: nombre, nombre }]).select('id'), 'No se pudo crear el cliente.');
             clienteId = fila.id;
         }
         const [obra] = await exigir(db().from('obras').insert([{ cliente_id: clienteId, nombre: oNombre, direccion: oDir, localidad: oLoc }]).select('id'), 'No se pudo crear la obra.');
@@ -351,11 +338,7 @@
         if (!nombre) throw new Error('Indica el nombre del cliente.');
         const otro = buscarClientePorNombre(nombre);
         if (otro && otro.id !== clienteId) throw new Error(`Ya existe un cliente llamado «${nombreCliente(otro)}».`);
-        await exigir(db().from('clientes').update({
-            nombre_cliente: nombre, nombre,
-            direccion: val('f-cli-direccion') || null,
-            localidad: val('f-cli-localidad') || null,
-        }).eq('id', clienteId).select('id'), 'No se pudo guardar el cliente.');
+        await exigir(db().from('clientes').update({ nombre_cliente: nombre, nombre }).eq('id', clienteId).select('id'), 'No se pudo guardar el cliente.');
         await sincronizarContactos('contactos_clientes', 'cliente_id', clienteId, leerContactos('f-contactos-cliente'), contactosClienteOrig);
     }
 
