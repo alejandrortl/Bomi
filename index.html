@@ -115,13 +115,14 @@
             <form id="form-tarea" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <input type="hidden" id="edit-tarea-id" value="">
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" list="clientes-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" list="obras-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" list="clientes-datalist" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" list="tarea-obras-dl" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium">Dirección</label><input type="text" id="tarea-direccion" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-localidad" class="text-xs font-medium">Localidad</label><input type="text" id="tarea-localidad" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium">Dirección</label><input type="text" id="tarea-direccion" required class="read-only:opacity-70 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-localidad" class="text-xs font-medium">Localidad</label><input type="text" id="tarea-localidad" required class="read-only:opacity-70 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
+                <p id="tarea-hint" class="hidden text-xs text-slate-500 bg-slate-100 dark:bg-zinc-800 rounded-xl p-3"></p>
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-operario" class="text-xs font-medium">Operario Asignado</label><input type="text" id="tarea-operario" list="operarios-datalist" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-fecha" class="text-xs font-medium">Fecha</label><input type="date" id="tarea-fecha" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
@@ -185,7 +186,7 @@
 
     <!-- DATALISTS -->
     <datalist id="clientes-datalist"></datalist>
-    <datalist id="obras-datalist"></datalist>
+    <datalist id="tarea-obras-dl"></datalist>
     <datalist id="materiales-datalist"></datalist>
     <datalist id="operarios-datalist"></datalist>
 

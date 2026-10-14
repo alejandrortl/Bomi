@@ -152,22 +152,19 @@
     window.addEventListener('clientesActualizados', () => loadClientes());
     if (window.currentUserProfile) initAppAfterLogin();
 
-    async function loadClientes() {
-        const { data: clientesData } = await supabaseClient.from('clientes').select('*').order('nombre_cliente', { ascending: true });
-        allClientesCompletos = [];
-        const dlClientes = document.getElementById('clientes-datalist');
-        const dlObras = document.getElementById('obras-datalist');
-        if(dlClientes) dlClientes.innerHTML = '';
-        if(dlObras) dlObras.innerHTML = '';
+    const escT = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const normT = (v) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 
-        for (const cli of (clientesData || [])) {
-            const { data: obrasCli } = await supabaseClient.from('obras').select('*').eq('cliente_id', cli.id);
-            allClientesCompletos.push({ ...cli, obras: obrasCli || [] });
-            if(dlClientes) dlClientes.insertAdjacentHTML('beforeend', `<option value="${cli.nombre_cliente}"></option>`);
-            (obrasCli || []).forEach(o => {
-                if(dlObras) dlObras.insertAdjacentHTML('beforeend', `<option value="${o.nombre}"></option>`);
-            });
-        }
+    async function loadClientes() {
+        const { data, error } = await supabaseClient.from('clientes').select('id, nombre, nombre_cliente, obras ( id, nombre, direccion, localidad )');
+        if (error) return;
+        allClientesCompletos = (data || [])
+            .map(c => ({ id: c.id, nombre_cliente: String(c.nombre_cliente || c.nombre || '').trim(), obras: c.obras || [] }))
+            .filter(c => c.nombre_cliente)
+            .sort((x, y) => x.nombre_cliente.localeCompare(y.nombre_cliente, 'es', { sensitivity: 'base' }));
+        const dlClientes = document.getElementById('clientes-datalist');
+        if (dlClientes) dlClientes.innerHTML = allClientesCompletos.map(c => `<option value="${escT(c.nombre_cliente)}"></option>`).join('');
+        actualizarObrasDatalist();
     }
 
     async function loadOperariosList() {
@@ -183,21 +180,66 @@
     }
 
     // --- TAREAS (AUTOCOMPLETAR OBRA, PIZARRA, ETC) ---
-    const inputTareaObra = document.getElementById('tarea-obra');
-    if (inputTareaObra) {
-        inputTareaObra.addEventListener('change', () => {
-            const obraVal = inputTareaObra.value.trim().toLowerCase();
-            for (const cli of allClientesCompletos) {
-                const obraEncontrada = cli.obras.find(o => o.nombre.toLowerCase() === obraVal);
-                if (obraEncontrada) {
-                    document.getElementById('tarea-direccion').value = obraEncontrada.direccion || '';
-                    document.getElementById('tarea-localidad').value = obraEncontrada.localidad || '';
-                    document.getElementById('tarea-cliente').value = cli.nombre_cliente;
-                    break;
-                }
-            }
-        });
+    // CLIENTE / OBRA en el formulario de tarea:
+    //  - el cliente se elige de los existentes o se escribe uno nuevo;
+    //  - las obras sugeridas son SOLO las del cliente elegido (o se escribe una nueva);
+    //  - al elegir una obra existente se rellenan (y bloquean) dirección y localidad.
+    let tareaObraAutorrellena = false;
+    const clienteDeTarea = () => {
+        const k = normT(document.getElementById('tarea-cliente').value);
+        return k ? allClientesCompletos.find(c => normT(c.nombre_cliente) === k) : undefined;
+    };
+
+    function actualizarObrasDatalist() {
+        const dl = document.getElementById('tarea-obras-dl');
+        if (!dl) return;
+        const cli = clienteDeTarea();
+        dl.innerHTML = cli ? cli.obras.map(o => `<option value="${escT(o.nombre)}"></option>`).join('') : '';
     }
+
+    function sincronizarTarea(origen) {
+        const inCli = document.getElementById('tarea-cliente');
+        const inObra = document.getElementById('tarea-obra');
+        const inDir = document.getElementById('tarea-direccion');
+        const inLoc = document.getElementById('tarea-localidad');
+        const hint = document.getElementById('tarea-hint');
+        if (!inCli || !inObra) return;
+        const cli = clienteDeTarea();
+        const obra = cli ? cli.obras.find(o => normT(o.nombre) === normT(inObra.value)) : null;
+        if (obra) {
+            if (origen === 'inicio') {
+                // Al editar una tarea guardada no se pisan sus datos: solo se bloquean si coinciden con la obra.
+                const coincide = normT(inDir.value) === normT(obra.direccion) && normT(inLoc.value) === normT(obra.localidad);
+                inDir.readOnly = coincide; inLoc.readOnly = coincide; tareaObraAutorrellena = coincide;
+            } else {
+                inDir.value = obra.direccion || ''; inLoc.value = obra.localidad || '';
+                inDir.readOnly = true; inLoc.readOnly = true; tareaObraAutorrellena = true;
+            }
+        } else {
+            if (tareaObraAutorrellena) {
+                // Cambió el cliente u obra: lo autorrellenado ya no corresponde.
+                if (origen === 'cliente') inObra.value = '';
+                inDir.value = ''; inLoc.value = '';
+                tareaObraAutorrellena = false;
+            }
+            inDir.readOnly = false; inLoc.readOnly = false;
+        }
+        actualizarObrasDatalist();
+        let msg = '';
+        const nombreCli = inCli.value.trim();
+        if (nombreCli && !cli) msg = `«${nombreCli}» es un cliente nuevo: se creará junto con esta obra. Indica dirección y localidad.`;
+        else if (cli && inObra.value.trim() && !obra) msg = `Obra nueva en «${cli.nombre_cliente}»: se creará con esta dirección y localidad.`;
+        else if (cli && obra) msg = `Obra existente de «${cli.nombre_cliente}»: se usan su dirección y localidad.`;
+        if (hint) { hint.textContent = msg; hint.classList.toggle('hidden', !msg); }
+    }
+
+    ['tarea-cliente', 'tarea-obra'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const origen = id === 'tarea-cliente' ? 'cliente' : 'obra';
+        el.addEventListener('input', () => sincronizarTarea(origen));
+        el.addEventListener('change', () => sincronizarTarea(origen));
+    });
 
     // WEB SPEECH API
     const btnDictarVoz = document.getElementById('btn-dictar-voz');
@@ -256,6 +298,7 @@
             document.getElementById('tarea-fecha').value = getTodayLocalString();
             document.getElementById('tarea-operario').value = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : '';
             setDibujo('');
+            sincronizarTarea('inicio');
             hideAllViews();
             viewFormTarea.classList.remove('hidden');
             viewFormTarea.classList.add('flex');
@@ -273,18 +316,29 @@
         const lName = document.getElementById('tarea-localidad').value.trim();
         const editId = document.getElementById('edit-tarea-id').value;
 
-        let cliEncontrado = allClientesCompletos.find(c => c.nombre_cliente.toLowerCase() === cName.toLowerCase());
-        let clienteId;
-        if (!cliEncontrado) {
-            const { data: newC } = await supabaseClient.from('clientes').insert([{ nombre_cliente: cName }]).select().single();
-            clienteId = newC.id;
-        } else { clienteId = cliEncontrado.id; }
+        let creados = false;
+        try {
+            const cliEncontrado = clienteDeTarea();
+            let clienteId;
+            if (!cliEncontrado) {
+                const { data, error } = await supabaseClient.from('clientes').insert([{ nombre_cliente: cName, nombre: cName }]).select('id');
+                if (error || !data || !data.length) throw error || new Error('No se pudo crear el cliente.');
+                clienteId = data[0].id;
+                creados = true;
+            } else { clienteId = cliEncontrado.id; }
 
-        const obraEncontrada = allClientesCompletos.find(c => c.id === clienteId)?.obras?.find(o => o.nombre.toLowerCase() === oName.toLowerCase());
-        if (!obraEncontrada) {
-            await supabaseClient.from('obras').insert([{ cliente_id: clienteId, nombre: oName, direccion: dName, localidad: lName }]);
-            loadClientes();
+            const obraEncontrada = cliEncontrado && cliEncontrado.obras.find(o => normT(o.nombre) === normT(oName));
+            if (!obraEncontrada) {
+                const { error } = await supabaseClient.from('obras').insert([{ cliente_id: clienteId, nombre: oName, direccion: dName, localidad: lName }]);
+                if (error) throw error;
+                creados = true;
+            }
+        } catch (ex) {
+            alert('No se pudo crear el cliente u obra: ' + ((ex && ex.message) || 'error desconocido'));
+            return;
         }
+        // Clientes/obras nuevos: refresca autocompletados y las demás pantallas.
+        if (creados) window.dispatchEvent(new CustomEvent('clientesActualizados'));
 
         const username = window.currentUserProfile ? ((window.currentUserProfile.nombre || '') + ' ' + (window.currentUserProfile.apellido || '')).trim() : 'Usuario';
         const tareaData = {
@@ -297,11 +351,13 @@
 
         if (editId) {
             tareaData.updated_by = username;
-            await supabaseClient.from('tareas').update(tareaData).eq('id', editId);
+            const { error } = await supabaseClient.from('tareas').update(tareaData).eq('id', editId);
+            if (error) { alert('No se pudo guardar la tarea: ' + error.message); return; }
         } else {
             tareaData.created_by = username;
             tareaData.completada = false;
-            await supabaseClient.from('tareas').insert([tareaData]);
+            const { error } = await supabaseClient.from('tareas').insert([tareaData]);
+            if (error) { alert('No se pudo guardar la tarea: ' + error.message); return; }
         }
 
         await loadTasksFromDB();
@@ -419,6 +475,8 @@
         document.getElementById('tarea-fecha').value = item.fecha ? item.fecha.split('T')[0] : getTodayLocalString();
         document.getElementById('tarea-notas').value = item.notas || '';
         setDibujo(item.dibujo_url || '');
+        tareaObraAutorrellena = false;
+        sincronizarTarea('inicio');
         hideAllViews();
         viewFormTarea.classList.remove('hidden');
         viewFormTarea.classList.add('flex');
