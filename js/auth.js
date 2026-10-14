@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authSubtitle) authSubtitle.textContent = "Crea tu cuenta para solicitar acceso";
             if (btnAuthSubmit) btnAuthSubmit.textContent = "Registrarse";
             if (btnToggleAuth) btnToggleAuth.classList.add('hidden'); 
+            const btnOlvide = document.getElementById('btn-olvide'); if (btnOlvide) btnOlvide.classList.add('hidden');
             if (registerFields) { registerFields.classList.remove('hidden'); registerFields.classList.add('flex'); }
             if (btnBackLogin) { btnBackLogin.classList.remove('hidden'); btnBackLogin.classList.add('flex'); }
             if (authNombre) authNombre.required = true;
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authSubtitle) authSubtitle.textContent = "Acceso para operarios";
             if (btnAuthSubmit) btnAuthSubmit.textContent = "Ingresar";
             if (btnToggleAuth) btnToggleAuth.classList.remove('hidden');
+            const btnOlvide = document.getElementById('btn-olvide'); if (btnOlvide) btnOlvide.classList.remove('hidden');
             if (registerFields) { registerFields.classList.add('hidden'); registerFields.classList.remove('flex'); }
             if (btnBackLogin) { btnBackLogin.classList.add('hidden'); btnBackLogin.classList.remove('flex'); }
             if (authNombre) authNombre.required = false;
@@ -170,6 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function checkExistingSession() {
+        // Llegó desde el enlace de "olvidé mi contraseña": primero debe crear la nueva, no entrar directamente.
+        if (window.__recuperacion && (window.__recuperacion.modo || window.__recuperacion.error)) return;
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) {
             await checkUserProfileAndLogin(session.user.id);

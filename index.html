@@ -81,6 +81,7 @@
                 <p id="auth-success" class="text-emerald-600 text-sm text-center hidden"></p>
             </form>
             <div class="text-center mt-2 flex flex-col gap-3">
+                <button type="button" id="btn-olvide" class="text-slate-500 dark:text-slate-400 text-sm hover:underline">¿Has olvidado tu contraseña?</button>
                 <button id="btn-toggle-auth" class="text-blue-600 text-sm font-medium hover:underline">¿No tienes cuenta? Regístrate aquí</button>
                 <button type="button" id="btn-back-login" class="hidden w-full py-3 rounded-full font-medium text-sm border border-slate-300 hover:bg-slate-100 flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver</button>
             </div>
@@ -223,6 +224,7 @@
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/modules/recuperar.js"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/modules/clientes.js"></script>
