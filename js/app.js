@@ -495,13 +495,50 @@
             </li>`).join('') + '</ul>';
     }
 
+    // Todas las tareas / solo las asignadas al usuario actual (la elección se guarda en su perfil)
+    const CLAVE_LOCAL_DIARIO = 'bomi_diario_solo_mias';
+    function leerSoloMias() {
+        const pref = window.currentUserProfile && window.currentUserProfile.ui_preferencias;
+        if (pref && pref.diario_solo_mias !== undefined) return !!pref.diario_solo_mias;
+        try { return localStorage.getItem(CLAVE_LOCAL_DIARIO) === '1'; } catch (e) { return false; }
+    }
+    function pintarInterruptorDiario() {
+        const mias = leerSoloMias();
+        document.querySelectorAll('#view-task-list [data-filtro-diario]').forEach((b) => {
+            const act = (b.dataset.filtroDiario === 'mias') === mias;
+            b.className = 'flex-1 py-2 rounded-full text-sm font-medium transition-colors ' + (act ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300');
+            b.setAttribute('aria-pressed', act ? 'true' : 'false');
+        });
+    }
+    async function guardarSoloMias(v) {
+        const p = window.currentUserProfile;
+        if (p) p.ui_preferencias = { ...(p.ui_preferencias || {}), diario_solo_mias: v };
+        try { localStorage.setItem(CLAVE_LOCAL_DIARIO, v ? '1' : '0'); } catch (e) { /* sin almacenamiento local */ }
+        if (p) { try { await supabaseClient.from('perfiles').update({ ui_preferencias: p.ui_preferencias }).eq('id', p.id); } catch (e) { /* queda en el dispositivo */ } }
+    }
+    const esMiaTarea = (t) => {
+        const p = window.currentUserProfile;
+        if (!p) return false;
+        return normT(t.operario_asignado) !== '' && normT(t.operario_asignado) === normT(nombreOperario(p));
+    };
+    document.querySelectorAll('#view-task-list [data-filtro-diario]').forEach((b) => b.addEventListener('click', () => {
+        const mias = b.dataset.filtroDiario === 'mias';
+        if (mias === leerSoloMias()) return;
+        guardarSoloMias(mias);
+        pintarInterruptorDiario();
+        renderTareas();
+    }));
+
     function renderTareas() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
         const fechaSelect = filtroFechaDiario.value;
         const searchTxt = searchTareasInput.value.toLowerCase().trim();
 
+        const soloMias = leerSoloMias();
+        pintarInterruptorDiario();
         let filtradas = allTareas.filter(t => {
+            if (soloMias && !esMiaTarea(t)) return false;
             const tFecha = t.fecha ? t.fecha.split('T')[0] : '';
             if (searchTxt === '') {
                 if (tFecha !== fechaSelect) return false;
@@ -517,7 +554,7 @@
         c.innerHTML = '';
 
         if (filtradas.length === 0) {
-            c.innerHTML = '<p class="text-slate-500 text-center mt-8 bg-slate-100 dark:bg-zinc-800 p-4 rounded-2xl">No se encontraron tareas con estos criterios.</p>';
+            c.innerHTML = '<p class="text-slate-500 text-center mt-8 bg-slate-100 dark:bg-zinc-800 p-4 rounded-2xl">' + (soloMias ? 'No tienes tareas asignadas con estos criterios.' : 'No se encontraron tareas con estos criterios.') + '</p>';
             return;
         }
 
