@@ -12,6 +12,14 @@
     const esAdmin = () => ['admin', 'superadmin'].includes(String(yo()?.rol ?? '').trim().toLowerCase());
     const campo = (id, etiqueta, valor, extra = '') =>
         `<div class="flex flex-col gap-1"><label for="${id}" class="text-xs font-medium">${etiqueta}</label><input id="${id}" value="${esc(valor)}" ${extra} class="${INPUT}"></div>`;
+    // Tallas de ropa de trabajo (columna de `perfiles` -> etiqueta)
+    const TALLAS = [
+        ['talla_camiseta', 'Camiseta', 'Ej.: M'],
+        ['talla_pantalon', 'Pantalón', 'Ej.: 42'],
+        ['talla_zapatos', 'Zapatos', 'Ej.: 43'],
+        ['talla_chaqueta', 'Chaqueta', 'Ej.: L'],
+        ['talla_chaleco', 'Chaleco', 'Ej.: L'],
+    ];
     const solo = (etiqueta, valor) =>
         `<div class="flex flex-col gap-1"><span class="text-xs font-medium">${etiqueta}</span><p class="text-sm text-slate-500 px-1 break-words">${esc(valor || '—')}</p></div>`;
     const cabecera = (icono, titulo) =>
@@ -92,6 +100,13 @@
                 ${campo('perfil-apellido', 'Apellido', p.apellido, 'type="text" autocomplete="family-name"')}
                 ${campo('perfil-telefono', 'Teléfono', p.telefono, 'type="tel" inputmode="tel" maxlength="15" autocomplete="tel"')}
                 ${solo('Correo', p.email)}
+                <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-800 pt-4">
+                    <h3 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">checkroom</span> Mis tallas</h3>
+                    <p class="text-xs text-slate-500">Ropa de trabajo. Las pueden ver tus compañeros en Empleados.</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        ${TALLAS.map(([k, et, ej]) => campo('perfil-' + k.replace('_', '-'), et, p[k], `type="text" maxlength="10" placeholder="${ej}" autocomplete="off"`)).join('')}
+                    </div>
+                </div>
                 <p id="perfil-msg" class="hidden" role="status"></p>
                 <button type="submit" id="perfil-guardar" class="${BTN}">Guardar</button>
             </form>
@@ -147,6 +162,7 @@
             apellido: document.getElementById('perfil-apellido').value.trim(),
             telefono: document.getElementById('perfil-telefono').value.trim(),
         };
+        TALLAS.forEach(([k]) => { cambios[k] = document.getElementById('perfil-' + k.replace('_', '-')).value.trim() || null; });
         ocultar('perfil-msg');
         if (!cambios.nombre) { mensaje('perfil-msg', 'El nombre es obligatorio.', false); return; }
         btn.disabled = true;

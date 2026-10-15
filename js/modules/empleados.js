@@ -8,7 +8,12 @@
     const BTN_ICON = 'p-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors';
     const BTN_DANGER = 'p-1.5 rounded-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors';
     const ROLES = ['Operario', 'Admin', 'SuperAdmin'];
-    const COLUMNAS = 'id, nombre, apellido, username, email, telefono, rol, activo';
+    const COLUMNAS_BASE = 'id, nombre, apellido, username, email, telefono, rol, activo';
+    const TALLAS = [
+        ['talla_camiseta', 'Camiseta'], ['talla_pantalon', 'Pantalón'], ['talla_zapatos', 'Zapatos'],
+        ['talla_chaqueta', 'Chaqueta'], ['talla_chaleco', 'Chaleco'],
+    ];
+    const COLUMNAS = COLUMNAS_BASE + ', ' + TALLAS.map((t) => t[0]).join(', ');
 
     let empleados = [];
     let iniciado = false;
@@ -80,6 +85,7 @@
         const mail = e.email ? `<a href="mailto:${esc(e.email)}" class="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline min-w-0"><span class="material-symbols-outlined text-[18px]">mail</span><span class="truncate">${esc(e.email)}</span></a>` : '';
         const acciones = [];
         if (esAdmin() && pend && gestionable) acciones.push(`<button type="button" data-accion="aceptar" data-id="${esc(e.id)}" class="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 px-3 py-1.5 rounded-full font-medium">Aceptar</button>`);
+        acciones.push(btnAccion('tallas', e.id, 'checkroom', 'Ver tallas'));
         if (gestionable) acciones.push(btnAccion('editar', e.id, 'edit', 'Editar empleado'));
         if (gestionable && !esYo(e)) acciones.push(btnAccion('eliminar', e.id, 'delete', pend ? 'Rechazar y eliminar' : 'Eliminar empleado', BTN_DANGER));
         return `
@@ -113,7 +119,8 @@
     async function cargar() {
         const cont = document.getElementById('empleados-container');
         if (cont && !empleados.length) cont.innerHTML = spinner;
-        const { data, error } = await db().from('perfiles').select(COLUMNAS);
+        let { data, error } = await db().from('perfiles').select(COLUMNAS);
+        if (error) ({ data, error } = await db().from('perfiles').select(COLUMNAS_BASE)); // si aún no existen las columnas de tallas
         if (error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar empleados: ${esc(error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
             return;
@@ -155,12 +162,33 @@
         document.getElementById('emp-nombre').focus();
     }
 
+    // ---------- Tallas ----------
+    let viendoTallas = false;
+    function abrirTallas(id) {
+        const e = buscar(id);
+        if (!e) return;
+        viendoTallas = true;
+        editandoId = null;
+        document.getElementById('empleados-modal-titulo').textContent = 'Tallas de ' + nombreCompleto(e);
+        const algunaTalla = TALLAS.some(([k]) => String(e[k] ?? '').trim());
+        document.getElementById('form-empleados').innerHTML = `
+            <div class="border border-slate-200 dark:border-zinc-800 rounded-xl divide-y divide-slate-200 dark:divide-zinc-800">
+                ${TALLAS.map(([k, et]) => `<div class="flex justify-between items-center gap-3 px-4 py-3"><span class="text-sm font-medium">${esc(et)}</span><span class="text-sm ${String(e[k] ?? '').trim() ? 'font-semibold' : 'text-slate-400'}" data-talla="${k}">${esc(String(e[k] ?? '').trim() || 'Sin indicar')}</span></div>`).join('')}
+            </div>
+            ${algunaTalla ? '' : '<p class="text-xs text-slate-500">Todavía no ha indicado sus tallas. Cada persona las escribe en su perfil.</p>'}
+            <div class="flex justify-end"><button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button></div>`;
+        const modal = document.getElementById('modal-empleados');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
     function cerrarEditor() {
         const modal = document.getElementById('modal-empleados');
         if (!modal) return;
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         editandoId = null;
+        viendoTallas = false;
     }
 
     async function guardar(ev) {
@@ -265,7 +293,8 @@
             const btn = e.target.closest('[data-accion]');
             if (!btn) return;
             const { accion, id } = btn.dataset;
-            if (accion === 'editar') abrirEditor(id);
+            if (accion === 'tallas') abrirTallas(id);
+            else if (accion === 'editar') abrirEditor(id);
             else if (accion === 'aceptar') aceptar(id);
             else if (accion === 'eliminar') eliminar(id);
             else if (accion === 'reintentar') cargar();
@@ -276,7 +305,7 @@
             if (e.target === modal || e.target.closest('[data-accion="cerrar"]')) cerrarEditor();
         });
         document.getElementById('form-empleados').addEventListener('submit', guardar);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editandoId) cerrarEditor(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (editandoId || viendoTallas)) cerrarEditor(); });
     }
 
     function iniciar() {
