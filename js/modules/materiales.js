@@ -170,12 +170,6 @@
         return l.map((x) => `<p class="text-xs text-slate-500">${x}</p>`).join('');
     }
 
-    // Checkmark de "recibido": vacío si no, relleno en verde si sí.
-    function botonRecibido(r) {
-        const si = esRecibido(r);
-        return `<button type="button" data-accion="${si ? 'norecibido' : 'recibido'}" data-id="${esc(r.id)}" aria-pressed="${si}" aria-label="${si ? 'Quitar marca de recibido' : 'Marcar como recibido'}" title="${si ? 'Recibido (pulsa para quitar)' : 'Marcar como recibido'}" class="${BTN_ICON} ${si ? '!text-green-600 dark:!text-green-400' : ''}"><span class="material-symbols-outlined text-[22px]" style="${si ? "font-variation-settings:'FILL' 1" : ''}">${si ? 'check_circle' : 'radio_button_unchecked'}</span></button>`;
-    }
-
     function htmlSolicitud(r) {
         const ls = lineasDe(r);
         const muestra = ls.slice(0, 3).map((l) => `<li class="break-words"><strong>${esc(cant(l.cantidad))}</strong> × ${esc(l.material)}${l.referencia ? ` <span class="text-slate-500">(${esc(l.referencia)})</span>` : ''}</li>`).join('');
@@ -188,7 +182,6 @@
                     ${direccionHtml(r.direccion, r.localidad)}
                 </div>
                 <div class="flex gap-1 shrink-0 flex-wrap justify-end">
-                    ${botonRecibido(r)}
                     ${btnAccion('ver', r.id, 'visibility', 'Ver solicitud')}
                     ${btnAccion('editar', r.id, 'edit', 'Editar solicitud')}
                     ${btnAccion('eliminar', r.id, 'delete', 'Eliminar solicitud', BTN_DANGER)}
@@ -529,7 +522,7 @@
     // Marca como pedido guardando quién y cuándo. Si la BD aún no tiene las columnas pedido_por/pedido_at,
     // se guarda el estado y se registra a la persona en "modificado por".
     // tipo: 'pedido' | 'pendiente' | 'recibido' | 'norecibido'
-    async function cambiarEstado(id, tipo, desdeLista) {
+    async function cambiarEstado(id, tipo) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
         const err = document.getElementById('m-error');
@@ -551,7 +544,7 @@
             }
             const avisado = tipo === 'pedido' ? await avisarPedido(r, quien) : tipo === 'recibido' ? await avisarRecibido(r, quien) : true;
             await cargar();
-            if (!desdeLista) abrirVista(id);
+            abrirVista(id);
             if (!avisado) alert(`Se marcó como ${tipo === 'recibido' ? 'recibido' : 'pedido'}, pero no se pudo avisar a quien creó la solicitud.`);
         } catch (ex) { if (err) fallo(err, mensajeError(ex)); else alert(mensajeError(ex)); }
     }
@@ -813,7 +806,6 @@
             else if (accion === 'editar') abrirFormulario('editar', id);
             else if (accion === 'eliminar') eliminar(id);
             else if (accion === 'pdf') descargarPdf(id);
-            else if (accion === 'recibido' || accion === 'norecibido') cambiarEstado(id, accion, true);
             else if (accion === 'catalogo') abrirCatalogo();
             else if (accion === 'reintentar') cargar();
         });

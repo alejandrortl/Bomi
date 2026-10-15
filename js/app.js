@@ -566,7 +566,10 @@
             div.innerHTML = `
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${escT(t.cliente || 'Sin cliente')} - ${escT(t.obra || 'Sin obra')}</span>
+                    <div class="flex items-center gap-2 shrink-0 ml-2">
+                    <button type="button" onclick="window.verDetalleTarea('${escT(t.id)}')" aria-label="Ver tarea" title="Ver tarea" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
                     <button onclick="window.toggleTareaCompletada('${escT(t.id)}', ${!isComp})" aria-label="${isComp ? 'Marcar como pendiente' : 'Marcar como completada'}" class="w-8 h-8 rounded-full flex items-center justify-center border-2 ${isComp ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-zinc-600 text-transparent hover:border-blue-500'}"><span class="material-symbols-outlined text-[18px]">check</span></button>
+                    </div>
                 </div>
                 <div class="text-sm cursor-pointer" onclick="window.verDetalleTarea('${escT(t.id)}')">
                     <p>📅 <strong>Fecha:</strong> ${escT(t.fecha || 'N/D')} | 👷 <strong>Operario:</strong> ${escT(t.operario_asignado || 'Sin asignar')}</p>
