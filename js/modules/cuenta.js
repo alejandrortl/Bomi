@@ -15,10 +15,13 @@
     // Tallas de ropa de trabajo (columna de `perfiles` -> etiqueta)
     const TALLAS = [
         ['talla_camiseta', 'Camiseta', 'Ej.: M'],
+        ['talla_polo', 'Polo', 'Ej.: M'],
+        ['talla_sudadera', 'Sudadera', 'Ej.: L'],
         ['talla_pantalon', 'Pantalón', 'Ej.: 42'],
-        ['talla_zapatos', 'Zapatos', 'Ej.: 43'],
+        ['talla_bermudas', 'Bermudas', 'Ej.: 42'],
         ['talla_chaqueta', 'Chaqueta', 'Ej.: L'],
         ['talla_chaleco', 'Chaleco', 'Ej.: L'],
+        ['talla_zapatos', 'Zapatos', 'Ej.: 43'],
     ];
     const solo = (etiqueta, valor) =>
         `<div class="flex flex-col gap-1"><span class="text-xs font-medium">${etiqueta}</span><p class="text-sm text-slate-500 px-1 break-words">${esc(valor || '—')}</p></div>`;

@@ -10,8 +10,9 @@
     const ROLES = ['Operario', 'Admin', 'SuperAdmin'];
     const COLUMNAS_BASE = 'id, nombre, apellido, username, email, telefono, rol, activo';
     const TALLAS = [
-        ['talla_camiseta', 'Camiseta'], ['talla_pantalon', 'Pantalón'], ['talla_zapatos', 'Zapatos'],
-        ['talla_chaqueta', 'Chaqueta'], ['talla_chaleco', 'Chaleco'],
+        ['talla_camiseta', 'Camiseta'], ['talla_polo', 'Polo'], ['talla_sudadera', 'Sudadera'],
+        ['talla_pantalon', 'Pantalón'], ['talla_bermudas', 'Bermudas'], ['talla_chaqueta', 'Chaqueta'],
+        ['talla_chaleco', 'Chaleco'], ['talla_zapatos', 'Zapatos'],
     ];
     const COLUMNAS_TALLAS = COLUMNAS_BASE + ', ' + TALLAS.map((t) => t[0]).join(', ');
     const COLUMNAS = COLUMNAS_TALLAS + ', en_papelera, papelera_at, papelera_activo';
