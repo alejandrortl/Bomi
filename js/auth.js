@@ -139,6 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (profile.en_papelera === true) {
+            if (authError) { authError.textContent = "Tu cuenta está desactivada. Contacta con un administrador."; authError.classList.remove('hidden'); }
+            await supabaseClient.auth.signOut();
+            if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Ingresar"; }
+            return;
+        }
+
         if (!profile.activo) {
             if (authError) { authError.textContent = "Tu cuenta está pendiente de aprobación."; authError.classList.remove('hidden'); }
             await supabaseClient.auth.signOut();
