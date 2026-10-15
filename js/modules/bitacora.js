@@ -174,7 +174,7 @@
                 <div id="b-pizarra" class="flex flex-col gap-2 items-start"></div>
             </div>
             <p id="b-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cancelar</button>
                 <button type="submit" id="b-guardar" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-6 py-2 rounded-full font-medium">Guardar</button>
             </div>`;
@@ -358,9 +358,35 @@
             <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(r, true)}</div>
             <div class="flex justify-end gap-3">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
+                <button type="button" data-accion="pdf" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
                 <button type="button" data-accion="editar-desde-ver" data-id="${esc(r.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
             </div>`;
         mostrarModal('Registro de bitácora');
+    }
+
+    // ---------- PDF ----------
+    function itemsPdf(r) {
+        const it = [
+            { t: 'title', text: 'Registro de bitácora', sub: 'Fecha: ' + fechaHora(r.created_at).split(',')[0] },
+            { t: 'kv', label: 'Cliente', value: r.cliente },
+            { t: 'kv', label: 'Obra', value: r.obra },
+            { t: 'kv', label: 'Dirección', value: r.direccion || '—' },
+            { t: 'kv', label: 'Localidad', value: r.localidad || '—' },
+            { t: 'h', text: 'Notas' },
+            { t: 'p', text: r.notas || 'Sin notas.' },
+        ];
+        const img = imagenDe(r);
+        if (img) { it.push({ t: 'h', text: 'Pizarra' }); it.push({ t: 'img', src: img, maxW: 500, maxH: 380 }); }
+        it.push({ t: 'note', text: 'Creado por ' + (r.created_by || 'desconocido') + ' · ' + fechaHora(r.created_at)
+            + (modificado(r) ? '\nModificado por ' + (r.updated_by || 'desconocido') + ' · ' + fechaHora(r.updated_at) : '') });
+        return it;
+    }
+    async function descargarPdf(id) {
+        const r = registros.find((x) => x.id === id);
+        if (!r) return;
+        const nombre = window.BomiPdf.nombreSeguro(['bitacora', r.cliente, r.obra], 80);
+        try { await window.BomiPdf.generar(itemsPdf(r), nombre); }
+        catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
 
     // ---------- Guardado ----------
@@ -510,6 +536,7 @@
             else if (a === 'dictar') alternarDictado();
             else if (a === 'pizarra') abrirPizarra();
             else if (a === 'quitar-pizarra') { pizarra = { ...pizarra, nueva: false, blob: null, vistaPrevia: '', quitada: true }; pintarPizarraForm(); }
+            else if (a === 'pdf') descargarPdf(btn.dataset.id);
             else if (a === 'editar-desde-ver') { const id = btn.dataset.id; cerrarModal(); abrirFormulario('editar', id); }
         });
         modal.addEventListener('input', (e) => {

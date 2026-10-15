@@ -172,15 +172,17 @@
         <section id="view-detalle-tarea" class="hidden flex-col gap-4 max-w-2xl mx-auto w-full">
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold">Detalle de Tarea</h2>
-                <div class="flex gap-2">
-                    <button type="button" id="btn-export-pdf-tarea" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-full font-medium flex items-center gap-1 shadow-sm"><span class="material-symbols-outlined text-[16px]">picture_as_pdf</span> Exportar</button>
-                    <button type="button" id="btn-back-tarea-list" class="text-xs bg-slate-200 dark:bg-zinc-800 px-3 py-1.5 rounded-full font-medium">Volver</button>
-                </div>
             </div>
             <div id="pdf-export-container-tarea" class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm flex flex-col gap-4 relative">
                 <div id="sello-completada" class="hidden absolute top-6 right-6 border-4 border-emerald-600 text-emerald-600 font-bold text-xl px-4 py-1 rounded-xl rotate-12 opacity-80">COMPLETADA</div>
                 <div class="border-b border-slate-200 dark:border-zinc-800 pb-4 mb-2"><h3 class="font-bold text-base text-blue-600 dark:text-blue-400">Orden de Trabajo / Tarea</h3></div>
                 <div id="detalle-tarea-content" class="flex flex-col gap-4"></div>
+            </div>
+            <!-- Mismos botones que al ver un registro de Bitácora, Partes o Materiales -->
+            <div class="flex flex-wrap justify-end gap-2">
+                <button type="button" id="btn-back-tarea-list" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
+                <button type="button" id="btn-export-pdf-tarea" class="text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
+                <button type="button" id="btn-editar-tarea" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
             </div>
         </section>
 

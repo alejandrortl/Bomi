@@ -364,6 +364,7 @@
 
     document.getElementById('btn-cancel-tarea').addEventListener('click', () => navHome.click());
     document.getElementById('btn-back-tarea-list').addEventListener('click', () => navHome.click());
+    document.getElementById('btn-editar-tarea').addEventListener('click', () => { if (currentTareaItem) window.editarTarea(currentTareaItem.id); });
 
     document.getElementById('form-tarea').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -609,9 +610,8 @@
             <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || '')}</p></div>
             <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-wrap break-words">${escT(item.notas || 'N/A')}</p></div>
             ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span><img src="${escT(item.dibujo_url)}" class="mt-2 rounded-xl max-h-48 border border-slate-200"></div>` : ''}
-            <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 flex justify-between mt-4">
+            <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 mt-4">
                 <span>Creado por: ${escT(item.created_by || '?')} ${item.updated_by ? '<br>Editado por: ' + escT(item.updated_by) : ''}</span>
-                <button onclick="window.editarTarea('${escT(item.id)}')" class="bg-slate-100 dark:bg-zinc-800 px-4 py-2 rounded-xl font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit</span> Modificar</button>
             </div>
         `;
     };
