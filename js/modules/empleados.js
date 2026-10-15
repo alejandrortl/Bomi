@@ -131,6 +131,7 @@
         cab.innerHTML = `
             <h2 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600">group</span> Empleados</h2>
             <div class="flex items-center gap-2">
+                ${esAdmin() ? `<button type="button" data-accion="total-tallas" aria-label="Total de tallas" title="Total de tallas de todos los empleados" class="${BTN_ICON}"><span class="material-symbols-outlined">checkroom</span></button>` : ''}
                 ${esAdmin() ? `<button type="button" data-accion="papelera" aria-label="Papelera de contactos" title="Papelera de contactos" class="${BTN_ICON} relative"><span class="material-symbols-outlined">delete_sweep</span>${enP ? `<span id="papelera-count" class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-slate-600 text-white text-[10px] leading-4 text-center">${enP}</span>` : ''}</button>` : ''}
                 <span id="empleados-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium">${n} ${n === 1 ? 'empleado' : 'empleados'}</span>
             </div>`;
@@ -353,6 +354,38 @@
         modal.classList.add('flex');
     }
 
+    // Suma de tallas de todos los empleados (sin los de la papelera): cuántas personas usan cada talla.
+    function abrirResumenTallas() {
+        if (!esAdmin()) return;
+        const base = empleados.filter((e) => !enPapelera(e));
+        const clave = (v) => String(v ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
+        const orden = (a, b) => { const x = parseFloat(a.replace(',', '.')), y = parseFloat(b.replace(',', '.')); return (!isNaN(x) && !isNaN(y) && x !== y) ? x - y : a.localeCompare(b, 'es', { numeric: true }); };
+        const TALLAS_LETRA = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
+        const ordenTalla = (a, b) => { const i = TALLAS_LETRA.indexOf(a), j = TALLAS_LETRA.indexOf(b); return (i >= 0 && j >= 0) ? i - j : (i >= 0 ? -1 : (j >= 0 ? 1 : orden(a, b))); };
+        viendoTallas = true;
+        editandoId = null;
+        document.getElementById('empleados-modal-titulo').textContent = 'Total de tallas';
+        const bloques = TALLAS.map(([k, et]) => {
+            const cuenta = new Map(); let sin = 0;
+            base.forEach((e) => { const v = clave(e[k]); if (!v) sin++; else cuenta.set(v, (cuenta.get(v) || 0) + 1); });
+            const filas = [...cuenta.entries()].sort((a, b) => ordenTalla(a[0], b[0]));
+            const total = base.length - sin;
+            return `<div class="flex flex-col gap-1" data-total-talla="${k}">
+                <div class="flex justify-between items-baseline"><p class="text-sm font-semibold">${esc(et)}</p><p class="text-xs text-slate-500">${total} ${total === 1 ? 'persona' : 'personas'}</p></div>
+                <div class="border border-slate-200 dark:border-zinc-800 rounded-xl divide-y divide-slate-200 dark:divide-zinc-800">
+                    ${filas.length ? filas.map(([v, n]) => `<div class="flex justify-between items-center gap-3 px-4 py-2"><span class="text-sm">${esc(v)}</span><span class="text-sm font-semibold" data-talla-valor="${esc(v)}">${n}</span></div>`).join('') : '<p class="px-4 py-2 text-sm text-slate-400">Nadie ha indicado esta talla.</p>'}
+                    ${sin && filas.length ? `<div class="flex justify-between items-center gap-3 px-4 py-2"><span class="text-sm text-slate-400">Sin indicar</span><span class="text-sm text-slate-400">${sin}</span></div>` : ''}
+                </div></div>`;
+        }).join('');
+        document.getElementById('form-empleados').innerHTML = `
+            <p class="text-xs text-slate-500">Empleados contados: ${base.length} (sin los de la papelera). Cada número es cuántas personas usan esa talla.</p>
+            ${bloques}
+            <div class="flex justify-end"><button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button></div>`;
+        const modal = document.getElementById('modal-empleados');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
     function cambiarVista(papelera) {
         vistaPapelera = papelera;
         busqueda = '';
@@ -398,6 +431,7 @@
             else if (accion === 'reintentar') cargar();
             else if (accion === 'papelera' && esAdmin()) cambiarVista(true);
             else if (accion === 'volver') cambiarVista(false);
+            else if (accion === 'total-tallas') abrirResumenTallas();
             else if (accion === 'detalle') abrirDetalle(id);
             else if (accion === 'restaurar') restaurar(id);
         });
