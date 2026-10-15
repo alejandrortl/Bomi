@@ -554,6 +554,7 @@
     async function abrirVista(id) {
         const p = partes.find((x) => x.id === id);
         if (!p) return;
+        if (window.refrescarPerfil) await window.refrescarPerfil(); // por si le cambiaron el rol con la app abierta
         modo = 'ver'; actual = p;
         let imgFirma = '';
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* se muestra sin firma */ }
@@ -583,6 +584,7 @@
 
     // El bloqueo es definitivo: un parte bloqueado ya no se puede editar, eliminar ni desbloquear.
     async function bloquear(id) {
+        if (window.refrescarPerfil) await window.refrescarPerfil(true);
         if (!esAdmin()) return;
         const p = partes.find((x) => x.id === id);
         if (!p || p.bloqueado) return;

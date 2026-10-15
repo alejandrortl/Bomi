@@ -150,6 +150,26 @@ document.addEventListener('DOMContentLoaded', () => {
         showAppInterface();
     }
 
+    // Si un administrador cambia el rol de alguien mientras tiene la app abierta, el perfil en memoria se queda viejo.
+    // Esto lo vuelve a leer (al volver a la app y antes de acciones de administrador) y actualiza la etiqueta de rol.
+    let perfilLeidoEn = 0;
+    window.refrescarPerfil = async function (forzar) {
+        const yo = window.currentUserProfile;
+        if (!yo || !yo.id) return yo;
+        if (!forzar && Date.now() - perfilLeidoEn < 15000) return yo;
+        try {
+            const { data } = await supabaseClient.from('perfiles').select('*').eq('id', yo.id).single();
+            perfilLeidoEn = Date.now();
+            if (data && data.activo !== false) {
+                window.currentUserProfile = data;
+                if (userRoleBadge) userRoleBadge.textContent = data.rol;
+                if (data.rol !== yo.rol) window.dispatchEvent(new CustomEvent('rolActualizado'));
+            }
+        } catch (e) { /* sin conexión: se sigue con lo que hay */ }
+        return window.currentUserProfile;
+    };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) window.refrescarPerfil(); });
+
     function showAppInterface() {
         if (viewAuth) viewAuth.classList.add('hidden');
         if (appHeader) { appHeader.classList.remove('hidden'); appHeader.classList.add('flex'); }
