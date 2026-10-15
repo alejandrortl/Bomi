@@ -96,14 +96,31 @@
         return `<a href="${esc(mapsHref(dir, loc))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-start gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"><span class="material-symbols-outlined text-[16px] mt-0.5">location_on</span><span>${esc(txt)}</span></a>`;
     }
 
+    // Semana del año (ISO 8601, igual que la columna `semana` de la base de datos) de la fecha del parte.
+    function semanaIso(f) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f || '');
+        if (!m) return null;
+        const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+        const dia = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dia);
+        const inicio = Date.UTC(d.getUTCFullYear(), 0, 1);
+        return Math.ceil(((d - inicio) / 86400000 + 1) / 7);
+    }
+    const semanaDe = (p) => (p.semana != null ? Number(p.semana) : semanaIso(p.fecha));
+    const chipSemana = (p) => { const s = semanaDe(p); return s ? `<span class="ml-1 text-xs font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5" title="Semana ${s} del año">S${s}</span>` : ''; };
+
     const texto = (p) => [p.cliente, p.obra, p.direccion, p.localidad].concat(ops(p).map((o) => o.operario_nombre)).join(' ');
     function filtrar() {
-        const tokens = norm(busqueda).split(' ').filter(Boolean);
+        // "S25" o "semana 25" buscan exactamente la semana 25; el resto de palabras buscan en el texto del parte.
+        const tokens = norm(busqueda).replace(/\bsemana\s*(\d{1,2})\b/g, 's$1').split(' ').filter(Boolean);
+        const semanas = tokens.filter((k) => /^s\d{1,2}$/.test(k)).map((k) => Number(k.slice(1)));
+        const palabras = tokens.filter((k) => !/^s\d{1,2}$/.test(k));
         return partes.filter((p) => {
             if (soloMios && !figuro(p)) return false;
-            if (!tokens.length) return true;
+            if (semanas.length && !semanas.every((n) => semanaDe(p) === n)) return false;
+            if (!palabras.length) return true;
             const t = norm(texto(p));
-            return tokens.every((k) => t.includes(k));
+            return palabras.every((k) => t.includes(k));
         });
     }
 
@@ -114,7 +131,7 @@
         <article class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm p-4 flex flex-col gap-3">
             <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0 flex flex-col gap-1">
-                    <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(fechaES(p.fecha))}${p.bloqueado ? ' <span class="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300 ml-1"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueado</span>' : ''}</p>
+                    <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(fechaES(p.fecha))}${chipSemana(p)}${p.bloqueado ? ' <span class="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300 ml-1"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueado</span>' : ''}</p>
                     <h3 class="font-bold text-base break-words">${esc(p.cliente || 'Sin cliente')}</h3>
                     <p class="text-sm font-semibold flex items-center gap-1 text-slate-700 dark:text-slate-200"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(p.obra || 'Sin obra')}</span></p>
                     ${direccionHtml(p.direccion, p.localidad)}
@@ -543,7 +560,7 @@
         if (modo !== 'ver' || actual !== p) return;
         document.getElementById('form-parte').innerHTML = `
             <div class="flex flex-col gap-1">
-                <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(fechaES(p.fecha))}${p.bloqueado ? ' <span class="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300 ml-1"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueado</span>' : ''}</p>
+                <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(fechaES(p.fecha))}${chipSemana(p)}${p.bloqueado ? ' <span class="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300 ml-1"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueado</span>' : ''}</p>
                 <h3 class="font-bold text-lg break-words">${esc(p.cliente || 'Sin cliente')}</h3>
                 <p class="font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(p.obra || 'Sin obra')}</span></p>
                 ${direccionHtml(p.direccion, p.localidad)}
@@ -685,7 +702,7 @@
     // Contenido del PDF del parte (lo dibuja BomiPdf)
     function itemsPdf(p, imgFirma) {
         const it = [
-            { t: 'title', text: 'Parte de trabajo', sub: 'Fecha: ' + fechaES(p.fecha) + (p.bloqueado ? ' · Bloqueado' : '') },
+            { t: 'title', text: 'Parte de trabajo', sub: 'Fecha: ' + fechaES(p.fecha) + (semanaDe(p) ? ' · Semana ' + semanaDe(p) + ' (S' + semanaDe(p) + ')' : '') + (p.bloqueado ? ' · Bloqueado' : '') },
             { t: 'kv', label: 'Cliente', value: p.cliente },
             { t: 'kv', label: 'Obra', value: p.obra },
             { t: 'kv', label: 'Dirección', value: p.direccion || '—' },
@@ -730,7 +747,7 @@
             <div class="sticky top-0 z-10 bg-slate-50 dark:bg-black pt-1 pb-2">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                     <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
-                    <input type="text" id="search-partes" aria-label="Buscar partes" placeholder="Buscar cliente, obra, dirección, localidad, operario..." autocomplete="off" class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
+                    <input type="text" id="search-partes" aria-label="Buscar partes" placeholder="Buscar cliente, obra, dirección, localidad, operario, semana (S25)..." autocomplete="off" class="bg-transparent border-none outline-none w-full text-sm placeholder:text-slate-400">
                 </div>
             </div>
             <div id="partes-lista" class="flex flex-col gap-3 pb-6"></div>
