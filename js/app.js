@@ -364,7 +364,30 @@
 
     document.getElementById('btn-cancel-tarea').addEventListener('click', () => navHome.click());
     document.getElementById('btn-back-tarea-list').addEventListener('click', () => navHome.click());
-    document.getElementById('btn-editar-tarea').addEventListener('click', () => { if (currentTareaItem) window.editarTarea(currentTareaItem.id); });
+    // Pueden editar y eliminar una tarea: Admin/SuperAdmin y quien la creó.
+    const puedeGestionarTarea = (t) => {
+        const yo = window.currentUserProfile || {};
+        const admin = ['admin', 'superadmin'].includes(String(yo.rol ?? '').trim().toLowerCase());
+        return !!t && (admin || (!!yo.id && t.user_id === yo.id));
+    };
+    document.getElementById('btn-editar-tarea').addEventListener('click', () => { if (currentTareaItem && puedeGestionarTarea(currentTareaItem)) window.editarTarea(currentTareaItem.id); });
+    document.getElementById('btn-eliminar-tarea').addEventListener('click', async () => {
+        const t = currentTareaItem;
+        if (!t || !puedeGestionarTarea(t)) return;
+        if (!confirm('¿Eliminar esta tarea?\n\n' + (t.cliente || '') + (t.obra ? ' - ' + t.obra : '') + '\nNo se puede deshacer.')) return;
+        const btn = document.getElementById('btn-eliminar-tarea');
+        btn.disabled = true;
+        try {
+            const { data, error } = await supabaseClient.from('tareas').delete().eq('id', t.id).select('id');
+            if (error) throw error;
+            if (!data || data.length === 0) throw new Error('no tienes permiso o la tarea ya no existe');
+            currentTareaItem = null;
+            await loadTasksFromDB();
+            navHome.click();
+        } catch (ex) {
+            alert('No se pudo eliminar la tarea: ' + (ex.message || ex));
+        } finally { btn.disabled = false; }
+    });
 
     document.getElementById('form-tarea').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -599,6 +622,10 @@
         viewDetalleTarea.classList.remove('hidden');
         viewDetalleTarea.classList.add('flex');
 
+        const puede = puedeGestionarTarea(item);
+        const bEd = document.getElementById('btn-editar-tarea'), bEl = document.getElementById('btn-eliminar-tarea');
+        bEd.classList.toggle('hidden', !puede); bEd.classList.toggle('flex', puede);
+        bEl.classList.toggle('hidden', !puede); bEl.classList.toggle('inline-flex', puede);
         const sello = document.getElementById('sello-completada');
         if(item.completada) sello.classList.remove('hidden'); else sello.classList.add('hidden');
         const contactos = contactosHtmlT(item);
