@@ -510,7 +510,7 @@
         modo = null; actual = null; obraAutorrellena = false;
     }
 
-    async function abrirFormulario(m, id) {
+    async function abrirFormulario(m, id, datos) {
         const p = id ? partes.find((x) => x.id === id) : null;
         if (m === 'editar' && (!p || !puedeEditar(p))) return;
         try {
@@ -521,9 +521,16 @@
         document.getElementById('form-parte').innerHTML = htmlFormulario(p);
         mostrarModal(m === 'nuevo' ? 'Nuevo parte' : 'Editar parte');
         actualizarDatalists();
-        if (p) {
-            const cli = clientePorNombre(p.cliente);
-            const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(p.obra));
+        if (!p && datos) { // nuevo parte con los datos de otro registro (p. ej. una tarea del Diario)
+            document.getElementById('par-cliente').value = datos.cliente || '';
+            document.getElementById('par-obra').value = datos.obra || '';
+            document.getElementById('par-direccion').value = datos.direccion || '';
+            document.getElementById('par-localidad').value = datos.localidad || '';
+        }
+        if (p || datos) {
+            const base = p || datos;
+            const cli = clientePorNombre(base.cliente);
+            const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(base.obra));
             if (obra) { document.getElementById('par-direccion').readOnly = true; document.getElementById('par-localidad').readOnly = true; obraAutorrellena = true; }
         }
         sincronizar('inicio');
@@ -864,5 +871,7 @@
     window.BomiPartes = {
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
+        // Abre "Nuevo parte" con cliente, obra, dirección y localidad ya rellenos.
+        nuevoConDatos(datos) { iniciar(); return abrirFormulario('nuevo', null, datos || {}); },
     };
 })();

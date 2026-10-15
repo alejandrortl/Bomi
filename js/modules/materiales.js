@@ -387,7 +387,7 @@
     }
     function cerrarModal() { ocultar('modal-materiales'); modo = null; actual = null; obraAutorrellena = false; }
 
-    async function abrirFormulario(m, id) {
+    async function abrirFormulario(m, id, datos) {
         const r = id ? solicitudes.find((x) => x.id === id) : null;
         if (m === 'editar' && !r) return;
         try { if (clientesViejos) await cargarClientes(); } catch (ex) { alert('No se pudieron cargar los clientes: ' + mensajeError(ex)); return; }
@@ -395,9 +395,16 @@
         document.getElementById('form-materiales').innerHTML = htmlFormulario(r);
         mostrar('modal-materiales', m === 'nuevo' ? 'Pedir material' : 'Editar solicitud');
         actualizarDatalists();
-        if (r) {
-            const cli = clientePorNombre(r.cliente);
-            const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(r.obra));
+        if (!r && datos) { // nueva solicitud con los datos de otro registro (p. ej. una tarea del Diario)
+            document.getElementById('m-cliente').value = datos.cliente || '';
+            document.getElementById('m-obra').value = datos.obra || '';
+            document.getElementById('m-direccion').value = datos.direccion || '';
+            document.getElementById('m-localidad').value = datos.localidad || '';
+        }
+        if (r || datos) {
+            const base = r || datos;
+            const cli = clientePorNombre(base.cliente);
+            const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(base.obra));
             if (obra) { document.getElementById('m-direccion').readOnly = true; document.getElementById('m-localidad').readOnly = true; obraAutorrellena = true; }
         }
         sincronizar('inicio');
@@ -878,5 +885,7 @@
     window.BomiMateriales = {
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
+        // Abre "Pedir material" con cliente, obra, dirección y localidad ya rellenos.
+        nuevoConDatos(datos) { iniciar(); return abrirFormulario('nuevo', null, datos || {}); },
     };
 })();
