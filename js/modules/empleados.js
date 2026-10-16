@@ -40,6 +40,9 @@
     // Un admin puede gestionar a cualquiera salvo a un SuperAdmin; el SuperAdmin, a todos.
     const puedeGestionar = (e) => esAdmin() && (esSuper() || rolDe(e) !== 'superadmin');
     const esYo = (e) => !!yo() && e.id === yo().id;
+    // Roles: Admin y SuperAdmin pueden cambiarlos (nunca el propio); solo un SuperAdmin crea o toca a otro SuperAdmin.
+    const puedeCambiarRol = (e) => esAdmin() && !esYo(e) && (esSuper() || rolDe(e) !== 'superadmin');
+    const rolesPara = () => (esSuper() ? ROLES : ROLES.filter((r) => r !== 'SuperAdmin'));
 
     function mensajeError(ex) {
         if (ex && ex.code === '23503') return 'Este usuario tiene tareas u otros registros asociados.';
@@ -178,7 +181,7 @@
         const e = buscar(id);
         if (!e || !puedeGestionar(e)) return;
         editandoId = id;
-        const puedeRol = esSuper() && !esYo(e);
+        const puedeRol = puedeCambiarRol(e);
         document.getElementById('empleados-modal-titulo').textContent = 'Editar empleado';
         document.getElementById('form-empleados').innerHTML = `
             <div class="flex flex-col gap-1"><label for="emp-nombre" class="text-xs font-medium">Nombre</label><input id="emp-nombre" type="text" required autocomplete="off" value="${esc(e.nombre)}" class="${INPUT}"></div>
@@ -187,8 +190,8 @@
             <div class="flex flex-col gap-1"><label class="text-xs font-medium">Correo</label><p class="text-sm text-slate-500 px-1">${esc(e.email || '—')}</p></div>
             <div class="flex flex-col gap-1">
                 <label for="emp-rol" class="text-xs font-medium">Rol</label>
-                <select id="emp-rol" ${puedeRol ? '' : 'disabled'} class="${INPUT} disabled:opacity-60">${ROLES.map((r) => `<option value="${r}" ${r === e.rol ? 'selected' : ''}>${r}</option>`).join('')}</select>
-                ${puedeRol ? '' : '<p class="text-xs text-slate-500">Solo un SuperAdmin puede cambiar el rol de otra persona.</p>'}
+                <select id="emp-rol" ${puedeRol ? '' : 'disabled'} class="${INPUT} disabled:opacity-60">${rolesPara().map((r) => `<option value="${r}" ${r === e.rol ? 'selected' : ''}>${r}</option>`).join('')}</select>
+                ${puedeRol ? '' : `<p class="text-xs text-slate-500">${esYo(e) ? 'No puedes cambiar tu propio rol.' : 'Solo un SuperAdmin puede cambiar el rol de un SuperAdmin.'}</p>`}
             </div>
             <p id="emp-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
             <div class="flex justify-end gap-3">
@@ -243,10 +246,10 @@
             apellido: document.getElementById('emp-apellido').value.trim(),
             telefono: document.getElementById('emp-telefono').value.trim(),
         };
-        // El rol solo lo cambia un SuperAdmin, y nunca el suyo propio.
-        if (esSuper() && !esYo(e)) {
+        // El rol lo cambian Admin y SuperAdmin, nunca el propio.
+        if (puedeCambiarRol(e)) {
             const rol = document.getElementById('emp-rol').value;
-            if (ROLES.includes(rol)) cambios.rol = rol;
+            if (rolesPara().includes(rol)) cambios.rol = rol;
         }
         err.classList.add('hidden');
         if (!nombre) { err.textContent = 'El nombre es obligatorio.'; err.classList.remove('hidden'); return; }
