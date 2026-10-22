@@ -126,11 +126,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function checkUserProfileAndLogin(userId) {
-        const { data: profile, error } = await supabaseClient
+        let { data: profile, error } = await supabaseClient
             .from('perfiles')
             .select('*')
             .eq('id', userId)
             .single();
+
+        // Sin conexión al abrir la app: se usa el último perfil conocido en vez de expulsar al usuario.
+        if (error && window.BomiOffline && window.BomiOffline.esRed(error)) {
+            try {
+                const guardado = JSON.parse(localStorage.getItem('bomi_perfil') || 'null');
+                if (guardado && guardado.id === userId && guardado.activo && guardado.en_papelera !== true) { profile = guardado; error = null; }
+            } catch (e) { /* sin copia local */ }
+        } else if (!error && profile) {
+            try { localStorage.setItem('bomi_perfil', JSON.stringify(profile)); } catch (e) { /* sin espacio */ }
+        }
 
         if (error || !profile) {
             if (authError) { authError.textContent = "No se encontró el perfil de usuario."; authError.classList.remove('hidden'); }
@@ -194,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnLogout.addEventListener('click', async () => {
             await supabaseClient.auth.signOut();
             window.currentUserProfile = null;
+            try { localStorage.removeItem('bomi_perfil'); } catch (e) { /* sin más */ }
             location.reload();
         });
     }

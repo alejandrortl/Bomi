@@ -54,6 +54,7 @@
     const fallo = (el, txt) => { el.textContent = txt; el.classList.remove('hidden'); };
 
     function mensajeError(ex) {
+        if (window.BomiOffline && window.BomiOffline.esRed(ex)) return window.BomiOffline.mensaje(ex);
         if (ex && ex.code === '42501') return 'No tienes permiso para realizar esta acción.';
         if (ex && ex.code === '23503') return 'Hay registros que dependen de este elemento.';
         return (ex && ex.message) ? ex.message : 'Ha ocurrido un error inesperado.';
@@ -87,14 +88,16 @@
         return !error;
     }
 
-    // Solicitud nueva: a todos los empleados que no hayan desactivado este aviso (menos a quien la crea).
-    async function avisarNuevaSolicitud(datos, quien) {
-        try {
-            const yo = window.currentUserProfile && window.currentUserProfile.id;
-            const todos = await perfilesActivos();
-            return await avisar(todos.filter((p) => p.id !== yo), 'Nueva solicitud de material', `${quien} ha pedido material para ${datos.cliente} · ${datos.obra}.`);
-        } catch (ex) { return false; }
+    // Mismo aviso, pero lanzando el error si falla: lo usa la cola de envío para reintentar cuando vuelve la conexión.
+    async function avisoSolicitudNueva(d) {
+        const todos = await perfilesActivos();
+        const filas = todos.filter((p) => p.id !== d.yoId).filter(quiereAviso)
+            .map((p) => ({ user_id: p.id, titulo: 'Nueva solicitud de material', mensaje: `${d.quien} ha pedido material para ${d.cliente} · ${d.obra}.` }));
+        if (!filas.length) return;
+        const { error } = await db().from('notificaciones').insert(filas);
+        if (error) throw error;
     }
+    if (window.BomiOffline) window.BomiOffline.registrarGancho('material-aviso', avisoSolicitudNueva);
 
     // Aviso a quien creó la solicitud (pedido / recibido). No se avisa a uno mismo.
     async function avisarCreador(r, titulo, mensaje) {
@@ -446,18 +449,21 @@
     }
 
     // ---------- Guardado ----------
-    async function resolverObra(f) {
+    // Decide qué hay que crear (cliente y/o obra nuevos) sin tocar la base de datos: devuelve los pasos a ejecutar.
+    function resolverObra(f) {
         const cli = clientePorNombre(f.cliente);
         const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(f.obra));
-        if (obra) return { cliente: cli.nombre, obra: obra.nombre, direccion: obra.direccion, localidad: obra.localidad, creados: false };
+        if (obra) return { cliente: cli.nombre, obra: obra.nombre, direccion: obra.direccion, localidad: obra.localidad, creados: false, pasos: [] };
         if (!f.direccion || !f.localidad) throw new Error('Para una obra nueva hay que indicar dirección y localidad.');
+        const O = window.BomiOffline;
+        const pasos = [];
         let clienteId = cli ? cli.id : null;
         if (!clienteId) {
-            const [fila] = await exigir(db().from('clientes').insert([{ nombre_cliente: f.cliente, nombre: f.cliente }]).select('id'), 'No se pudo crear el cliente.');
-            clienteId = fila.id;
+            clienteId = O.uuid();
+            pasos.push({ k: 'insert', tabla: 'clientes', filas: [{ id: clienteId, nombre_cliente: f.cliente, nombre: f.cliente }] });
         }
-        await exigir(db().from('obras').insert([{ cliente_id: clienteId, nombre: f.obra, direccion: f.direccion, localidad: f.localidad }]).select('id'), 'No se pudo crear la obra.');
-        return { cliente: cli ? cli.nombre : f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, creados: true };
+        pasos.push({ k: 'insert', tabla: 'obras', filas: [{ id: O.uuid(), cliente_id: clienteId, nombre: f.obra, direccion: f.direccion, localidad: f.localidad }] });
+        return { cliente: cli ? cli.nombre : f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, creados: true, pasos };
     }
 
     async function enviar(e) {
@@ -479,37 +485,48 @@
             items.push({ cantidad: n, material: l.material, referencia: l.referencia || null });
         }
         guardando = true; btn.disabled = true; btn.textContent = 'Guardando...';
-        let idNuevo = null;
+        const O = window.BomiOffline;
+        const quien = nombreUsuario();
+        // PDF con lo que hay escrito (por si no se puede guardar).
+        const pdfActual = () => ({
+            items: itemsPdf({ cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, estado: 'Pendiente', created_by: quien, created_at: new Date().toISOString(),
+                materiales_solicitud_items: items.map((it) => ({ cantidad: it.cantidad, material: it.material, referencia: it.referencia })) }),
+            nombre: window.BomiPdf.nombreSeguro(['material', f.cliente, f.obra], 80),
+        });
         try {
             const igual = modo === 'editar' && ['cliente', 'obra', 'direccion', 'localidad'].every((k) => norm(f[k]) === norm(actual[k]));
-            let datos; let creados = false;
-            if (igual) datos = { cliente: actual.cliente, obra: actual.obra, direccion: actual.direccion, localidad: actual.localidad };
-            else { datos = await resolverObra(f); creados = datos.creados; }
+            const datos = igual ? { cliente: actual.cliente, obra: actual.obra, direccion: actual.direccion, localidad: actual.localidad, creados: false, pasos: [] } : resolverObra(f);
+            const creados = datos.creados;
             const fila = { cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad };
-            const quien = nombreUsuario();
-            let solId;
+
             if (modo === 'nuevo') {
-                const [s] = await exigir(db().from('materiales_solicitudes').insert([{ ...fila, estado: 'Pendiente', created_by: quien, updated_by: quien }]).select('id'), 'No se pudo guardar la solicitud.');
-                solId = idNuevo = s.id;
-            } else {
-                solId = actual.id;
-                await exigir(db().from('materiales_solicitudes').update({ ...fila, updated_by: quien, updated_at: new Date().toISOString() }).eq('id', solId).select('id'), 'No se pudo guardar: no tienes permiso o la solicitud ya no existe.');
+                // Una solicitud nueva se puede guardar sin conexión: queda en el móvil y se envía sola.
+                const solId = O.uuid();
+                const pasos = [...datos.pasos,
+                    { k: 'insert', tabla: 'materiales_solicitudes', deshacer: true, filas: [{ id: solId, ...fila, estado: 'Pendiente', created_by: quien, updated_by: quien }] },
+                    { k: 'insert', tabla: 'materiales_solicitud_items', deshacer: true, filas: items.map((it) => ({ id: O.uuid(), ...it, solicitud_id: solId })) },
+                    { k: 'gancho', nombre: 'material-aviso', datos: { cliente: datos.cliente, obra: datos.obra, quien, yoId: (window.currentUserProfile && window.currentUserProfile.id) || null } }];
+                const r = await O.guardar({ tipo: 'material', etiqueta: `Material · ${datos.cliente} · ${datos.obra}`, pasos, clientes: creados, pdf: pdfActual() });
+                cerrarModal();
+                if (r.estado === 'enviado') {
+                    await cargar();
+                    if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
+                }
+                return;
             }
-            const viejos = modo === 'editar' ? lineasDe(actual).map((l) => l.id) : [];
-            try {
-                await exigir(db().from('materiales_solicitud_items').insert(items.map((it) => ({ ...it, solicitud_id: solId }))).select('id'), 'No se pudieron guardar las líneas.');
-            } catch (ex) {
-                if (idNuevo) { try { await db().from('materiales_solicitudes').delete().eq('id', idNuevo); } catch (x) { /* sin más */ } }
-                throw ex;
-            }
+
+            // Editar (requiere conexión): primero lo nuevo, después se sustituye lo antiguo.
+            if (datos.pasos.length) await O.correr(datos.pasos);
+            const solId = actual.id;
+            await exigir(db().from('materiales_solicitudes').update({ ...fila, updated_by: quien, updated_at: new Date().toISOString() }).eq('id', solId).select('id'), 'No se pudo guardar: no tienes permiso o la solicitud ya no existe.');
+            const viejos = lineasDe(actual).map((l) => l.id);
+            await exigir(db().from('materiales_solicitud_items').insert(items.map((it) => ({ ...it, solicitud_id: solId }))).select('id'), 'No se pudieron guardar las líneas.');
             if (viejos.length) await exigir(db().from('materiales_solicitud_items').delete().in('id', viejos).select('id'), 'No se pudieron sustituir las líneas anteriores.');
-            const avisoNuevo = modo === 'nuevo' ? await avisarNuevaSolicitud(datos, quien) : true;
             cerrarModal();
             await cargar();
-            if (!avisoNuevo) alert('La solicitud se guardó, pero no se pudo avisar al resto del equipo.');
             if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
         } catch (ex) {
-            fallo(err, mensajeError(ex));
+            O.falloConPdf(err, ex, pdfActual, modo === 'editar' && O.esRed(ex) ? 'Los cambios no se han guardado. Vuelve a pulsar Guardar cuando tengas conexión.' : '');
             clientesViejos = true;
         } finally {
             guardando = false; btn.disabled = false; btn.textContent = 'Guardar';
@@ -873,6 +890,7 @@
             else if (modo) cerrarModal();
         });
         window.addEventListener('clientesActualizados', () => { clientesViejos = true; });
+        window.addEventListener('bomiSincronizado', () => { if (iniciado) cargar().catch(() => {}); });
     }
 
     function iniciar() {

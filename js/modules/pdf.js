@@ -45,13 +45,22 @@
         return /^data:image\/(png|jpe?g);base64,/i.test(d) ? d : await aPng(d);
     }
 
+    const CLAVE_EMPRESA = 'bomi_empresa_pdf';
     async function cargarEmpresa() {
-        let datos = {};
+        let datos = {}, leida = false;
         try {
-            const { data } = await supabaseClient.from('configuracion_empresa').select('*').order('id', { ascending: true }).limit(1);
-            datos = (data && data[0]) || {};
+            const { data, error } = await supabaseClient.from('configuracion_empresa').select('*').order('id', { ascending: true }).limit(1);
+            if (!error) { datos = (data && data[0]) || {}; leida = true; }
         } catch (e) { /* sin datos: el PDF sale igualmente */ }
-        return { datos, logo: await prepararImagen(datos.logo_url) };
+        if (!leida) {
+            // Sin conexión: se usa la última empresa conocida (y se vuelve a intentar la próxima vez).
+            cacheEmpresa = null;
+            try { const g = JSON.parse(localStorage.getItem(CLAVE_EMPRESA) || 'null'); if (g && g.datos) return g; } catch (e) { /* sin copia */ }
+            return { datos: {}, logo: '' };
+        }
+        const res = { datos, logo: await prepararImagen(datos.logo_url) };
+        try { localStorage.setItem(CLAVE_EMPRESA, JSON.stringify(res)); } catch (e) { /* sin espacio */ }
+        return res;
     }
     function empresa() { if (!cacheEmpresa) cacheEmpresa = cargarEmpresa(); return cacheEmpresa; }
     function invalidar() { cacheEmpresa = null; }

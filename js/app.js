@@ -158,6 +158,7 @@
     window.addEventListener('userLoggedIn', initAppAfterLogin);
     // Clientes u obras cambiados desde la pestaña Clientes: refresca el autocompletado de tareas.
     window.addEventListener('clientesActualizados', () => loadClientes());
+    window.addEventListener('bomiSincronizado', () => { if (typeof loadTasksFromDB === 'function') loadTasksFromDB(); });
     if (window.currentUserProfile) initAppAfterLogin();
 
     const escT = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -209,16 +210,23 @@
     }
 
     // Avisa al empleado de que tiene una tarea asignada (aparece en su campana).
-    async function notificarAsignacion(operario, tarea, quien) {
+    // Lanza el error si falla: la cola de envío lo usa para reintentar cuando vuelve la conexión.
+    async function avisoTareaAsignada(d) {
         // Respeta la preferencia del empleado. Si no se puede leer (p. ej. columna aún inexistente), se avisa.
-        const { data: pref, error: errPref } = await supabaseClient.from('perfiles').select('preferencias_notificaciones').eq('id', operario.id).single();
-        if (!errPref && pref && pref.preferencias_notificaciones && pref.preferencias_notificaciones.tareas === false) return true;
+        const { data: pref, error: errPref } = await supabaseClient.from('perfiles').select('preferencias_notificaciones').eq('id', d.operarioId).single();
+        if (errPref && window.BomiOffline.esRed(errPref)) throw errPref;
+        if (!errPref && pref && pref.preferencias_notificaciones && pref.preferencias_notificaciones.tareas === false) return;
         const { error } = await supabaseClient.from('notificaciones').insert([{
-            user_id: operario.id,
+            user_id: d.operarioId,
             titulo: 'Nueva tarea asignada',
-            mensaje: `${quien} te ha asignado una tarea para el ${fechaES(tarea.fecha)}: ${tarea.cliente} · ${tarea.obra}.`
+            mensaje: `${d.quien} te ha asignado una tarea para el ${fechaES(d.fecha)}: ${d.cliente} · ${d.obra}.`
         }]);
-        return !error;
+        if (error) throw error;
+    }
+    window.BomiOffline.registrarGancho('tarea-aviso', avisoTareaAsignada);
+    async function notificarAsignacion(operario, tarea, quien) {
+        try { await avisoTareaAsignada({ operarioId: operario.id, fecha: tarea.fecha, cliente: tarea.cliente, obra: tarea.obra, quien }); return true; }
+        catch (ex) { return false; }
     }
 
     // --- TAREAS (AUTOCOMPLETAR OBRA, PIZARRA, ETC) ---
@@ -322,25 +330,43 @@
 
     // PIZARRA (la misma que usa la Bitácora: js/modules/pizarra.js)
     // El contenedor lleva "hidden" e "inline-block" a la vez; se alterna con style para que no compitan.
-    function setDibujo(url) {
+    // Dibujo hecho sin conexión: se sube junto con la tarea cuando haya señal.
+    let dibujoPend = null;   // { ruta, blob, url, vista }
+    function setDibujo(url, vista) {
+        if (!vista) dibujoPend = null;
         document.getElementById('tarea-dibujo-url').value = url || '';
         const prev = document.getElementById('preview-dibujo');
-        if (url) document.getElementById('img-dibujo-preview').src = url;
+        if (url) document.getElementById('img-dibujo-preview').src = vista || url;
         if (prev) prev.style.display = url ? 'inline-block' : 'none';
     }
+    const blobADataUrlT = (blob) => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
 
     const btnAbrirPizarra = document.getElementById('btn-abrir-pizarra');
     if (btnAbrirPizarra) {
         btnAbrirPizarra.addEventListener('click', async () => {
             if (!window.BomiPizarra) { alert('La pizarra no está disponible.'); return; }
             const actualUrl = document.getElementById('tarea-dibujo-url').value;
-            const res = await window.BomiPizarra.abrir({ imagen: actualUrl });
+            const res = await window.BomiPizarra.abrir({ imagen: dibujoPend ? dibujoPend.vista : actualUrl });
             if (!res) return;
             if (res.vacia) { setDibujo(''); return; }
             const fileName = `diario_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
-            const { error } = await supabaseClient.storage.from('pizarras').upload(fileName, res.blob, { contentType: 'image/png' });
-            if (error) { alert('No se pudo guardar el dibujo: ' + error.message); return; }
-            setDibujo(supabaseClient.storage.from('pizarras').getPublicUrl(fileName).data.publicUrl);
+            const url = supabaseClient.storage.from('pizarras').getPublicUrl(fileName).data.publicUrl;
+            let error = null;
+            try { ({ error } = await supabaseClient.storage.from('pizarras').upload(fileName, res.blob, { contentType: 'image/png' })); }
+            catch (ex) { error = ex; }
+            if (error) {
+                if (window.BomiOffline.esRed(error)) {
+                    // Sin conexión: se conserva el dibujo y se sube al guardar la tarea.
+                    const vista = await blobADataUrlT(res.blob);
+                    setDibujo(url, vista);
+                    dibujoPend = { ruta: fileName, blob: res.blob, url, vista };
+                    window.BomiOffline.toast('Sin conexión: el dibujo se enviará al guardar la tarea.', 'aviso');
+                    return;
+                }
+                alert('No se pudo guardar el dibujo: ' + (error.message || error));
+                return;
+            }
+            setDibujo(url);
         });
         document.getElementById('btn-borrar-dibujo').addEventListener('click', () => setDibujo(''));
     }
@@ -401,37 +427,16 @@
         } finally { btn.disabled = false; }
     });
 
+    let guardandoTarea = false;
     document.getElementById('form-tarea').addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (guardandoTarea) return;
+        const O = window.BomiOffline;
         const cName = document.getElementById('tarea-cliente').value.trim();
         const oName = document.getElementById('tarea-obra').value.trim();
         const dName = document.getElementById('tarea-direccion').value.trim();
         const lName = document.getElementById('tarea-localidad').value.trim();
         const editId = document.getElementById('edit-tarea-id').value;
-
-        let creados = false;
-        try {
-            const cliEncontrado = clienteDeTarea();
-            let clienteId;
-            if (!cliEncontrado) {
-                const { data, error } = await supabaseClient.from('clientes').insert([{ nombre_cliente: cName, nombre: cName }]).select('id');
-                if (error || !data || !data.length) throw error || new Error('No se pudo crear el cliente.');
-                clienteId = data[0].id;
-                creados = true;
-            } else { clienteId = cliEncontrado.id; }
-
-            const obraEncontrada = cliEncontrado && cliEncontrado.obras.find(o => normT(o.nombre) === normT(oName));
-            if (!obraEncontrada) {
-                const { error } = await supabaseClient.from('obras').insert([{ cliente_id: clienteId, nombre: oName, direccion: dName, localidad: lName }]);
-                if (error) throw error;
-                creados = true;
-            }
-        } catch (ex) {
-            alert('No se pudo crear el cliente u obra: ' + ((ex && ex.message) || 'error desconocido'));
-            return;
-        }
-        // Clientes/obras nuevos: refresca autocompletados y las demás pantallas.
-        if (creados) window.dispatchEvent(new CustomEvent('clientesActualizados'));
 
         const username = window.currentUserProfile ? nombreOperario(window.currentUserProfile) || 'Usuario' : 'Usuario';
         const operarioNombre = document.getElementById('tarea-operario').value.trim();
@@ -443,38 +448,90 @@
             return;
         }
         const notas = document.getElementById('tarea-notas').value.trim();
+        const dibujoUrl = document.getElementById('tarea-dibujo-url').value;
         const tareaData = {
             cliente: cName, obra: oName, direccion: dName, localidad: lName,
             operario_asignado: operarioNombre,
             operario_username: operario ? operario.username : itemOriginal.operario_username,
             fecha: document.getElementById('tarea-fecha').value,
             notas,
-            dibujo_url: document.getElementById('tarea-dibujo-url').value
+            dibujo_url: dibujoUrl
         };
+        const dibujoSinSubir = !!dibujoPend && dibujoPend.url === dibujoUrl;
+        // PDF con lo que hay escrito (por si no se puede guardar).
+        const pdfTarea = () => ({
+            items: itemsPdfTarea({ ...tareaData, created_by: username, completada: false, dibujo_url: dibujoSinSubir ? dibujoPend.vista : dibujoUrl }),
+            nombre: window.BomiPdf.nombreSeguro(['tarea', tareaData.fecha, cName, oName], 80)
+        });
 
-        if (editId) {
+        const btn = document.getElementById('btn-submit-tarea');
+        const textoBtn = btn.textContent;
+        guardandoTarea = true; btn.disabled = true; btn.textContent = 'Guardando...';
+        try {
+            // Cliente y obra nuevos (se crean junto con la tarea).
+            const pasos = [];
+            let creados = false;
+            const cliEncontrado = clienteDeTarea();
+            let clienteId;
+            if (!cliEncontrado) {
+                clienteId = O.uuid();
+                pasos.push({ k: 'insert', tabla: 'clientes', filas: [{ id: clienteId, nombre_cliente: cName, nombre: cName }] });
+                creados = true;
+            } else { clienteId = cliEncontrado.id; }
+            const obraEncontrada = cliEncontrado && cliEncontrado.obras.find(o => normT(o.nombre) === normT(oName));
+            if (!obraEncontrada) {
+                pasos.push({ k: 'insert', tabla: 'obras', filas: [{ id: O.uuid(), cliente_id: clienteId, nombre: oName, direccion: dName, localidad: lName }] });
+                creados = true;
+            }
+            if (dibujoSinSubir) pasos.push({ k: 'subida', bucket: 'pizarras', ruta: dibujoPend.ruta, blob: dibujoPend.blob, tipo: 'image/png' });
+            const avisoDatos = operario && (!window.currentUserProfile || operario.id !== window.currentUserProfile.id)
+                ? { operarioId: operario.id, fecha: tareaData.fecha, cliente: cName, obra: oName, quien: username } : null;
+
+            if (!editId) {
+                // Una tarea nueva se puede guardar sin conexión: queda en el móvil y se envía sola.
+                // La tabla exige un título de la tarea y el usuario que la crea (la política de acceso lo comprueba).
+                tareaData.tarea = (notas.split('\n')[0] || '').slice(0, 120) || `${oName}`;
+                tareaData.user_id = window.currentUserProfile ? window.currentUserProfile.id : null;
+                tareaData.created_by = username;
+                tareaData.completada = false;
+                pasos.push({ k: 'insert', tabla: 'tareas', deshacer: true, filas: [{ id: O.uuid(), ...tareaData }] });
+                if (avisoDatos) pasos.push({ k: 'gancho', nombre: 'tarea-aviso', datos: avisoDatos });
+                const r = await O.guardar({ tipo: 'diario', etiqueta: `Tarea del ${fechaES(tareaData.fecha)} · ${cName} · ${oName}`, pasos, clientes: creados, pdf: pdfTarea() });
+                dibujoPend = null;
+                if (r.estado === 'enviado') {
+                    if (creados) window.dispatchEvent(new CustomEvent('clientesActualizados'));
+                    await loadTasksFromDB();
+                }
+                navHome.click();
+                return;
+            }
+
+            // Editar (requiere conexión).
+            if (pasos.length) await O.correr(pasos);
             tareaData.updated_by = username;
             const { error } = await supabaseClient.from('tareas').update(tareaData).eq('id', editId);
-            if (error) { alert('No se pudo guardar la tarea: ' + error.message); return; }
-        } else {
-            // La tabla exige un título de la tarea y el usuario que la crea (la política de acceso lo comprueba).
-            tareaData.tarea = (notas.split('\n')[0] || '').slice(0, 120) || `${oName}`;
-            tareaData.user_id = window.currentUserProfile ? window.currentUserProfile.id : null;
-            tareaData.created_by = username;
-            tareaData.completada = false;
-            const { error } = await supabaseClient.from('tareas').insert([tareaData]);
-            if (error) { alert('No se pudo guardar la tarea: ' + error.message); return; }
+            if (error) throw error;
+            dibujoPend = null;
+            if (creados) window.dispatchEvent(new CustomEvent('clientesActualizados'));
+            // Aviso al empleado asignado al cambiar de empleado.
+            const cambioOperario = !itemOriginal || itemOriginal.operario_asignado !== operarioNombre;
+            if (cambioOperario && avisoDatos) {
+                const enviado = await notificarAsignacion(operario, tareaData, username);
+                if (!enviado) alert('La tarea se guardó, pero no se pudo avisar a ' + operarioNombre + '.');
+            }
+            await loadTasksFromDB();
+            navHome.click();
+        } catch (ex) {
+            const sinRed = O.esRed(ex);
+            const motivo = sinRed ? 'Sin conexión o con la señal muy débil.' : O.mensaje(ex);
+            const msg = 'No se pudo guardar la tarea: ' + motivo + (sinRed && editId ? '\n\nLos cambios no se han guardado. Vuelve a pulsar Guardar cuando tengas conexión.' : '') + '\n\n¿Quieres guardar lo escrito en PDF?';
+            if (confirm(msg)) {
+                try { const r = pdfTarea(); await window.BomiPdf.generar(r.items, r.nombre); }
+                catch (x) { alert('No se pudo crear el PDF: ' + O.mensaje(x)); }
+            }
+        } finally {
+            guardandoTarea = false; btn.disabled = false; btn.textContent = textoBtn;
         }
-
-        // Aviso al empleado asignado: al crear la tarea, o al cambiar de empleado al editarla.
-        const cambioOperario = !itemOriginal || itemOriginal.operario_asignado !== operarioNombre;
-        if (cambioOperario && operario && (!window.currentUserProfile || operario.id !== window.currentUserProfile.id)) {
-            const enviado = await notificarAsignacion(operario, tareaData, username);
-            if (!enviado) alert('La tarea se guardó, pero no se pudo avisar a ' + operarioNombre + '.');
-        }
-
-        await loadTasksFromDB();
-        navHome.click();
     });
 
     async function loadTasksFromDB() {

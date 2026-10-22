@@ -45,6 +45,7 @@
     const modificado = (r) => !!r.updated_at && !!r.created_at && (new Date(r.updated_at) - new Date(r.created_at) > 5000);
 
     function mensajeError(ex) {
+        if (window.BomiOffline && window.BomiOffline.esRed(ex)) return window.BomiOffline.mensaje(ex);
         if (ex && ex.code === '42501') return 'No tienes permiso para realizar esta acción.';
         if (ex && ex.code === '23503') return 'Hay registros que dependen de este elemento.';
         return (ex && ex.message) ? ex.message : 'Ha ocurrido un error inesperado.';
@@ -390,25 +391,28 @@
     }
 
     // ---------- Guardado ----------
-    async function resolverObra(f) {
+    // Decide qué hay que crear (cliente y/o obra nuevos) sin tocar la base de datos: devuelve los pasos a ejecutar.
+    function resolverObra(f) {
         const cli = clientePorNombre(f.cliente);
         const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(f.obra));
-        if (obra) return { clienteId: cli.id, obraId: obra.id, cliente: cli.nombre, obra: obra.nombre, direccion: obra.direccion, localidad: obra.localidad, creados: false };
+        if (obra) return { clienteId: cli.id, obraId: obra.id, cliente: cli.nombre, obra: obra.nombre, direccion: obra.direccion, localidad: obra.localidad, creados: false, pasos: [] };
         if (!f.direccion || !f.localidad) throw new Error('Para una obra nueva hay que indicar dirección y localidad.');
+        const O = window.BomiOffline;
+        const pasos = [];
         let clienteId = cli ? cli.id : null;
         if (!clienteId) {
-            const [fila] = await exigir(db().from('clientes').insert([{ nombre_cliente: f.cliente, nombre: f.cliente }]).select('id'), 'No se pudo crear el cliente.');
-            clienteId = fila.id;
+            clienteId = O.uuid();
+            pasos.push({ k: 'insert', tabla: 'clientes', filas: [{ id: clienteId, nombre_cliente: f.cliente, nombre: f.cliente }] });
         }
-        const [o] = await exigir(db().from('obras').insert([{ cliente_id: clienteId, nombre: f.obra, direccion: f.direccion, localidad: f.localidad }]).select('id'), 'No se pudo crear la obra.');
-        return { clienteId, obraId: o.id, cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, creados: true };
+        const obraId = O.uuid();
+        pasos.push({ k: 'insert', tabla: 'obras', filas: [{ id: obraId, cliente_id: clienteId, nombre: f.obra, direccion: f.direccion, localidad: f.localidad }] });
+        return { clienteId, obraId, cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, creados: true, pasos };
     }
 
-    async function subirPizarra(blob) {
+    // Prepara la subida de la pizarra: devuelve el paso y la URL pública definitiva (se conoce antes de subirla).
+    function planSubirPizarra(blob) {
         const ruta = `bitacora_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
-        const { error } = await db().storage.from('pizarras').upload(ruta, blob, { contentType: 'image/png', upsert: false });
-        if (error) throw error;
-        return db().storage.from('pizarras').getPublicUrl(ruta).data.publicUrl;
+        return { paso: { k: 'subida', bucket: 'pizarras', ruta, blob, tipo: 'image/png' }, url: db().storage.from('pizarras').getPublicUrl(ruta).data.publicUrl };
     }
 
     async function enviar(e) {
@@ -426,27 +430,44 @@
         guardando = true;
         btn.disabled = true;
         btn.textContent = 'Guardando...';
+        const O = window.BomiOffline;
+        const quien = nombreUsuario();
+        // PDF con lo que hay escrito (por si no se puede guardar).
+        const pdfActual = () => ({
+            items: itemsPdf({ cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, notas: f.notas, created_by: quien, created_at: new Date().toISOString(),
+                imagen_pizarra: pizarra.nueva ? pizarra.vistaPrevia : (pizarra.quitada ? '' : pizarra.url) }),
+            nombre: window.BomiPdf.nombreSeguro(['bitacora', f.cliente, f.obra], 80),
+        });
         try {
             // Al editar, si no se tocó cliente/obra/dirección/localidad se conservan tal cual (también en registros antiguos).
             const igual = modo === 'editar' && ['cliente', 'obra', 'direccion', 'localidad'].every((k) => norm(f[k]) === norm(actual[k]));
-            let datos;
-            let creados = false;
-            if (igual) datos = { clienteId: actual.cliente_id, obraId: actual.obra_id, cliente: actual.cliente, obra: actual.obra, direccion: actual.direccion, localidad: actual.localidad };
-            else { datos = await resolverObra(f); creados = datos.creados; }
+            const datos = igual ? { clienteId: actual.cliente_id, obraId: actual.obra_id, cliente: actual.cliente, obra: actual.obra, direccion: actual.direccion, localidad: actual.localidad, creados: false, pasos: [] } : resolverObra(f);
+            const creados = datos.creados;
             const fila = { cliente_id: datos.clienteId, obra_id: datos.obraId, cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad, notas: f.notas || null };
-            if (pizarra.nueva && pizarra.blob) { fila.imagen_pizarra = await subirPizarra(pizarra.blob); fila.pizarra_data = null; }
+            const pasos = [...datos.pasos];
+            if (pizarra.nueva && pizarra.blob) { const sp = planSubirPizarra(pizarra.blob); pasos.push(sp.paso); fila.imagen_pizarra = sp.url; fila.pizarra_data = null; }
             else if (pizarra.quitada) { fila.imagen_pizarra = null; fila.pizarra_data = null; }
-            const quien = nombreUsuario();
+
             if (modo === 'nuevo') {
-                await exigir(db().from('bitacora').insert([{ ...fila, created_by: quien, updated_by: quien }]).select('id'), 'No se pudo guardar el registro.');
-            } else {
-                await exigir(db().from('bitacora').update({ ...fila, updated_by: quien, updated_at: new Date().toISOString() }).eq('id', actual.id).select('id'), 'No se pudo guardar: no tienes permiso o el registro ya no existe.');
+                // Un registro nuevo se puede guardar sin conexión: queda en el móvil y se envía solo.
+                pasos.push({ k: 'insert', tabla: 'bitacora', deshacer: true, filas: [{ id: O.uuid(), ...fila, created_by: quien, updated_by: quien }] });
+                const r = await O.guardar({ tipo: 'bitacora', etiqueta: `Bitácora · ${datos.cliente} · ${datos.obra}`, pasos, clientes: creados, pdf: pdfActual() });
+                cerrarModal();
+                if (r.estado === 'enviado') {
+                    await cargar();
+                    if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
+                }
+                return;
             }
+
+            // Editar (requiere conexión).
+            if (pasos.length) await O.correr(pasos);
+            await exigir(db().from('bitacora').update({ ...fila, updated_by: quien, updated_at: new Date().toISOString() }).eq('id', actual.id).select('id'), 'No se pudo guardar: no tienes permiso o el registro ya no existe.');
             cerrarModal();
             await cargar();
             if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
         } catch (ex) {
-            fallo(err, mensajeError(ex));
+            O.falloConPdf(err, ex, pdfActual, modo === 'editar' && O.esRed(ex) ? 'Los cambios no se han guardado. Vuelve a pulsar Guardar cuando tengas conexión.' : '');
             clientesViejos = true;
         } finally {
             guardando = false;
@@ -552,6 +573,7 @@
             if (e.key === 'Escape' && modo && !(window.BomiPizarra && window.BomiPizarra.estaAbierta())) cerrarModal();
         });
         window.addEventListener('clientesActualizados', () => { clientesViejos = true; });
+        window.addEventListener('bomiSincronizado', () => { if (iniciado) cargar().catch(() => {}); });
     }
 
     function iniciar() {
