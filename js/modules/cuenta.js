@@ -121,9 +121,15 @@
                 ${campo('pass-repite', 'Repite la nueva contraseña', '', 'type="password" required minlength="6" autocomplete="new-password"')}
                 <p id="pass-msg" class="hidden" role="status"></p>
                 <button type="submit" id="pass-guardar" class="${BTN}">Cambiar contraseña</button>
-            </form>`;
+            </form>
+            <div class="${tarjeta}">
+                <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">visibility</span> Tutorial</h3>
+                <p class="text-xs text-slate-500">Un recorrido rápido por la app con datos de ejemplo.</p>
+                <button type="button" id="perfil-ver-tutorial" class="${BTN}">Ver tutorial</button>
+            </div>`;
         document.getElementById('form-perfil').addEventListener('submit', guardarPerfil);
         document.getElementById('form-password').addEventListener('submit', cambiarPassword);
+        document.getElementById('perfil-ver-tutorial').addEventListener('click', () => { if (window.BomiTutorial) window.BomiTutorial.abrir('perfil'); });
         const fn = document.getElementById('form-notif');
         if (fn) fn.addEventListener('change', cambiarPreferencia);
         pintarPush();

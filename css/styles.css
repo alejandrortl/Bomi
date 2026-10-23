@@ -107,3 +107,13 @@
 /* Modo noche: que el navegador pinte en claro sus controles nativos
    (icono del calendario, selector de hora, barras de scroll). */
 .dark { color-scheme: dark; }
+
+/* Tutorial de bienvenida: resalta el elemento del paso y oscurece el resto */
+#bomi-tutorial .tuto-foco {
+    position: relative;
+    z-index: 220;
+    border-radius: 14px;
+    outline: 3px solid #f59e0b;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}

@@ -37,6 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Botón "Ver tutorial mientras esperas" (cuentas pendientes de aprobación)
+    function mostrarBotonTutorial(ver) {
+        let b = document.getElementById('btn-tutorial-pendiente');
+        if (!b && ver && formAuth) {
+            b = document.createElement('button');
+            b.type = 'button';
+            b.id = 'btn-tutorial-pendiente';
+            b.className = 'w-full py-3 rounded-full font-medium text-sm border border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 flex items-center justify-center gap-2';
+            b.innerHTML = '<span class="material-symbols-outlined text-[18px]">visibility</span> Ver tutorial mientras esperas';
+            b.addEventListener('click', () => { if (window.BomiTutorial) window.BomiTutorial.abrir('pendiente'); });
+            formAuth.appendChild(b);
+        }
+        if (b) b.classList.toggle('hidden', !ver);
+    }
+
     function toggleAuthMode(registering) {
         isRegistering = registering;
         if (authError) authError.classList.add('hidden');
@@ -107,6 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (formAuth) formAuth.reset();
                     if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Registrarse"; }
+                    // Mientras espera la aprobación puede practicar con el tutorial (datos de ejemplo).
+                    mostrarBotonTutorial(true);
+                    if (window.BomiTutorial && window.BomiTutorial.debeMostrarse()) window.BomiTutorial.abrir('pendiente');
                 }
             } else {
                 if (btnAuthSubmit) btnAuthSubmit.textContent = "Ingresando...";
@@ -158,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!profile.activo) {
             if (authError) { authError.textContent = "Tu cuenta está pendiente de aprobación."; authError.classList.remove('hidden'); }
+            mostrarBotonTutorial(true);
             await supabaseClient.auth.signOut();
             if (btnAuthSubmit) { btnAuthSubmit.disabled = false; btnAuthSubmit.textContent = "Ingresar"; }
             return;
