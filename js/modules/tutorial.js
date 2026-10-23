@@ -206,6 +206,21 @@
             </div>`;
     }
 
+    function pantallaEmpleados() {
+        const companeros = [[miNombre(), '600 111 222'], ['Luis Gómez', '600 333 444'], ['Marta Ruiz', '600 555 666']];
+        return `
+            <div data-foco="empleados" class="flex flex-col gap-3">
+                ${companeros.map(([n, t]) => `
+                    <div class="${TARJETA} p-4 flex items-center justify-between gap-2">
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-semibold text-sm flex items-center gap-2">${icono('person', 'text-[18px] text-blue-600')} ${esc(n)}</span>
+                            <span class="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">${icono('call', 'text-[14px]')} ${t}</span>
+                        </div>
+                        <span class="p-1.5 rounded-full text-slate-500 flex" title="Ver tallas">${icono('checkroom')}</span>
+                    </div>`).join('')}
+            </div>`;
+    }
+
     function pantallaPerfil() {
         const fila = (ic, txt) => `<p class="text-sm flex items-center gap-2">${icono(ic, 'text-[20px] text-blue-600')} ${txt}</p>`;
         return `
@@ -238,7 +253,7 @@
         { titulo: '¡Bienvenido a Bomi!', pestana: 'diario', pantalla: pantallaDiario,
           texto: 'Te enseñamos dónde está cada cosa en un minuto. Esto es una <b>práctica con datos inventados</b>: puedes tocar lo que quieras, no se guarda nada.' },
         { titulo: 'Las pestañas de abajo', pestana: 'diario', pantalla: pantallaDiario, foco: 'nav',
-          texto: 'Desde aquí cambias de sección: <b>Diario</b>, <b>Partes</b>, <b>Bitácora</b>, <b>Materiales</b> y <b>Clientes</b>.' },
+          texto: 'Desde aquí cambias de sección: <b>Diario</b>, <b>Partes</b>, <b>Bitácora</b>, <b>Materiales</b>, <b>Clientes</b> y <b>Empleados</b>.' },
         { titulo: 'Diario: tus tareas', pestana: 'diario', pantalla: pantallaDiario, foco: 'filtro',
           texto: 'Al entrar ves <b>Mis tareas</b>, las que tienes asignadas. Pulsa <b>Todas las tareas</b> para ver las de todo el equipo. La app recuerda lo que elijas.' },
         { titulo: 'Cambiar de día', pestana: 'diario', pantalla: pantallaDiario, foco: 'fecha',
@@ -265,6 +280,8 @@
           texto: 'Crea una solicitud con lo que necesitas. Verás su estado: <b>Pendiente</b>, <b>Pedido</b> o <b>Recibido</b>. Te llega un aviso cuando se pide. Cuando tengas el material, abre la solicitud y márcala como <b>Recibido</b>.' },
         { titulo: 'Clientes y obras', pestana: 'clientes', pantalla: pantallaClientes, foco: 'clientes',
           texto: 'La agenda de clientes con sus obras, direcciones y teléfonos de contacto.' },
+        { titulo: 'Empleados', pestana: 'empleados', pantalla: pantallaEmpleados, foco: 'empleados',
+          texto: 'Aquí están tus compañeros con su teléfono, para llamarles con un toque. Con el icono de la percha ves sus tallas de ropa de trabajo.' },
         { titulo: 'Mensajes y avisos', pestana: 'diario', pantalla: pantallaDiario, foco: 'cabecera-avisos',
           texto: 'Arriba tienes los <b>mensajes</b> para escribir a tus compañeros y la <b>campana</b> con los avisos (tareas que te asignan, material...). Un punto rojo indica que hay algo nuevo.' },
         { titulo: 'Mi Perfil', pestana: null, pantalla: pantallaPerfil, foco: 'cabecera-perfil',
@@ -278,9 +295,9 @@
     // ---------- Pintado ----------
     const NAV = [
         ['diario', 'list_alt', 'Diario'], ['partes', 'assignment', 'Partes'], ['bitacora', 'menu_book', 'Bitácora'],
-        ['materiales', 'inventory_2', 'Materiales'], ['clientes', 'business_center', 'Clientes'],
+        ['materiales', 'inventory_2', 'Materiales'], ['clientes', 'business_center', 'Clientes'], ['empleados', 'group', 'Empleados'],
     ];
-    const PRIMER_PASO = { diario: 2, partes: 8, bitacora: 11, materiales: 13, clientes: 14 };
+    const PRIMER_PASO = { diario: 2, partes: 8, bitacora: 11, materiales: 13, clientes: 14, empleados: 15 };
 
     function pintar() {
         if (!raiz) return;
@@ -300,7 +317,7 @@
             </header>
             <main id="tuto-pantalla" class="flex-1 overflow-y-auto p-4 w-full max-w-2xl mx-auto">${p.pantalla()}<div id="tuto-hueco" class="h-64"></div></main>
             <nav data-foco="nav" class="w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-2 py-2 flex justify-around items-center shrink-0">
-                ${NAV.map(([k, ic, txt]) => `<button type="button" data-tuto="pestana" data-pestana="${k}" class="flex flex-col items-center ${p.pestana === k ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}"><span class="material-symbols-outlined px-3 py-1 rounded-full mb-1">${ic}</span><span class="text-[11px] font-medium">${txt}</span></button>`).join('')}
+                ${NAV.map(([k, ic, txt]) => `<button type="button" data-tuto="pestana" data-pestana="${k}" class="flex flex-col items-center ${p.pestana === k ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}"><span class="material-symbols-outlined px-2 py-1 rounded-full mb-1">${ic}</span><span class="text-[11px] font-medium">${txt}</span></button>`).join('')}
             </nav>
             <div id="tuto-burbuja" role="dialog" aria-modal="true" aria-labelledby="tuto-titulo" class="fixed left-3 right-3 sm:left-auto sm:right-6 sm:w-[24rem] z-[230] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl p-4 flex flex-col gap-3">
                 <div class="flex items-start justify-between gap-2">
