@@ -278,11 +278,11 @@
         return `
             <div class="flex flex-col gap-1">
                 <label for="m-cliente" class="text-xs font-medium">Cliente</label>
-                <input id="m-cliente" type="text" required autocomplete="off" list="mat-clientes-dl" value="${esc(r?.cliente)}" placeholder="Elige uno existente o escribe uno nuevo" class="${INPUT}">
+                <input id="m-cliente" type="text" required autocomplete="off" value="${esc(r?.cliente)}" placeholder="Elige uno existente o escribe uno nuevo" class="${INPUT}">
             </div>
             <div class="flex flex-col gap-1">
                 <label for="m-obra" class="text-xs font-medium">Obra</label>
-                <input id="m-obra" type="text" required autocomplete="off" list="mat-obras-dl" value="${esc(r?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
+                <input id="m-obra" type="text" required autocomplete="off" value="${esc(r?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
                 <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="m-direccion" class="text-xs font-medium">Dirección</label><input id="m-direccion" type="text" autocomplete="off" value="${esc(r?.direccion)}" class="${INPUT} read-only:opacity-70"></div>
@@ -899,6 +899,8 @@
         construirVista();
         enlazarEventos();
     }
+
+    if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'm-cliente', obra: 'm-obra', fuente: () => clientes });
 
     window.BomiMateriales = {
         abrir() { iniciar(); return cargar(); },

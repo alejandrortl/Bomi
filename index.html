@@ -128,8 +128,8 @@
             <form id="form-tarea" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
                 <input type="hidden" id="edit-tarea-id" value="">
                 <div class="flex gap-4 flex-col sm:flex-row">
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" list="clientes-datalist" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
-                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" list="tarea-obras-dl" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
+                    <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium">Dirección</label><input type="text" id="tarea-direccion" required class="read-only:opacity-70 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
@@ -225,6 +225,7 @@
     <script src="js/modules/empleados.js"></script>
     <script src="js/modules/pdf.js"></script>
     <script src="js/modules/offline.js"></script>
+    <script src="js/modules/autocompletar.js"></script>
     <script src="js/modules/cuenta.js"></script>
     <script src="js/modules/notificaciones.js"></script>
     <script src="js/modules/pizarra.js"></script>

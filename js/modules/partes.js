@@ -254,11 +254,11 @@
         return `
             <div class="flex flex-col gap-1">
                 <label for="par-cliente" class="text-xs font-medium">Cliente</label>
-                <input id="par-cliente" type="text" autocomplete="off" list="par-clientes-dl" value="${esc(p?.cliente)}" placeholder="Elige uno existente o escribe uno nuevo" class="${INPUT}">
+                <input id="par-cliente" type="text" autocomplete="off" value="${esc(p?.cliente)}" placeholder="Elige uno existente o escribe uno nuevo" class="${INPUT}">
             </div>
             <div class="flex flex-col gap-1">
                 <label for="par-obra" class="text-xs font-medium">Obra</label>
-                <input id="par-obra" type="text" required autocomplete="off" list="par-obras-dl" value="${esc(p?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
+                <input id="par-obra" type="text" required autocomplete="off" value="${esc(p?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
                 <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="par-direccion" class="text-xs font-medium">Dirección</label><input id="par-direccion" type="text" autocomplete="off" value="${esc(p?.direccion)}" class="${INPUT} read-only:opacity-70"></div>
@@ -888,6 +888,8 @@
         construirVista();
         enlazarEventos();
     }
+
+    if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'par-cliente', obra: 'par-obra', fuente: () => clientes });
 
     window.BomiPartes = {
         abrir() { iniciar(); return cargar(); },

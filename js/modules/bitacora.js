@@ -151,11 +151,11 @@
         return `
             <div class="flex flex-col gap-1">
                 <label for="b-cliente" class="text-xs font-medium">Cliente</label>
-                <input id="b-cliente" type="text" required autocomplete="off" list="bit-clientes-dl" value="${esc(r?.cliente)}" placeholder="Elige uno existente o escribe uno nuevo" class="${INPUT}">
+                <input id="b-cliente" type="text" required autocomplete="off" value="${esc(r?.cliente)}" placeholder="Elige uno existente o escribe uno nuevo" class="${INPUT}">
             </div>
             <div class="flex flex-col gap-1">
                 <label for="b-obra" class="text-xs font-medium">Obra</label>
-                <input id="b-obra" type="text" required autocomplete="off" list="bit-obras-dl" value="${esc(r?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
+                <input id="b-obra" type="text" required autocomplete="off" value="${esc(r?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
                 <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="b-direccion" class="text-xs font-medium">Dirección</label><input id="b-direccion" type="text" autocomplete="off" value="${esc(r?.direccion)}" class="${INPUT} read-only:opacity-70"></div>
@@ -582,6 +582,8 @@
         construirVista();
         enlazarEventos();
     }
+
+    if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'b-cliente', obra: 'b-obra', fuente: () => clientes });
 
     window.BomiBitacora = {
         abrir() { iniciar(); return cargar(); },

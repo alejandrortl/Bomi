@@ -296,6 +296,8 @@
         if (hint) { hint.textContent = msg; hint.classList.toggle('hidden', !msg); }
     }
 
+    if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'tarea-cliente', obra: 'tarea-obra', fuente: () => allClientesCompletos.map(c => ({ nombre: c.nombre_cliente, obras: c.obras })) });
+
     ['tarea-cliente', 'tarea-obra'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
