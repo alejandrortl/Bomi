@@ -105,7 +105,7 @@
                 ${solo('Correo', p.email)}
                 <div class="flex flex-col gap-2 border-t border-slate-200 dark:border-zinc-800 pt-4">
                     <h3 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">checkroom</span> Mis tallas</h3>
-                    <p class="text-xs text-slate-500">Ropa de trabajo. Las pueden ver tus compañeros en Empleados.</p>
+                    <p class="text-xs text-slate-500">Ropa de trabajo. Solo las ven los administradores.</p>
                     <div class="grid grid-cols-2 gap-3">
                         ${TALLAS.map(([k, et, ej]) => campo('perfil-' + k.replace('_', '-'), et, p[k], `type="text" maxlength="10" placeholder="${ej}" autocomplete="off"`)).join('')}
                     </div>

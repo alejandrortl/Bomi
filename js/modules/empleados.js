@@ -102,7 +102,7 @@
             }
         } else if (esAdmin() && pend && gestionable) acciones.push(`<button type="button" data-accion="aceptar" data-id="${esc(e.id)}" class="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 px-3 py-1.5 rounded-full font-medium">Aceptar</button>`);
         if (!vistaPapelera) {
-            acciones.push(btnAccion('tallas', e.id, 'checkroom', 'Ver tallas'));
+            if (esAdmin() || esYo(e)) acciones.push(btnAccion('tallas', e.id, 'checkroom', 'Ver tallas'));   // un operario solo ve las suyas
             if (gestionable) acciones.push(btnAccion('editar', e.id, 'edit', 'Editar empleado'));
             if (gestionable && !esYo(e)) acciones.push(btnAccion('eliminar', e.id, 'delete', pend ? 'Rechazar y eliminar' : 'Eliminar empleado', BTN_DANGER));
         }
@@ -428,7 +428,7 @@
             const btn = e.target.closest('[data-accion]');
             if (!btn) return;
             const { accion, id } = btn.dataset;
-            if (accion === 'tallas') abrirTallas(id);
+            if (accion === 'tallas' && (esAdmin() || (buscar(id) && esYo(buscar(id))))) abrirTallas(id);
             else if (accion === 'editar') abrirEditor(id);
             else if (accion === 'aceptar') aceptar(id);
             else if (accion === 'eliminar') eliminar(id);

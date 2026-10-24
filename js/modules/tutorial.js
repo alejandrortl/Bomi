@@ -211,12 +211,11 @@
         return `
             <div data-foco="empleados" class="flex flex-col gap-3">
                 ${companeros.map(([n, t]) => `
-                    <div class="${TARJETA} p-4 flex items-center justify-between gap-2">
+                    <div class="${TARJETA} p-4 flex items-center gap-2">
                         <div class="flex flex-col min-w-0">
                             <span class="font-semibold text-sm flex items-center gap-2">${icono('person', 'text-[18px] text-blue-600')} ${esc(n)}</span>
                             <span class="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">${icono('call', 'text-[14px]')} ${t}</span>
                         </div>
-                        <span class="p-1.5 rounded-full text-slate-500 flex" title="Ver tallas">${icono('checkroom')}</span>
                     </div>`).join('')}
             </div>`;
     }
@@ -281,7 +280,7 @@
         { titulo: 'Clientes y obras', pestana: 'clientes', pantalla: pantallaClientes, foco: 'clientes',
           texto: 'La agenda de clientes con sus obras, direcciones y teléfonos de contacto.' },
         { titulo: 'Empleados', pestana: 'empleados', pantalla: pantallaEmpleados, foco: 'empleados',
-          texto: 'Aquí están tus compañeros con su teléfono, para llamarles con un toque. Con el icono de la percha ves sus tallas de ropa de trabajo.' },
+          texto: 'Aquí están tus compañeros con su teléfono, para llamarles con un toque.' },
         { titulo: 'Mensajes y avisos', pestana: 'diario', pantalla: pantallaDiario, foco: 'cabecera-avisos',
           texto: 'Arriba tienes los <b>mensajes</b> para escribir a tus compañeros y la <b>campana</b> con los avisos (tareas que te asignan, material...). Un punto rojo indica que hay algo nuevo.' },
         { titulo: 'Mi Perfil', pestana: null, pantalla: pantallaPerfil, foco: 'cabecera-perfil',
