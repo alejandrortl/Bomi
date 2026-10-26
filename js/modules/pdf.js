@@ -231,6 +231,11 @@
         return bytes;
     }
 
+    // Crea el PDF sin descargarlo (por ejemplo, para guardarlo en la nube). Devuelve los bytes.
+    async function crear(items) {
+        return await construir(items, await empresa());
+    }
+
     window.addEventListener('empresaActualizada', invalidar);
-    window.BomiPdf = { generar, construir, imagenDataUrl, invalidar, nombreSeguro };
+    window.BomiPdf = { generar, crear, construir, imagenDataUrl, invalidar, nombreSeguro };
 })();

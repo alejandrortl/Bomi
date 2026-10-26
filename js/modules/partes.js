@@ -30,6 +30,13 @@
     let reconocimiento = null;
     let escuchando = false;
     let obraAutorrellena = false;
+    // Copia en la nube de los partes bloqueados (tabla partes_pdf_nube)
+    let nube = new Map();        // parte_id -> { enlace, guardado_at, destino }
+    let nubeSinConfigurar = false;
+    const nubeEnviando = new Set();
+    const nubeIntentados = new Set();
+    const nubeErrores = new Map(); // parte_id -> mensaje del último intento fallido
+    const NUBE_DIAS_REINTENTO = 7;
 
     // ---------- Utilidades ----------
     const db = () => supabaseClient;
@@ -211,6 +218,7 @@
             db().from('partes_trabajo').select(SELECT).order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(LIMITE),
             cargarEmpleados().catch(() => {}),
             cargarCatalogo().catch(() => {}),
+            cargarNube().catch(() => {}),
         ]);
         if (res.error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los partes: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
@@ -218,6 +226,88 @@
         }
         partes = res.data || [];
         pintarLista();
+        reintentarNube();
+    }
+
+    // ---------- Copia en la nube ----------
+    async function cargarNube() {
+        const { data, error } = await db().from('partes_pdf_nube').select('parte_id, enlace, guardado_at, destino');
+        if (error) return;   // la tabla aún no existe: se trabaja sin copia en la nube
+        nube = new Map((data || []).map((f) => [f.parte_id, f]));
+    }
+
+    function aBase64(bytes) {
+        let s = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        return btoa(s);
+    }
+
+    async function mensajeFuncion(error) {
+        try { const d = await error.context.json(); if (d && d.error) return d.error; } catch (e) { /* sin cuerpo */ }
+        return mensajeError(error);
+    }
+
+    // Dibuja el PDF del parte bloqueado (el mismo que se descarga) y lo manda a la Edge Function, que lo guarda en Drive o en el disco de la oficina.
+    async function guardarEnNube(id) {
+        const p = partes.find((x) => x.id === id);
+        if (!p || !p.bloqueado || !esAdmin() || nube.has(id) || nubeEnviando.has(id)) return;
+        nubeEnviando.add(id); nubeIntentados.add(id); nubeErrores.delete(id);
+        pintarNube(id);
+        try {
+            let imgFirma = '';
+            try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
+            const bytes = await window.BomiPdf.crear(itemsPdf(p, imgFirma));
+            const { data, error } = await db().functions.invoke('guardar-parte-nube', { body: { parte_id: id, pdf_base64: aBase64(bytes) } });
+            if (error) throw new Error(await mensajeFuncion(error));
+            if (data && data.estado === 'sin_configurar') nubeSinConfigurar = true;
+            else if (data && data.estado === 'guardado') nube.set(id, data);
+            else throw new Error((data && data.error) || 'Respuesta inesperada del servidor.');
+        } catch (ex) {
+            nubeErrores.set(id, (ex && ex.message) || 'Error inesperado');
+        } finally {
+            nubeEnviando.delete(id);
+            pintarNube(id);
+        }
+    }
+
+    // Partes bloqueados hace poco que aún no están en la nube (por ejemplo, se bloquearon sin señal): se reintentan una vez por sesión.
+    async function reintentarNube() {
+        if (!esAdmin() || nubeSinConfigurar || !navigator.onLine) return;
+        const desde = Date.now() - NUBE_DIAS_REINTENTO * 86400000;
+        const pendientes = partes.filter((p) => p.bloqueado && !nube.has(p.id) && !nubeIntentados.has(p.id) && p.bloqueado_at && new Date(p.bloqueado_at) >= desde);
+        for (const p of pendientes) {
+            if (nubeSinConfigurar) break;
+            await guardarEnNube(p.id);
+        }
+    }
+
+    function htmlNube(p) {
+        if (!p.bloqueado) return '';
+        const f = nube.get(p.id);
+        const icono = (i, cls) => `<span class="material-symbols-outlined text-[16px] ${cls}">${i}</span>`;
+        let txt;
+        if (f) {
+            const donde = f.destino === 'webdav' ? 'el disco de la oficina' : 'Google Drive';
+            txt = `${icono('cloud_done', 'text-green-600 dark:text-green-400')}<span>PDF guardado en ${esc(donde)}${f.guardado_at ? ' · ' + esc(fechaHora(f.guardado_at)) : ''}</span>`
+                + (f.enlace && /^https:\/\//.test(f.enlace) ? ` <a href="${esc(f.enlace)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">Abrir</a>` : '');
+        } else if (!esAdmin()) {
+            return '';
+        } else if (nubeEnviando.has(p.id)) {
+            txt = `${icono('sync', 'animate-spin text-blue-600')}<span>Guardando el PDF en la nube...</span>`;
+        } else if (nubeSinConfigurar) {
+            txt = `${icono('cloud_off', 'text-slate-400')}<span>La copia en la nube aún no está configurada.</span>`;
+        } else {
+            const e = nubeErrores.get(p.id);
+            txt = `${icono('cloud_upload', 'text-amber-600 dark:text-amber-400')}<span>${e ? 'No se pudo guardar en la nube: ' + esc(e) : 'PDF aún no guardado en la nube.'}</span>`
+                + ` <button type="button" data-accion="guardar-nube" data-id="${esc(p.id)}" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">${e ? 'Reintentar' : 'Guardar ahora'}</button>`;
+        }
+        return `<p class="text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-1">${txt}</p>`;
+    }
+    function pintarNube(id) {
+        const el = document.getElementById('par-nube');
+        if (!el || modo !== 'ver' || !actual || actual.id !== id) return;
+        const p = partes.find((x) => x.id === id);
+        if (p) el.innerHTML = htmlNube(p);
     }
 
     // La firma es pesada: no viaja con la lista, se pide al ver, editar o descargar.
@@ -578,7 +668,7 @@
             <div class="flex flex-col gap-1"><span class="text-xs font-medium">Trabajo realizado</span>${p.detalle_trabajo ? `<p class="text-sm whitespace-pre-wrap break-words">${esc(p.detalle_trabajo)}</p>` : '<p class="text-sm text-slate-500">Sin descripción.</p>'}</div>
             <div class="flex flex-col gap-1"><span class="text-xs font-medium">Material utilizado</span>${tablaMateriales(p)}</div>
             ${imgFirma ? `<div class="flex flex-col gap-1"><span class="text-xs font-medium">Firma del cliente</span><img src="${esc(imgFirma)}" alt="Firma del cliente" class="max-h-40 max-w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700 self-start"></div>` : ''}
-            <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(p)}</div>
+            <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(p)}<div id="par-nube">${htmlNube(p)}</div></div>
             <p id="par-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
@@ -608,6 +698,7 @@
             }
             await cargar();
             await abrirVista(id);
+            guardarEnNube(id);   // copia automática del PDF en Google Drive / disco de la oficina
         } catch (ex) { if (err) fallo(err, mensajeError(ex)); else alert(mensajeError(ex)); }
     }
 
@@ -861,6 +952,7 @@
             else if (a === 'eliminar-desde-ver') eliminar(id);
             else if (a === 'pdf') descargarPdf(id);
             else if (a === 'bloquear') bloquear(id);
+            else if (a === 'guardar-nube') guardarEnNube(id);
         });
         const alCambiar = (e) => {
             const t = e.target;
