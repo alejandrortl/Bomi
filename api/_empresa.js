@@ -19,14 +19,16 @@ async function empresa() {
     }
 }
 
-// logo_<marca>.<ext>  ->  icon<tamaño>_<marca>.png  (los genera la app al guardar el logotipo)
+// logo_<marca>.<ext>  ->  icono_<tipo><tamaño>_<marca>.png  (los genera la app al guardar el logotipo o al entrar un
+// administrador). tipo: "any" (logo grande) o "mask" (con margen para el icono adaptable). Sin tipo: los iconos antiguos.
 function marcaDeLogo(url) {
     const m = /\/logo_(\d+)\.[a-z0-9]+(?:\?.*)?$/i.exec(url || '');
     return m ? m[1] : '';
 }
-function urlIcono(logoUrl, size) {
+function urlIcono(logoUrl, size, tipo) {
     const marca = marcaDeLogo(logoUrl);
-    return marca ? logoUrl.replace(/\/logo_\d+\.[a-z0-9]+(?:\?.*)?$/i, `/icon${size}_${marca}.png`) : '';
+    const nombre = tipo ? `icono_${tipo}${size}_${marca}.png` : `icon${size}_${marca}.png`;
+    return marca ? logoUrl.replace(/\/logo_\d+\.[a-z0-9]+(?:\?.*)?$/i, '/' + nombre) : '';
 }
 
 module.exports = { empresa, marcaDeLogo, urlIcono };

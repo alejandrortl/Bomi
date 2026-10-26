@@ -16,8 +16,11 @@ module.exports = async (req, res) => {
         background_color: '#ffffff',
         theme_color: '#2563eb',
         icons: [
-            { src: `/api/icono?size=192${v}`, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-            { src: `/api/icono?size=512${v}`, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+            // "any": logo grande, lo usa la pantalla de carga · "maskable": con margen, para el icono adaptable de Android
+            { src: `/api/icono?size=192&tipo=any${v}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `/api/icono?size=512&tipo=any${v}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `/api/icono?size=192&tipo=mask${v}`, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+            { src: `/api/icono?size=512&tipo=mask${v}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
     };
     res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');

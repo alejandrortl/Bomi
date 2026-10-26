@@ -341,27 +341,58 @@
         });
     }
 
-    // Cuadrado con fondo blanco y el logotipo centrado con margen (zona segura de los iconos adaptables).
-    function dibujarIcono(img, lado) {
+    // Recuadro del logotipo sin los márgenes blancos o transparentes que traiga la imagen
+    function recorteLogo(img) {
+        const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+        const todo = { x: 0, y: 0, w: w0, h: h0 };
+        try {
+            const k = Math.min(1, 400 / Math.max(w0, h0));    // se analiza en pequeño: es rápido y basta
+            const c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+            const g = c.getContext('2d');
+            g.drawImage(img, 0, 0, c.width, c.height);
+            const d = g.getImageData(0, 0, c.width, c.height).data;
+            let x1 = c.width, y1 = c.height, x2 = -1, y2 = -1;
+            for (let y = 0; y < c.height; y++) {
+                for (let x = 0; x < c.width; x++) {
+                    const i = (y * c.width + x) * 4;
+                    if (d[i + 3] > 16 && (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240)) {
+                        if (x < x1) x1 = x; if (x > x2) x2 = x; if (y < y1) y1 = y; if (y > y2) y2 = y;
+                    }
+                }
+            }
+            if (x2 < 0) return todo;   // imagen en blanco: se deja como está
+            return { x: x1 / k, y: y1 / k, w: Math.min(w0, (x2 - x1 + 1) / k), h: Math.min(h0, (y2 - y1 + 1) / k) };
+        } catch (e) { return todo; }
+    }
+
+    // Cuadrado con fondo blanco y el logotipo (sin márgenes propios) centrado.
+    // ocupa: parte del lado que puede llenar el logo. Los iconos "adaptables" (pantalla de inicio de Android)
+    // necesitan margen porque el móvil recorta los bordes; el normal, que usa la pantalla de carga, va casi a sangre.
+    function dibujarIcono(img, lado, ocupa) {
         const c = document.createElement('canvas');
         c.width = c.height = lado;
         const g = c.getContext('2d');
         g.fillStyle = '#ffffff';
         g.fillRect(0, 0, lado, lado);
-        const w0 = img.naturalWidth || img.width || lado, h0 = img.naturalHeight || img.height || lado;
-        const k = Math.min((lado * 0.78) / w0, (lado * 0.78) / h0);
-        const w = w0 * k, h = h0 * k;
-        g.drawImage(img, (lado - w) / 2, (lado - h) / 2, w, h);
+        const r = recorteLogo(img);
+        const k = Math.min((lado * ocupa) / r.w, (lado * ocupa) / r.h);
+        const w = r.w * k, h = r.h * k;
+        g.drawImage(img, r.x, r.y, r.w, r.h, (lado - w) / 2, (lado - h) / 2, w, h);
         return new Promise((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error('No se pudo crear el icono.'))), 'image/png'));
     }
 
+    // icono_any: logo grande (pantalla de carga, pestaña del navegador) · icono_mask: con margen (icono adaptable)
+    const TIPOS_ICONO = [['any', 0.92], ['mask', 0.78]];
     async function generarIconos(blob, marca) {
         const img = await cargarImagen(blob);
-        for (const t of TAM_ICONOS) {
-            const png = await dibujarIcono(img, t);
-            const { error } = await db().storage.from('empresa').upload(`icon${t}_${marca}.png`, png, { contentType: 'image/png', upsert: false });
-            // Si ya existía (otro administrador lo generó a la vez) no es un problema.
-            if (error && !/exist|duplicate/i.test(error.message || '')) throw error;
+        for (const [tipo, ocupa] of TIPOS_ICONO) {
+            for (const t of TAM_ICONOS) {
+                const png = await dibujarIcono(img, t, ocupa);
+                const { error } = await db().storage.from('empresa').upload(`icono_${tipo}${t}_${marca}.png`, png, { contentType: 'image/png', upsert: false });
+                // Si ya existía (otro administrador lo generó a la vez) no es un problema.
+                if (error && !/exist|duplicate/i.test(error.message || '')) throw error;
+            }
         }
     }
 
@@ -377,7 +408,7 @@
             const marca = marcaDe(url);
             if (!marca) return;
             const base = url.replace(/\/logo_\d+\.[a-z0-9]+(?:\?.*)?$/i, '');
-            const existe = await fetch(`${base}/icon512_${marca}.png`, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
+            const existe = await fetch(`${base}/icono_any512_${marca}.png`, { method: 'HEAD' }).then((r) => r.ok).catch(() => false);
             if (existe) return;
             const r = await fetch(url);
             if (!r.ok) return;
