@@ -1,4 +1,5 @@
-// Edge Function `guardar-parte-nube` (desplegar CON verify_jwt, la opción por defecto).
+// Edge Function `guardar-parte-nube` (desplegar con verify_jwt = false: la propia función comprueba la sesión y el rol;
+// con las claves nuevas de Supabase la verificación del gateway rechaza la llamada antes de llegar aquí).
 // La app la llama justo después de bloquear un parte, con el PDF ya dibujado (el mismo que se descarga),
 // y la función lo guarda en la nube de la empresa. Solo Admin/SuperAdmin y solo partes bloqueados.
 // Cada parte se guarda una sola vez: si ya está en la tabla `partes_pdf_nube`, devuelve lo guardado.
@@ -15,7 +16,7 @@ const MAX_BYTES = 15 * 1024 * 1024;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-region, x-retry-count, traceparent, tracestate, baggage',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (cuerpo: unknown, status = 200) =>

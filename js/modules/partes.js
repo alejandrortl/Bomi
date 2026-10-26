@@ -261,6 +261,9 @@
 
     async function mensajeFuncion(error) {
         try { const d = await error.context.json(); if (d && d.error) return d.error; } catch (e) { /* sin cuerpo */ }
+        if (error && error.name === 'FunctionsFetchError' && navigator.onLine) {
+            return 'el servidor no responde. Comprueba en Supabase que la función «guardar-parte-nube» está publicada con ese nombre y con «Verify JWT» desactivado.';
+        }
         return mensajeError(error);
     }
 
