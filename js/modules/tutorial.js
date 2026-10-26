@@ -227,6 +227,7 @@
                 <h3 class="font-semibold flex items-center gap-2">${icono('person', 'text-blue-600')} Mi perfil</h3>
                 ${fila('person', 'Nombre, apellido y teléfono')}
                 ${fila('checkroom', 'Mis tallas de ropa de trabajo')}
+                ${fila('format_size', 'Tamaño de la letra')}
                 ${fila('notifications', 'Qué avisos quiero recibir')}
                 ${fila('phonelink_ring', 'Activar avisos en este móvil')}
                 ${fila('lock', 'Cambiar contraseña')}
@@ -284,7 +285,7 @@
         { titulo: 'Mensajes y avisos', pestana: 'diario', pantalla: pantallaDiario, foco: 'cabecera-avisos',
           texto: 'Arriba tienes los <b>mensajes</b> para escribir a tus compañeros y la <b>campana</b> con los avisos (tareas que te asignan, material...). Un punto rojo indica que hay algo nuevo.' },
         { titulo: 'Mi Perfil', pestana: null, pantalla: pantallaPerfil, foco: 'cabecera-perfil',
-          texto: 'Pulsando tu nombre entras en <b>Mi Perfil</b>: tus datos, tus tallas y los avisos. <b>Activa los avisos en el móvil</b> para enterarte aunque la app esté cerrada.' },
+          texto: 'Pulsando tu nombre entras en <b>Mi Perfil</b>: tus datos, tus tallas, el <b>tamaño de la letra</b> y los avisos. <b>Activa los avisos en el móvil</b> para enterarte aunque la app esté cerrada.' },
         { titulo: 'Sin cobertura', pestana: 'diario', pantalla: pantallaDiario,
           texto: 'Si te quedas sin señal, lo que crees se guarda en el móvil y <b>se envía solo</b> al volver la conexión. Para editar algo que ya existe sí hace falta conexión.' },
         { titulo: 'Fin del tutorial', pestana: null, pantalla: pantallaFinal,

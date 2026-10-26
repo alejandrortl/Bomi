@@ -91,6 +91,58 @@
         }
     }
 
+    // ---------- Tamaño de letra ----------
+    // Se guarda en este dispositivo (bomi_letra, lo lee index.html antes de pintar) y en el perfil, para que siga al usuario.
+    const CLAVE_LETRA = 'bomi_letra';
+    const TAMANOS_LETRA = [
+        ['pequena', 'Pequeña', 'text-xs'],
+        ['normal', 'Normal', 'text-sm'],
+        ['grande', 'Grande', 'text-base'],
+        ['muy-grande', 'Muy grande', 'text-lg'],
+    ];
+    const letraValida = (v) => TAMANOS_LETRA.some(([k]) => k === v);
+    function letraActual() {
+        const v = document.documentElement.dataset.letra;
+        return letraValida(v) ? v : 'normal';
+    }
+    function aplicarLetra(v) {
+        if (!letraValida(v)) v = 'normal';
+        if (v === 'normal') delete document.documentElement.dataset.letra;
+        else document.documentElement.dataset.letra = v;
+        try { localStorage.setItem(CLAVE_LETRA, v); } catch (e) { /* sin almacenamiento local */ }
+    }
+    // Al entrar: si el perfil trae una elección, manda sobre la del dispositivo
+    function letraDesdePerfil(p) {
+        const v = p && p.ui_preferencias && p.ui_preferencias.tamano_letra;
+        if (letraValida(v)) aplicarLetra(v);
+    }
+    function htmlLetra() {
+        const act = letraActual();
+        return `
+            <div id="letra-tarjeta" class="${tarjeta}">
+                <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">format_size</span> Tamaño de letra</h3>
+                <p class="text-xs text-slate-500">Se recuerda la próxima vez que abras la app.</p>
+                <div class="grid grid-cols-2 min-[400px]:grid-cols-4 gap-2" role="group" aria-label="Tamaño de letra">
+                    ${TAMANOS_LETRA.map(([k, et, cl]) => `<button type="button" data-tam-letra="${k}" aria-pressed="${k === act}" class="flex flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-2 ${k === act ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-200'}"><span class="${cl} font-semibold leading-none">Aa</span><span class="text-xs">${et}</span></button>`).join('')}
+                </div>
+            </div>`;
+    }
+    async function cambiarLetra(v) {
+        aplicarLetra(v);
+        const t = document.getElementById('letra-tarjeta');
+        if (t) t.outerHTML = htmlLetra();
+        enlazarLetra();
+        const p = yo();
+        if (!p) return;
+        p.ui_preferencias = { ...(p.ui_preferencias || {}), tamano_letra: v };
+        try { await db().from('perfiles').update({ ui_preferencias: p.ui_preferencias }).eq('id', p.id); } catch (e) { /* queda en el dispositivo */ }
+    }
+    function enlazarLetra() {
+        document.querySelectorAll('#letra-tarjeta [data-tam-letra]').forEach((b) => b.addEventListener('click', () => {
+            if (b.dataset.tamLetra !== letraActual()) cambiarLetra(b.dataset.tamLetra);
+        }));
+    }
+
     // ---------- Mi Perfil ----------
     function abrirPerfil() {
         const p = yo();
@@ -113,6 +165,7 @@
                 <p id="perfil-msg" class="hidden" role="status"></p>
                 <button type="submit" id="perfil-guardar" class="${BTN}">Guardar</button>
             </form>
+            ${htmlLetra()}
             ${htmlPreferencias(p)}
             <div id="push-tarjeta" class="${tarjeta}"></div>
             <form id="form-password" class="${tarjeta}" autocomplete="off">
@@ -132,6 +185,7 @@
         document.getElementById('perfil-ver-tutorial').addEventListener('click', () => { if (window.BomiTutorial) window.BomiTutorial.abrir('perfil'); });
         const fn = document.getElementById('form-notif');
         if (fn) fn.addEventListener('change', cambiarPreferencia);
+        enlazarLetra();
         pintarPush();
     }
 
@@ -375,5 +429,5 @@
     }
 
     window.addEventListener('userLoggedIn', () => { asegurarIconos(); });
-    window.BomiCuenta = { abrirPerfil, abrirEmpresa, asegurarIconos };
+    window.BomiCuenta = { abrirPerfil, abrirEmpresa, asegurarIconos, letraDesdePerfil };
 })();

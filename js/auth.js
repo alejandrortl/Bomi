@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.currentUserProfile = profile;
+        if (window.BomiCuenta) window.BomiCuenta.letraDesdePerfil(profile);
         showAppInterface();
     }
 

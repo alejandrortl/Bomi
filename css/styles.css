@@ -64,6 +64,7 @@
     background-color: var(--md-sys-color-surface);
     color: var(--md-sys-color-on-surface);
     font-family: system-ui, -apple-system, sans-serif;
+    font-size: calc(1rem * var(--bomi-letra, 1));
   }
 }
 
@@ -87,7 +88,7 @@
   gap: 0.35rem;
 }
 .md3-input-group label {
-  font-size: 0.85rem;
+  font-size: calc(0.85rem * var(--bomi-letra, 1));
   font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
 }
@@ -117,3 +118,17 @@
     outline-offset: 3px;
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
 }
+
+/* Tamaño de letra: --bomi-letra multiplica todos los textos (text-xs, text-sm...).
+   En móvil la base es algo mayor; la elección de Mi Perfil (data-letra en <html>) se suma encima. */
+:root {
+    --bomi-letra-base: 1;
+    --bomi-letra-usuario: 1;
+    --bomi-letra: calc(var(--bomi-letra-base) * var(--bomi-letra-usuario));
+}
+@media (max-width: 640px) {
+    :root { --bomi-letra-base: 1.08; }
+}
+:root[data-letra="pequena"] { --bomi-letra-usuario: 0.9; }
+:root[data-letra="grande"] { --bomi-letra-usuario: 1.15; }
+:root[data-letra="muy-grande"] { --bomi-letra-usuario: 1.3; }
