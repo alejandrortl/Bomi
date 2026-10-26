@@ -636,6 +636,7 @@
             document.getElementById('par-obra').value = datos.obra || '';
             document.getElementById('par-direccion').value = datos.direccion || '';
             document.getElementById('par-localidad').value = datos.localidad || '';
+            document.getElementById('par-detalle').value = datos.detalle || '';
         }
         if (p || datos) {
             const base = p || datos;

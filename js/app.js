@@ -404,7 +404,7 @@
     document.getElementById('btn-tarea-crear-parte').addEventListener('click', () => {
         const t = currentTareaItem; if (!t || !window.BomiPartes) return;
         navPartes.click();
-        window.BomiPartes.nuevoConDatos(datosDeTarea(t));
+        window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: t.notas || '' });
     });
     document.getElementById('btn-tarea-pedir-material').addEventListener('click', () => {
         const t = currentTareaItem; if (!t || !window.BomiMateriales) return;
