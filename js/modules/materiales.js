@@ -659,6 +659,7 @@
         try { await cargarCatalogo(); } catch (ex) { return fallo(err, 'No se pudo leer el catálogo actual: ' + mensajeError(ex)); }
         const porRef = new Map(catalogo.filter((c) => c.referencia).map((c) => [String(c.referencia).toUpperCase(), c]));
         const sinRef = new Set(catalogo.filter((c) => !c.referencia).map((c) => norm(c.nombre_material)));
+        const borrarSobrantes = document.getElementById('cat-sobrantes').value === 'eliminar';
         const nuevos = [], cambios = []; let iguales = 0;
         lista.forEach((it) => {
             if (it.referencia) {
@@ -669,12 +670,21 @@
             } else if (sinRef.has(norm(it.nombre_material))) iguales++;
             else nuevos.push(it);
         });
-        if (!nuevos.length && !cambios.length) return mensajeInfo(info, `No hay nada que cambiar: los ${iguales} materiales del archivo ya están en el catálogo.`);
-        const resumen = `Archivo: ${lista.length} materiales` + (repetidas ? ` (${repetidas} con referencia repetida ignorados)` : '') + `.\n\n• Nuevos: ${nuevos.length}\n• Con el nombre cambiado: ${cambios.length}\n• Ya iguales: ${iguales}\n\nLos materiales que ya están en el catálogo y no aparecen en el archivo no se tocan. ¿Importar?`;
+        // Los del catálogo que no vienen en el archivo (por referencia, o por nombre si no tienen referencia).
+        const refsArchivo = new Set(lista.filter((it) => it.referencia).map((it) => it.referencia.toUpperCase()));
+        const nombresSinRef = new Set(lista.filter((it) => !it.referencia).map((it) => norm(it.nombre_material)));
+        const sobrantes = catalogo.filter((c) => (c.referencia ? !refsArchivo.has(String(c.referencia).toUpperCase()) : !nombresSinRef.has(norm(c.nombre_material))));
+        const aBorrar = borrarSobrantes ? sobrantes : [];
+        if (!nuevos.length && !cambios.length && !aBorrar.length) return mensajeInfo(info, `No hay nada que cambiar: los ${iguales} materiales del archivo ya están en el catálogo.` + (sobrantes.length ? ` Hay ${sobrantes.length} en el catálogo que no vienen en el archivo y se han dejado como estaban.` : ''));
+        const resumen = `Archivo: ${lista.length} materiales` + (repetidas ? ` (${repetidas} con referencia repetida ignorados)` : '') + `.\n\n• Nuevos: ${nuevos.length}\n• Con el nombre cambiado: ${cambios.length}\n• Ya iguales: ${iguales}\n` +
+            (borrarSobrantes
+                ? `• Se ELIMINAN del catálogo (no vienen en el archivo): ${aBorrar.length}\n\nLos partes y solicitudes ya hechos no cambian. ¿Importar?`
+                : `• Se quedan como están (no vienen en el archivo): ${sobrantes.length}\n\n¿Importar?`);
         if (!window.confirm(resumen)) return;
+        if (aBorrar.length && !window.confirm(`Se van a eliminar ${aBorrar.length} materiales del catálogo. Esto no se puede deshacer. ¿Seguro?`)) return;
         const btn = document.getElementById('cat-importar');
         btn.disabled = true;
-        const total = nuevos.length + cambios.length; let hechos = 0;
+        const total = nuevos.length + cambios.length + aBorrar.length; let hechos = 0;
         const progreso = () => { btn.textContent = `Importando ${hechos}/${total}...`; };
         try {
             progreso();
@@ -688,7 +698,13 @@
                 await Promise.all(trozo.map((c) => exigir(db().from('materiales_catalogo').update({ nombre_material: c.nombre_material }).eq('id', c.id).select('id'), 'No se pudo actualizar un material.')));
                 hechos += trozo.length; progreso();
             }
-            mensajeInfo(info, `Importación terminada: ${nuevos.length} nuevos y ${cambios.length} actualizados.`);
+            // Se borra al final: si algo falla antes, el catálogo nunca se queda vacío.
+            for (let i = 0; i < aBorrar.length; i += 200) {
+                const trozo = aBorrar.slice(i, i + 200).map((c) => c.id);
+                await exigir(db().from('materiales_catalogo').delete().in('id', trozo).select('id'), 'No se pudieron eliminar los materiales que sobran (¿tienes permiso?).');
+                hechos += trozo.length; progreso();
+            }
+            mensajeInfo(info, `Importación terminada: ${nuevos.length} nuevos` + (borrarSobrantes ? `, ${cambios.length} actualizados y ${aBorrar.length} eliminados.` : ` y ${cambios.length} actualizados` + (sobrantes.length ? `. ${sobrantes.length} que no venían en el archivo se han dejado como estaban.` : '.')));
         } catch (ex) {
             fallo(err, `La importación se interrumpió tras ${hechos} de ${total}: ${mensajeError(ex)}. Puedes volver a importar el mismo archivo: solo se añadirá lo que falte.`);
         } finally {
@@ -805,6 +821,9 @@
                             <button type="button" id="cat-importar" data-accion="cat-importar" class="${BTN_SEC} !py-1.5 text-sm"><span class="material-symbols-outlined text-[18px]">upload_file</span> Importar lista (CSV)</button>
                             <input id="cat-archivo" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" aria-label="Elegir archivo CSV">
                             <span class="text-xs text-slate-500">Columnas: referencia;nombre</span>
+                            <label class="w-full flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">Los que no estén en el archivo:
+                                <select id="cat-sobrantes" class="${INPUT_BASE} !w-auto !py-1.5 text-sm"><option value="conservar">Se quedan</option><option value="eliminar">Se eliminan</option></select>
+                            </label>
                         </div>
                         <p id="cat-info" class="hidden text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 rounded-xl p-3" role="status"></p>
                         <p id="cat-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
