@@ -4,8 +4,11 @@
 //  - Campo Cliente: busca por nombre de cliente (y también por el nombre de sus obras).
 //  - Campo Obra: si hay un cliente elegido, solo ofrece sus obras; si no hay ninguno, busca entre TODAS las obras
 //    (por obra, cliente, dirección o localidad). Al elegir una, se rellenan cliente, obra, dirección y localidad.
+//  - Resto de campos con lista de opciones (<input list="...">: productos, referencias, operarios...): se quita la lista
+//    nativa del navegador (en el iPhone sale en la barra sobre el teclado y no se puede desplazar) y se muestra el mismo
+//    desplegable con las opciones del <datalist>, que se puede deslizar igual en iPhone, Android y PC.
 //  - Funciona por delegación: vale para formularios que se vuelven a pintar. Para pasar los datos al módulo se
-//    lanzan eventos "input" en los campos, como si se hubiera escrito (cada módulo ya reacciona a ellos).
+//    lanzan eventos "input" (y "change") en los campos, como si se hubiera escrito (cada módulo ya reacciona a ellos).
 (function () {
     'use strict';
     const MAX = 40;
@@ -45,6 +48,32 @@
         return salida.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' }) || a.detalle.localeCompare(b.detalle, 'es', { sensitivity: 'base' }));
     }
 
+    // Opciones de un <datalist> (la etiqueta, si la hay, sale debajo como detalle).
+    function sugerenciasLista(dl, consulta) {
+        const salida = [];
+        for (const op of dl.options) {
+            const valor = op.value;
+            if (!valor) continue;
+            const etiqueta = op.label && op.label !== valor ? op.label : '';
+            if (!coincide(valor + ' ' + etiqueta, consulta)) continue;
+            salida.push({ titulo: valor, detalle: etiqueta, valor });
+            if (salida.length >= MAX) break;
+        }
+        return salida;
+    }
+
+    // Quita la lista nativa (list="...") y la guarda en data-lista para usar el desplegable propio.
+    function quitarNativa(el) {
+        if (!el || el.tagName !== 'INPUT' || !el.hasAttribute('list')) return;
+        el.dataset.lista = el.getAttribute('list');
+        el.removeAttribute('list');
+    }
+    function quitarNativas(raiz) {
+        if (!raiz || !raiz.querySelectorAll) return;
+        if (raiz.matches && raiz.matches('input[list]')) quitarNativa(raiz);
+        raiz.querySelectorAll('input[list]').forEach(quitarNativa);
+    }
+
     // ---------- Desplegable ----------
     function asegurarLista() {
         if (lista) return lista;
@@ -52,10 +81,14 @@
         lista.id = 'bomi-auto';
         lista.setAttribute('role', 'listbox');
         lista.className = 'hidden';
-        // pointerdown + preventDefault: el campo no pierde el foco al tocar una opción (también en el móvil).
-        lista.addEventListener('pointerdown', (e) => {
+        lista.style.overscrollBehavior = 'contain';
+        lista.style.webkitOverflowScrolling = 'touch';
+        // pointerdown/mousedown + preventDefault: el campo no pierde el foco (ni se cierra el teclado) al tocar la lista.
+        // La opción se elige con "click", que no llega si el dedo se ha deslizado para desplazar la lista.
+        lista.addEventListener('pointerdown', (e) => e.preventDefault());
+        lista.addEventListener('mousedown', (e) => e.preventDefault());
+        lista.addEventListener('click', (e) => {
             const li = e.target.closest('li[data-i]');
-            e.preventDefault();
             if (li && activo) elegir(Number(li.dataset.i));
         });
         document.body.appendChild(lista);
@@ -65,7 +98,10 @@
     function colocar() {
         if (!activo || !lista) return;
         const r = activo.el.getBoundingClientRect();
-        const abajo = window.innerHeight - r.bottom, arriba = r.top;
+        // Zona visible de verdad: en el iPhone el teclado no reduce innerHeight, pero sí visualViewport.
+        const vv = window.visualViewport;
+        const visTop = vv ? vv.offsetTop : 0, visAlto = vv ? vv.height : window.innerHeight;
+        const abajo = visTop + visAlto - r.bottom, arriba = r.top - visTop;
         const alto = Math.min(256, Math.max(abajo, arriba) - 12);
         const bajar = abajo >= 140 || abajo >= arriba;
         lista.style.left = Math.max(8, r.left) + 'px';
@@ -95,7 +131,7 @@
     }
 
     function buscar(el, tipo, reg) {
-        const items = sugerencias(reg, tipo, el.value).slice(0, MAX);
+        const items = tipo === 'lista' ? sugerenciasLista(reg, el.value) : sugerencias(reg, tipo, el.value).slice(0, MAX);
         activo = { el, tipo, reg, items, sel: -1 };
         pintar();
     }
@@ -108,6 +144,13 @@
         const { el, tipo, reg, items } = activo;
         const it = items[i];
         if (!it) return;
+        if (tipo === 'lista') {
+            cerrar();
+            el.value = it.valor;
+            lanzar(el);
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
         const cli = document.getElementById(reg.cliente), obra = document.getElementById(reg.obra);
         cerrar();
         if (tipo === 'cliente') {
@@ -132,11 +175,28 @@
         }
         return null;
     }
+    // Campo cliente/obra registrado o, si no, campo con lista de opciones propia.
+    function campoDe(el) {
+        const d = registroDe(el);
+        if (d) return d;
+        if (!el || el.tagName !== 'INPUT') return null;
+        quitarNativa(el);
+        const dl = el.dataset.lista && document.getElementById(el.dataset.lista);
+        return dl ? { reg: dl, tipo: 'lista' } : null;
+    }
 
     function enlazar() {
+        // Se quita la lista nativa en cuanto el campo aparece (antes de que el iPhone la muestre sobre el teclado).
+        quitarNativas(document.body);
+        new MutationObserver((cambios) => {
+            for (const c of cambios) {
+                if (c.type === 'attributes') quitarNativa(c.target);
+                else c.addedNodes.forEach((n) => { if (n.nodeType === 1) quitarNativas(n); });
+            }
+        }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['list'] });
         // Los buscadores propios sustituyen a la lista nativa del navegador (que no distingue clientes y se ve mal en el móvil).
         document.addEventListener('input', (e) => {
-            const d = registroDe(e.target);
+            const d = campoDe(e.target);
             if (!d) return;
             if (e.target.hasAttribute('list')) e.target.removeAttribute('list');
             if (ignorar) return;   // los cambios hechos al elegir una opción no vuelven a abrir la lista
@@ -144,13 +204,13 @@
         });
         // Al tocar el campo se abre la lista con todas las opciones (no al enfocarlo por código al abrir el formulario).
         document.addEventListener('click', (e) => {
-            const d = registroDe(e.target);
+            const d = campoDe(e.target);
             if (!d) return;
             if (e.target.hasAttribute('list')) e.target.removeAttribute('list');
             buscar(e.target, d.tipo, d.reg);
         });
         document.addEventListener('pointerdown', (e) => {
-            if ((lista && lista.contains(e.target)) || registroDe(e.target)) return;
+            if ((lista && lista.contains(e.target)) || (activo && e.target === activo.el) || campoDe(e.target)) return;
             cerrar();
         }, true);
         document.addEventListener('focusout', (e) => { if (activo && e.target === activo.el) setTimeout(() => { if (activo && document.activeElement !== activo.el) cerrar(); }, 120); });
@@ -162,7 +222,12 @@
             else if (e.key === 'Enter' && activo.sel >= 0) { e.preventDefault(); elegir(activo.sel); }
         }, true);
         window.addEventListener('resize', () => { if (activo) colocar(); });
-        document.addEventListener('scroll', (e) => { if (activo && !(lista && lista.contains(e.target))) cerrar(); }, true);
+        // Al abrirse el teclado la página se desplaza o encoge: se recoloca la lista en vez de cerrarla.
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => { if (activo) colocar(); });
+            window.visualViewport.addEventListener('scroll', () => { if (activo) colocar(); });
+        }
+        document.addEventListener('scroll', (e) => { if (activo && !(lista && lista.contains(e.target))) colocar(); }, true);
     }
 
     // reg: { cliente: 'id-del-campo-cliente', obra: 'id-del-campo-obra', fuente: () => [{ nombre, obras: [{ nombre, direccion, localidad }] }] }
