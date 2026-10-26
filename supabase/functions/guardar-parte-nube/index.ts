@@ -3,10 +3,10 @@
 // y la función lo guarda en la nube de la empresa. Solo Admin/SuperAdmin y solo partes bloqueados.
 // Cada parte se guarda una sola vez: si ya está en la tabla `partes_pdf_nube`, devuelve lo guardado.
 //
-// Destino según el secreto NUBE_DESTINO:
-//   'drive'  (por defecto) → GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
-//                            y opcional GOOGLE_DRIVE_CARPETA_ID (si falta, crea la carpeta "Bomi - Partes bloqueados").
-//   'webdav' (NAS Synology, QNAP, Nextcloud...) → WEBDAV_URL (carpeta, con / final), WEBDAV_USUARIO, WEBDAV_CLAVE.
+// Se guarda en Google Drive: Bomi - Partes bloqueados / <año de la fecha del parte> / <primer operario> / S44-10-26-2026-Cliente-Obra.pdf
+// Las carpetas que no existan se crean. El nombre del archivo y el operario los manda la app (los mismos que al descargar).
+// Secretos: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
+// y opcional GOOGLE_DRIVE_CARPETA_ID (carpeta principal; si falta, usa o crea "Bomi - Partes bloqueados").
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const URL_SB = Deno.env.get('SUPABASE_URL')!;
@@ -41,27 +41,28 @@ async function tokenGoogle(): Promise<string> {
   return d.access_token;
 }
 
-async function carpetaDrive(token: string): Promise<string> {
-  const fija = Deno.env.get('GOOGLE_DRIVE_CARPETA_ID');
-  if (fija) return fija;
+// Busca la carpeta `nombre` (dentro de `padre`, o en la raíz si no hay padre) y la crea si no existe.
+async function carpetaDrive(token: string, nombre: string, padre: string | null): Promise<string> {
   const auth = { Authorization: 'Bearer ' + token };
-  const q = `name = '${CARPETA_POR_DEFECTO}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-  const r = await fetch('https://www.googleapis.com/drive/v3/files?fields=files(id)&q=' + encodeURIComponent(q), { headers: auth });
+  const literal = nombre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const q = `name = '${literal}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false` + (padre ? ` and '${padre}' in parents` : '');
+  const r = await fetch('https://www.googleapis.com/drive/v3/files?fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true&q=' + encodeURIComponent(q), { headers: auth });
   const d = await r.json().catch(() => ({}));
   if (r.ok && d.files?.length) return d.files[0].id;
-  const c = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+  const c = await fetch('https://www.googleapis.com/drive/v3/files?fields=id&supportsAllDrives=true', {
     method: 'POST',
     headers: { ...auth, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: CARPETA_POR_DEFECTO, mimeType: 'application/vnd.google-apps.folder' }),
+    body: JSON.stringify({ name: nombre, mimeType: 'application/vnd.google-apps.folder', ...(padre ? { parents: [padre] } : {}) }),
   });
   const cd = await c.json().catch(() => ({}));
-  if (!c.ok || !cd.id) throw new Error('No se pudo crear la carpeta en Google Drive (' + c.status + ').');
+  if (!c.ok || !cd.id) throw new Error('No se pudo crear la carpeta «' + nombre + '» en Google Drive (' + c.status + ').');
   return cd.id;
 }
 
-async function subirDrive(nombre: string, pdf: Uint8Array<ArrayBuffer>): Promise<Guardado> {
+async function subirDrive(ruta: string[], nombre: string, pdf: Uint8Array<ArrayBuffer>): Promise<Guardado> {
   const token = await tokenGoogle();
-  const carpeta = await carpetaDrive(token);
+  let carpeta = Deno.env.get('GOOGLE_DRIVE_CARPETA_ID') || await carpetaDrive(token, CARPETA_POR_DEFECTO, null);
+  for (const sub of ruta) carpeta = await carpetaDrive(token, sub, carpeta);
   const limite = 'bomi' + crypto.randomUUID().replace(/-/g, '');
   const cabecera = new TextEncoder().encode(
     `--${limite}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
@@ -81,27 +82,8 @@ async function subirDrive(nombre: string, pdf: Uint8Array<ArrayBuffer>): Promise
   return { archivo_id: d.id, enlace: d.webViewLink ?? null };
 }
 
-// ---------- WebDAV (disco de la oficina) ----------
-async function subirWebdav(nombre: string, pdf: Uint8Array<ArrayBuffer>): Promise<Guardado> {
-  let base = Deno.env.get('WEBDAV_URL') ?? '';
-  if (!/^https:\/\//.test(base)) throw new Error('WEBDAV_URL debe empezar por https://');
-  if (!base.endsWith('/')) base += '/';
-  const destino = base + encodeURIComponent(nombre);
-  const r = await fetch(destino, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Basic ' + btoa((Deno.env.get('WEBDAV_USUARIO') ?? '') + ':' + (Deno.env.get('WEBDAV_CLAVE') ?? '')),
-      'Content-Type': 'application/pdf',
-    },
-    body: pdf,
-  });
-  if (!r.ok) throw new Error('El disco de la oficina no aceptó el archivo (' + r.status + ').');
-  return { archivo_id: destino, enlace: null };
-}
-
 // ---------- Utilidades ----------
-function configurado(destino: string): boolean {
-  if (destino === 'webdav') return !!Deno.env.get('WEBDAV_URL');
+function configurado(): boolean {
   return !!(Deno.env.get('GOOGLE_CLIENT_ID') && Deno.env.get('GOOGLE_CLIENT_SECRET') && Deno.env.get('GOOGLE_REFRESH_TOKEN'));
 }
 function deBase64(b64: string): Uint8Array<ArrayBuffer> {
@@ -110,13 +92,8 @@ function deBase64(b64: string): Uint8Array<ArrayBuffer> {
   for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
   return u;
 }
-// Nombre legible y seguro para cualquier disco: "Parte 2026-10-26 S43 - Cliente - Obra.pdf"
-function nombreArchivo(p: { fecha: string | null; semana?: number | null; cliente: string | null; obra: string | null; id: string }): string {
-  const limpio = (s: string | null) => String(s ?? '').replace(/[\\/:*?"<>|#%\x00-\x1f]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const trozos = [limpio(p.cliente), limpio(p.obra)].filter(Boolean).join(' - ').slice(0, 120);
-  const sem = p.semana ? ` S${p.semana}` : '';
-  return `Parte ${p.fecha ?? 'sin fecha'}${sem}${trozos ? ' - ' + trozos : ''} (${p.id.slice(0, 8)}).pdf`;
-}
+// Solo se quitan los caracteres que no admiten los discos (el nombre lo arma la app).
+const limpio = (s: unknown, max: number) => String(s ?? '').replace(/[\\/:*?"<>|#%\x00-\x1f]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s.]+/, '').trim().slice(0, max);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -131,16 +108,16 @@ Deno.serve(async (req) => {
       return json({ error: 'Solo un administrador puede guardar partes en la nube' }, 403);
     }
 
-    const { parte_id, pdf_base64 } = await req.json();
+    const { parte_id, pdf_base64, nombre: nombrePedido, operario } = await req.json();
     if (typeof parte_id !== 'string' || typeof pdf_base64 !== 'string') return json({ error: 'Faltan datos' }, 400);
 
     const { data: hecho } = await sb.from('partes_pdf_nube').select('*').eq('parte_id', parte_id).maybeSingle();
     if (hecho) return json({ estado: 'guardado', ...hecho });
 
-    const destino = (Deno.env.get('NUBE_DESTINO') ?? 'drive').trim().toLowerCase();
-    if (!configurado(destino)) return json({ estado: 'sin_configurar' });
+    const destino = 'drive';
+    if (!configurado()) return json({ estado: 'sin_configurar' });
 
-    const { data: parte } = await sb.from('partes_trabajo').select('id, fecha, semana, cliente, obra, bloqueado').eq('id', parte_id).maybeSingle();
+    const { data: parte } = await sb.from('partes_trabajo').select('id, fecha, cliente, obra, bloqueado').eq('id', parte_id).maybeSingle();
     if (!parte) return json({ error: 'El parte no existe' }, 404);
     if (!parte.bloqueado) return json({ error: 'Solo se guardan en la nube los partes bloqueados' }, 409);
 
@@ -148,8 +125,11 @@ Deno.serve(async (req) => {
     if (pdf.length > MAX_BYTES) return json({ error: 'El PDF es demasiado grande' }, 413);
     if (new TextDecoder().decode(pdf.slice(0, 5)) !== '%PDF-') return json({ error: 'El archivo no es un PDF' }, 400);
 
-    const nombre = nombreArchivo(parte);
-    const g = destino === 'webdav' ? await subirWebdav(nombre, pdf) : await subirDrive(nombre, pdf);
+    let nombre = limpio(nombrePedido, 180).replace(/\.pdf$/i, '');
+    if (!nombre) nombre = limpio(`Parte ${parte.fecha ?? ''} ${parte.cliente ?? ''} ${parte.obra ?? ''}`, 180);
+    nombre += '.pdf';
+    const anio = /^\d{4}/.exec(String(parte.fecha ?? ''))?.[0] ?? 'Sin fecha';
+    const g = await subirDrive([anio, limpio(operario, 80) || 'Sin operario'], nombre, pdf);
     const fila = {
       parte_id, destino, nombre, archivo_id: g.archivo_id, enlace: g.enlace,
       guardado_por: [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim() || perfil.email,

@@ -115,6 +115,23 @@
         return Math.ceil(((d - inicio) / 86400000 + 1) / 7);
     }
     const semanaDe = (p) => (p.semana != null ? Number(p.semana) : semanaIso(p.fecha));
+
+    // Nombre del PDF del parte (igual al descargarlo y en la nube): S44-10-26-2026-Cliente-Obra.pdf
+    // (semana del año, mes, día, año, cliente y obra). Solo se quitan los caracteres que no admiten los discos.
+    const limpioArchivo = (v) => String(v ?? '').replace(/[\\/:*?"<>|#%\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s.]+/, '').trim();
+    function nombrePdf(p) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(p.fecha || '');
+        const s = semanaDe(p);
+        const trozos = [
+            s ? 'S' + String(s).padStart(2, '0') : '',
+            m ? `${m[2]}-${m[3]}-${m[1]}` : 'sin fecha',
+            limpioArchivo(p.cliente).slice(0, 60),
+            limpioArchivo(p.obra).slice(0, 60),
+        ].filter(Boolean);
+        return trozos.join('-') + '.pdf';
+    }
+    // Subcarpeta del parte en la nube: el primer operario del parte.
+    const primerOperario = (p) => limpioArchivo(ops(p)[0] && ops(p)[0].operario_nombre).slice(0, 80) || 'Sin operario';
     const chipSemana = (p) => { const s = semanaDe(p); return s ? `<span class="ml-1 text-xs font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5" title="Semana ${s} del año">S${s}</span>` : ''; };
 
     const texto = (p) => [p.cliente, p.obra, p.direccion, p.localidad].concat(ops(p).map((o) => o.operario_nombre)).join(' ');
@@ -257,7 +274,7 @@
             let imgFirma = '';
             try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
             const bytes = await window.BomiPdf.crear(itemsPdf(p, imgFirma));
-            const { data, error } = await db().functions.invoke('guardar-parte-nube', { body: { parte_id: id, pdf_base64: aBase64(bytes) } });
+            const { data, error } = await db().functions.invoke('guardar-parte-nube', { body: { parte_id: id, pdf_base64: aBase64(bytes), nombre: nombrePdf(p), operario: primerOperario(p) } });
             if (error) throw new Error(await mensajeFuncion(error));
             if (data && data.estado === 'sin_configurar') nubeSinConfigurar = true;
             else if (data && data.estado === 'guardado') nube.set(id, data);
@@ -287,8 +304,7 @@
         const icono = (i, cls) => `<span class="material-symbols-outlined text-[16px] ${cls}">${i}</span>`;
         let txt;
         if (f) {
-            const donde = f.destino === 'webdav' ? 'el disco de la oficina' : 'Google Drive';
-            txt = `${icono('cloud_done', 'text-green-600 dark:text-green-400')}<span>PDF guardado en ${esc(donde)}${f.guardado_at ? ' · ' + esc(fechaHora(f.guardado_at)) : ''}</span>`
+            txt = `${icono('cloud_done', 'text-green-600 dark:text-green-400')}<span>PDF guardado en Google Drive${f.guardado_at ? ' · ' + esc(fechaHora(f.guardado_at)) : ''}</span>`
                 + (f.enlace && /^https:\/\//.test(f.enlace) ? ` <a href="${esc(f.enlace)}" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">Abrir</a>` : '');
         } else if (!esAdmin()) {
             return '';
@@ -753,7 +769,7 @@
                 partes_operarios: operarios.map((o) => ({ operario_nombre: o.nombre, horas: o.horas })),
                 partes_materiales: items.map((it) => ({ unidades: it.unidades, material: it.material, referencia: it.referencia })) },
                 firma.quitada ? '' : firma.url),
-            nombre: window.BomiPdf.nombreSeguro(['parte', f.fecha, f.cliente, f.obra], 90),
+            nombre: nombrePdf({ fecha: f.fecha, cliente: f.cliente, obra: f.obra }),
         });
         try {
             const igual = modo === 'editar' && ['cliente', 'obra', 'direccion', 'localidad'].every((k) => norm(f[k]) === norm(actual[k]));
@@ -848,7 +864,7 @@
         if (!p) return;
         let imgFirma = '';
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
-        const nombre = window.BomiPdf.nombreSeguro(['parte', p.fecha, p.cliente, p.obra], 90);
+        const nombre = nombrePdf(p);
         try { await window.BomiPdf.generar(itemsPdf(p, imgFirma), nombre); }
         catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
