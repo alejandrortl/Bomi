@@ -1,9 +1,14 @@
-// Búsqueda por voz: añade un botón de micrófono a todos los buscadores y transcribe lo dictado.
+// Búsqueda por voz: añade un botón de micrófono a todos los buscadores (barras de búsqueda y campos Cliente/Obra
+// de los formularios) y transcribe lo dictado. Si el navegador no sabe dictar (p. ej. la app instalada en iPhone),
+// el micrófono abre el teclado y explica cómo usar el dictado del propio teclado.
 (function () {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return; // navegador sin reconocimiento de voz: los buscadores siguen funcionando con teclado
 
-    const esBuscador = (el) => el && el.tagName === 'INPUT' && /^(search-|cat-buscar$|msg-buscar$)/.test(el.id || '');
+    const esBuscador = (el) => el && el.tagName === 'INPUT' && (
+        /^(search-|cat-buscar$|msg-buscar$)/.test(el.id || '') ||
+        /^(tarea|par|m|b)-(cliente|obra)$/.test(el.id || ''));
+    const toast = (txt, tipo) => { if (window.BomiOffline && window.BomiOffline.toast) window.BomiOffline.toast(txt, tipo); };
+    const AVISO_TECLADO = 'Para dictar, pulsa el micrófono del teclado del móvil.';
     let activo = null; // { rec, input, btn }
 
     function pintar(btn, escuchando) {
@@ -43,12 +48,20 @@
             escribir(input, t.replace(/[.。]+$/, '').trim());
         };
         rec.onerror = (ev) => {
-            if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
-                input.placeholder = 'Permite el micrófono para buscar por voz';
-            }
+            if (ev.error === 'not-allowed') toast('Permite el micrófono en los ajustes del navegador para buscar por voz.', 'error');
+            else if (ev.error === 'service-not-allowed') toast(AVISO_TECLADO);
+            else if (ev.error === 'no-speech') toast('No se oyó nada. Pulsa el micrófono y vuelve a hablar.');
+            else if (ev.error === 'network') toast('El dictado necesita conexión a internet.', 'error');
         };
         rec.onend = () => { if (activo && activo.rec === rec) { activo = null; pintar(btn, false); } };
-        try { rec.start(); } catch (_) { activo = null; pintar(btn, false); }
+        try { rec.start(); } catch (_) { activo = null; pintar(btn, false); toast(AVISO_TECLADO); }
+    }
+
+    // Sin reconocimiento de voz en el navegador: se abre el teclado en el buscador para usar su dictado
+    function sinDictado(input) {
+        input.focus();
+        const tactil = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        toast(tactil ? AVISO_TECLADO : 'Este navegador no permite dictar por voz. Prueba con Chrome, Edge o Safari.');
     }
 
     function adjuntar(input) {
@@ -69,11 +82,12 @@
             input.parentElement.insertBefore(wrap, input);
             wrap.appendChild(input);
             input.style.paddingRight = '2.75rem';
+            input.style.width = '100%';
             btn.className = 'absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400';
             wrap.appendChild(btn);
         }
         pintar(btn, false);
-        btn.addEventListener('click', (e) => { e.preventDefault(); dictar(input, btn); });
+        btn.addEventListener('click', (e) => { e.preventDefault(); if (SR) dictar(input, btn); else sinDictado(input); });
     }
 
     function barrer(raiz) {
