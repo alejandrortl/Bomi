@@ -317,7 +317,7 @@
         modo = null; actual = null; pizarra = null; obraAutorrellena = false;
     }
 
-    async function abrirFormulario(m, id) {
+    async function abrirFormulario(m, id, datos) {
         const r = id ? registros.find((x) => x.id === id) : null;
         if (m === 'editar' && !r) return;
         try { if (clientesViejos) await cargarClientes(); } catch (ex) { alert('No se pudieron cargar los clientes: ' + mensajeError(ex)); return; }
@@ -330,10 +330,18 @@
         mostrarModal(m === 'nuevo' ? 'Nuevo registro' : 'Editar registro');
         actualizarDatalists();
         pintarPizarraForm();
-        if (r) {
+        if (!r && datos) { // nuevo registro con los datos de otro (p. ej. una tarea del Diario)
+            document.getElementById('b-cliente').value = datos.cliente || '';
+            document.getElementById('b-obra').value = datos.obra || '';
+            document.getElementById('b-direccion').value = datos.direccion || '';
+            document.getElementById('b-localidad').value = datos.localidad || '';
+            document.getElementById('b-notas').value = datos.notas || '';
+        }
+        if (r || datos) {
             // Al editar se respeta lo guardado; solo se bloquean dirección/localidad si coinciden con una obra existente.
-            const cli = clientePorNombre(r.cliente);
-            const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(r.obra));
+            const base = r || datos;
+            const cli = clientePorNombre(base.cliente);
+            const obra = cli && cli.obras.find((o) => norm(o.nombre) === norm(base.obra));
             if (obra) { document.getElementById('b-direccion').readOnly = true; document.getElementById('b-localidad').readOnly = true; obraAutorrellena = true; }
         }
         sincronizar('inicio');
@@ -588,5 +596,7 @@
     window.BomiBitacora = {
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
+        // Abre un registro nuevo con cliente, obra, dirección, localidad y notas ya rellenos.
+        nuevoConDatos(datos) { iniciar(); return abrirFormulario('nuevo', null, datos || {}); },
     };
 })();

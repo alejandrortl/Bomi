@@ -399,12 +399,17 @@
         return !!t && (admin || (!!yo.id && t.user_id === yo.id));
     };
     document.getElementById('btn-editar-tarea').addEventListener('click', () => { if (currentTareaItem && puedeGestionarTarea(currentTareaItem)) window.editarTarea(currentTareaItem.id); });
-    // Crear un parte o un pedido de material con los datos de la tarea que se está viendo.
+    // Crear un parte, una bitácora o un pedido de material con los datos de la tarea que se está viendo.
     const datosDeTarea = (t) => ({ cliente: t.cliente || '', obra: t.obra || '', direccion: t.direccion || '', localidad: t.localidad || '' });
     document.getElementById('btn-tarea-crear-parte').addEventListener('click', () => {
         const t = currentTareaItem; if (!t || !window.BomiPartes) return;
         navPartes.click();
         window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: t.notas || '' });
+    });
+    document.getElementById('btn-tarea-crear-bitacora').addEventListener('click', () => {
+        const t = currentTareaItem; if (!t || !window.BomiBitacora) return;
+        navBitacora.click();
+        window.BomiBitacora.nuevoConDatos({ ...datosDeTarea(t), notas: t.notas || '' });
     });
     document.getElementById('btn-tarea-pedir-material').addEventListener('click', () => {
         const t = currentTareaItem; if (!t || !window.BomiMateriales) return;

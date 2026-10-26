@@ -94,6 +94,7 @@
             <div data-foco="acciones-tarea" class="flex flex-wrap gap-2 justify-end mt-3">
                 <span class="${BTN_SEC}">${icono('picture_as_pdf', 'text-[18px]')} PDF</span>
                 <span class="${BTN_SEC}">${icono('assignment', 'text-[18px]')} Crear parte</span>
+                <span class="${BTN_SEC}">${icono('menu_book', 'text-[18px]')} Crear bitácora</span>
                 <span class="${BTN_SEC}">${icono('inventory_2', 'text-[18px]')} Pedir material</span>
             </div>`;
     }
@@ -261,7 +262,7 @@
         { titulo: 'Marcar una tarea como hecha', pestana: 'diario', pantalla: pantallaDiario, foco: 'tareas',
           texto: 'Toca el círculo de una tarea tuya para marcarla <b>hecha</b> (o pendiente otra vez). Las completadas bajan al final. Pruébalo.' },
         { titulo: 'Dentro de una tarea', pestana: 'diario', pantalla: pantallaDetalleTarea, foco: 'acciones-tarea',
-          texto: 'Al abrir una tarea tienes <b>Crear parte</b> y <b>Pedir material</b>, que ya vienen con el cliente, la obra y la dirección (el parte, además, con las notas de la tarea en Trabajo realizado). También la puedes guardar en <b>PDF</b>.' },
+          texto: 'Al abrir una tarea tienes <b>Crear parte</b>, <b>Crear bitácora</b> y <b>Pedir material</b>, que ya vienen con el cliente, la obra y la dirección (el parte y la bitácora, además, con las notas de la tarea). También la puedes guardar en <b>PDF</b>.' },
         { titulo: 'Crear una tarea', pestana: 'diario', pantalla: pantallaDiario, foco: 'nueva',
           texto: 'Con el botón <b>+</b> creas una tarea nueva. Las notas se pueden escribir o dictar con el micrófono, y puedes hacer un dibujo en la pizarra.' },
         { titulo: 'Buscar cliente y obra', pestana: 'diario', pantalla: pantallaBuscador, foco: 'buscador',
