@@ -5,14 +5,13 @@
 //
 // Se guarda en Google Drive: Bomi - Partes bloqueados / <año de la fecha del parte> / <primer operario> / S44-10-26-2026-Cliente-Obra.pdf
 // Las carpetas que no existan se crean. El nombre del archivo y el operario los manda la app (los mismos que al descargar).
-// Secretos: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
-// y opcional GOOGLE_DRIVE_CARPETA_ID (carpeta principal; si falta, usa o crea "Bomi - Partes bloqueados").
+// Quien escribe en Drive es un Apps Script del propio Drive de la empresa (tools/google-drive-apps-script.gs),
+// así no hace falta Google Cloud. Secretos: GOOGLE_SCRIPT_URL (URL de la aplicación web) y GOOGLE_SCRIPT_CLAVE.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const URL_SB = Deno.env.get('SUPABASE_URL')!;
 const sb = createClient(URL_SB, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const MAX_BYTES = 15 * 1024 * 1024;
-const CARPETA_POR_DEFECTO = 'Bomi - Partes bloqueados';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,67 +23,22 @@ const json = (cuerpo: unknown, status = 200) =>
 
 type Guardado = { archivo_id: string; enlace: string | null };
 
-// ---------- Google Drive ----------
-async function tokenGoogle(): Promise<string> {
-  const r = await fetch('https://oauth2.googleapis.com/token', {
+// ---------- Google Drive (a través del Apps Script) ----------
+async function subirDrive(ruta: string[], nombre: string, pdfBase64: string): Promise<Guardado> {
+  const r = await fetch(Deno.env.get('GOOGLE_SCRIPT_URL')!, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
-      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
-      refresh_token: Deno.env.get('GOOGLE_REFRESH_TOKEN') ?? '',
-      grant_type: 'refresh_token',
-    }),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ clave: Deno.env.get('GOOGLE_SCRIPT_CLAVE'), ruta, nombre, pdf_base64: pdfBase64 }),
   });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.access_token) throw new Error('Google no acepta las credenciales (' + (d.error ?? r.status) + '). Revisa GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET y GOOGLE_REFRESH_TOKEN.');
-  return d.access_token;
-}
-
-// Busca la carpeta `nombre` (dentro de `padre`, o en la raíz si no hay padre) y la crea si no existe.
-async function carpetaDrive(token: string, nombre: string, padre: string | null): Promise<string> {
-  const auth = { Authorization: 'Bearer ' + token };
-  const literal = nombre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  const q = `name = '${literal}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false` + (padre ? ` and '${padre}' in parents` : '');
-  const r = await fetch('https://www.googleapis.com/drive/v3/files?fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true&q=' + encodeURIComponent(q), { headers: auth });
-  const d = await r.json().catch(() => ({}));
-  if (r.ok && d.files?.length) return d.files[0].id;
-  const c = await fetch('https://www.googleapis.com/drive/v3/files?fields=id&supportsAllDrives=true', {
-    method: 'POST',
-    headers: { ...auth, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: nombre, mimeType: 'application/vnd.google-apps.folder', ...(padre ? { parents: [padre] } : {}) }),
-  });
-  const cd = await c.json().catch(() => ({}));
-  if (!c.ok || !cd.id) throw new Error('No se pudo crear la carpeta «' + nombre + '» en Google Drive (' + c.status + ').');
-  return cd.id;
-}
-
-async function subirDrive(ruta: string[], nombre: string, pdf: Uint8Array<ArrayBuffer>): Promise<Guardado> {
-  const token = await tokenGoogle();
-  let carpeta = Deno.env.get('GOOGLE_DRIVE_CARPETA_ID') || await carpetaDrive(token, CARPETA_POR_DEFECTO, null);
-  for (const sub of ruta) carpeta = await carpetaDrive(token, sub, carpeta);
-  const limite = 'bomi' + crypto.randomUUID().replace(/-/g, '');
-  const cabecera = new TextEncoder().encode(
-    `--${limite}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-    JSON.stringify({ name: nombre, parents: [carpeta], mimeType: 'application/pdf' }) +
-    `\r\n--${limite}\r\nContent-Type: application/pdf\r\n\r\n`,
-  );
-  const pie = new TextEncoder().encode(`\r\n--${limite}--`);
-  const cuerpo = new Uint8Array(cabecera.length + pdf.length + pie.length);
-  cuerpo.set(cabecera, 0); cuerpo.set(pdf, cabecera.length); cuerpo.set(pie, cabecera.length + pdf.length);
-  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${limite}` },
-    body: cuerpo,
-  });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.id) throw new Error('Google Drive no aceptó el archivo (' + (d.error?.message ?? r.status) + ').');
-  return { archivo_id: d.id, enlace: d.webViewLink ?? null };
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d) throw new Error('Google Drive no responde (' + r.status + '). Revisa GOOGLE_SCRIPT_URL y que el script esté implementado como aplicación web para «Cualquier usuario».');
+  if (d.error || !d.id) throw new Error('Google Drive: ' + (d.error ?? 'respuesta inesperada'));
+  return { archivo_id: d.id, enlace: d.enlace ?? null };
 }
 
 // ---------- Utilidades ----------
 function configurado(): boolean {
-  return !!(Deno.env.get('GOOGLE_CLIENT_ID') && Deno.env.get('GOOGLE_CLIENT_SECRET') && Deno.env.get('GOOGLE_REFRESH_TOKEN'));
+  return /^https:\/\//.test(Deno.env.get('GOOGLE_SCRIPT_URL') ?? '') && !!Deno.env.get('GOOGLE_SCRIPT_CLAVE');
 }
 function deBase64(b64: string): Uint8Array<ArrayBuffer> {
   const s = atob(b64);
@@ -129,7 +83,7 @@ Deno.serve(async (req) => {
     if (!nombre) nombre = limpio(`Parte ${parte.fecha ?? ''} ${parte.cliente ?? ''} ${parte.obra ?? ''}`, 180);
     nombre += '.pdf';
     const anio = /^\d{4}/.exec(String(parte.fecha ?? ''))?.[0] ?? 'Sin fecha';
-    const g = await subirDrive([anio, limpio(operario, 80) || 'Sin operario'], nombre, pdf);
+    const g = await subirDrive([anio, limpio(operario, 80) || 'Sin operario'], nombre, pdf_base64);
     const fila = {
       parte_id, destino, nombre, archivo_id: g.archivo_id, enlace: g.enlace,
       guardado_por: [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim() || perfil.email,
