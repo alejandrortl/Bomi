@@ -18,6 +18,21 @@
     let busqueda = '';
     let guardando = false;
     let modalEstado = null;
+    // Historial de la obra desplegada: { clienteId, obraId, cargando, error, grupos: { tipo: lista | null } }
+    let hist = null;
+    let turnoHist = 0;
+    let desplazarA = null;              // obra a la que volver tras ver una tarea del Diario
+    const histCompletos = new Set();    // tipos con "ver todos" pulsado
+    const histCerrados = new Set();     // tipos plegados a mano
+    const HIST_VISIBLES = 5, HIST_FOTOS = 8;
+    // Orden de los grupos. api() devuelve el historial del módulo (cada módulo aplica sus propios permisos).
+    const TIPOS = [
+        { k: 'partes', titulo: 'Partes', icono: 'assignment', api: () => window.BomiPartes && window.BomiPartes.historial },
+        { k: 'materiales', titulo: 'Materiales pedidos', icono: 'inventory_2', api: () => window.BomiMateriales && window.BomiMateriales.historial },
+        { k: 'bitacora', titulo: 'Bitácora', icono: 'menu_book', api: () => window.BomiBitacora && window.BomiBitacora.historial },
+        { k: 'fotos', titulo: 'Bitácora fotográfica', icono: 'photo_library', api: () => window.BomiFotos && window.BomiFotos.historial },
+        { k: 'diario', titulo: 'Diario', icono: 'list_alt', api: () => window.BomiDiario && window.BomiDiario.historial },
+    ];
 
     // ---------- Utilidades ----------
     const db = () => supabaseClient;
@@ -107,11 +122,12 @@
     function htmlObra(c, o) {
         const admin = esAdmin();
         const extra = `data-cliente="${esc(c.id)}"`;
+        const abierta = !!hist && hist.obraId === o.id;
         return `
-        <div class="bg-slate-50 dark:bg-zinc-800 rounded-xl p-3 flex flex-col gap-2">
+        <div class="bg-slate-50 dark:bg-zinc-800 rounded-xl p-3 flex flex-col gap-2" data-obra="${esc(o.id)}">
             <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0 flex flex-col gap-1">
-                    <h4 class="font-semibold text-sm flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(o.nombre)}</span></h4>
+                    <h4 class="font-semibold text-sm"><button type="button" data-accion="historial" data-id="${esc(o.id)}" ${extra} aria-expanded="${abierta}" class="flex items-center gap-1 text-left hover:underline"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(o.nombre)}</span></button></h4>
                     ${direccionHtml(o.direccion, o.localidad)}
                 </div>
                 <div class="flex gap-1 shrink-0">
@@ -120,8 +136,150 @@
                 </div>
             </div>
             ${contactosHtml(contactosObra(o))}
+            <button type="button" data-accion="historial" data-id="${esc(o.id)}" ${extra} aria-expanded="${abierta}" class="self-start text-xs ${abierta ? 'bg-blue-600 text-white' : 'bg-white dark:bg-zinc-900 text-blue-700 dark:text-blue-300 border border-slate-200 dark:border-zinc-700'} px-3 py-1.5 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">history</span> ${abierta ? 'Ocultar registros' : 'Ver registros de la obra'}</button>
+            ${abierta ? `<div id="historial-obra" class="flex flex-col gap-2">${htmlHistorial()}</div>` : ''}
         </div>`;
     }
+
+    // ---------- Historial de la obra: partes, materiales, bitácora, fotos y diario ----------
+    const TONOS = {
+        azul: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+        verde: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
+        ambar: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+        gris: 'bg-slate-200 text-slate-700 dark:bg-zinc-700 dark:text-slate-200',
+    };
+    const etiquetaHtml = (e) => `<span class="inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${TONOS[e.tono] || TONOS.gris}">${e.icono ? `<span class="material-symbols-outlined text-[14px]">${esc(e.icono)}</span>` : ''}${esc(e.texto)}</span>`;
+    const btnReg = (accion, tipo, id, icono, etiqueta, clase = BTN_ICON) =>
+        `<button type="button" data-accion="${accion}" data-tipo="${tipo}" data-id="${esc(id)}" aria-label="${esc(etiqueta)}" title="${esc(etiqueta)}" class="${clase}"><span class="material-symbols-outlined text-[20px]">${icono}</span></button>`;
+
+    function htmlRegistro(tipo, r) {
+        return `
+            <li class="flex items-start gap-2 py-2">
+                <button type="button" data-accion="reg-ver" data-tipo="${tipo}" data-id="${esc(r.id)}" class="min-w-0 flex-1 text-left flex flex-col gap-0.5">
+                    <span class="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300">${esc(r.fecha || 'Sin fecha')}${(r.etiquetas || []).map(etiquetaHtml).join('')}</span>
+                    <span class="text-sm font-medium break-words">${esc(r.titulo)}</span>
+                    ${r.detalle ? `<span class="text-xs text-slate-500 dark:text-slate-400 break-words" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(r.detalle)}</span>` : ''}
+                </button>
+                <div class="flex gap-0.5 shrink-0">
+                    ${btnReg('reg-ver', tipo, r.id, 'visibility', 'Ver')}
+                    ${r.puedeEditar ? btnReg('reg-editar', tipo, r.id, 'edit', 'Editar') : ''}
+                    ${r.puedeEliminar ? btnReg('reg-eliminar', tipo, r.id, 'delete', 'Eliminar', BTN_DANGER) : ''}
+                </div>
+            </li>`;
+    }
+
+    function htmlFotos(lista) {
+        const todas = histCompletos.has('fotos');
+        const vistas = todas ? lista : lista.slice(0, HIST_FOTOS);
+        return `
+            <div class="grid grid-cols-4 gap-1.5 py-2">
+                ${vistas.map((f) => `<button type="button" data-accion="reg-foto" data-id="${esc(f.id)}" aria-label="Ver foto" title="${esc(window.BomiFotos.historial.fecha(f))}" class="relative aspect-square rounded-lg overflow-hidden bg-slate-200 dark:bg-zinc-700"><img data-clave="${esc(f.clave_miniatura || f.clave)}" alt="" loading="lazy" class="w-full h-full object-cover"></button>`).join('')}
+            </div>
+            ${!todas && lista.length > HIST_FOTOS ? `<button type="button" data-accion="reg-mas" data-tipo="fotos" class="self-start text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline pb-2">Ver las ${lista.length} fotos</button>` : ''}`;
+    }
+
+    function htmlGrupo(t, lista) {
+        if (lista === null) return '';   // módulo no disponible (p. ej. fotos sin activar)
+        if (lista && lista.error) {
+            return `<div class="bg-white dark:bg-zinc-900 rounded-xl px-3 py-2 text-sm"><span class="font-semibold">${esc(t.titulo)}</span>: <span class="text-red-600 dark:text-red-400">no se pudieron cargar (${esc(lista.error)})</span></div>`;
+        }
+        const n = lista.length;
+        let cuerpo;
+        if (!n) cuerpo = '<p class="text-xs text-slate-500 py-2">Sin registros.</p>';
+        else if (t.k === 'fotos') cuerpo = htmlFotos(lista);
+        else {
+            const todas = histCompletos.has(t.k);
+            const vistas = todas ? lista : lista.slice(0, HIST_VISIBLES);
+            cuerpo = `<ul class="flex flex-col divide-y divide-slate-100 dark:divide-zinc-800">${vistas.map((r) => htmlRegistro(t.k, r)).join('')}</ul>`
+                + (!todas && n > HIST_VISIBLES ? `<button type="button" data-accion="reg-mas" data-tipo="${t.k}" class="self-start text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline pb-2">Ver los ${n}</button>` : '');
+        }
+        return `
+            <details data-tipo-hist="${t.k}" class="bg-white dark:bg-zinc-900 rounded-xl px-3" ${n && !histCerrados.has(t.k) ? 'open' : ''}>
+                <summary class="flex items-center gap-2 py-2 cursor-pointer select-none text-sm font-semibold">
+                    <span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">${t.icono}</span>
+                    <span class="flex-1">${esc(t.titulo)}</span>
+                    <span class="text-xs font-medium px-2 py-0.5 rounded-full ${n ? TONOS.azul : TONOS.gris}">${n}</span>
+                </summary>
+                <div class="flex flex-col border-t border-slate-100 dark:border-zinc-800">${cuerpo}</div>
+            </details>`;
+    }
+
+    function htmlHistorial() {
+        if (!hist || hist.cargando) return '<div class="text-center p-2"><span class="material-symbols-outlined animate-spin text-blue-600 text-2xl">sync</span></div>';
+        return TIPOS.map((t) => htmlGrupo(t, hist.grupos[t.k])).join('');
+    }
+
+    function pintarHistorial() {
+        const cont = document.getElementById('historial-obra');
+        if (!cont) return;
+        cont.innerHTML = htmlHistorial();
+        if (window.BomiFotos && hist && Array.isArray(hist.grupos.fotos) && hist.grupos.fotos.length) window.BomiFotos.historial.rellenar(cont);
+    }
+
+    const datosObra = () => {
+        const c = hist && buscarCliente(hist.clienteId);
+        const o = c && (c.obras || []).find((x) => x.id === hist.obraId);
+        return o ? { clienteId: c.id, obraId: o.id, cliente: nombreCliente(c), obra: o.nombre } : null;
+    };
+
+    async function cargarHistorial() {
+        const d = datosObra();
+        if (!d) { hist = null; return; }
+        const turno = ++turnoHist;
+        if (!hist.grupos || !Object.keys(hist.grupos).length) { hist.cargando = true; pintarHistorial(); }
+        const res = await Promise.all(TIPOS.map(async (t) => {
+            const api = t.api();
+            if (!api) return null;
+            try {
+                const lista = await api.buscar(d);
+                if (!lista) return null;
+                // De hoy hacia atrás.
+                if (t.k !== 'fotos') lista.sort((a, b) => String(b.orden).localeCompare(String(a.orden)));
+                return lista;
+            } catch (ex) { return { error: mensajeError(ex) }; }
+        }));
+        if (turno !== turnoHist || !hist || hist.obraId !== d.obraId) return;
+        hist.cargando = false;
+        hist.grupos = {};
+        TIPOS.forEach((t, i) => { hist.grupos[t.k] = res[i]; });
+        pintarHistorial();
+    }
+
+    function alternarHistorial(clienteId, obraId) {
+        if (hist && hist.obraId === obraId) hist = null;
+        else {
+            hist = { clienteId, obraId, cargando: true, grupos: {} };
+            histCompletos.clear();
+            histCerrados.clear();
+        }
+        pintarLista();
+        if (hist) cargarHistorial();
+    }
+
+    // Vuelta a Clientes tras ver o editar una tarea del Diario (que se abre en su propia pantalla).
+    function volverAClientes() {
+        desplazarA = hist && hist.obraId;
+        const nav = document.getElementById('nav-clientes');
+        if (nav) nav.click();
+    }
+
+    function accionRegistro(accion, tipo, id) {
+        const t = TIPOS.find((x) => x.k === tipo);
+        const api = t && t.api();
+        if (!api) return;
+        if (accion === 'reg-ver') api.ver(id, volverAClientes);
+        else if (accion === 'reg-editar') api.editar(id, volverAClientes);
+        else if (accion === 'reg-eliminar') api.eliminar(id);
+    }
+
+    // Tras guardar, eliminar o cambiar algo en cualquier módulo, el historial abierto se actualiza.
+    let esperaHist = null;
+    window.addEventListener('bomiRegistrosCambiados', () => {
+        const vista = document.getElementById('view-clientes');
+        if (!hist || !vista || vista.classList.contains('hidden')) return;
+        clearTimeout(esperaHist);
+        esperaHist = setTimeout(cargarHistorial, 300);
+    });
 
     function htmlCliente(c, obras) {
         const admin = esAdmin();
@@ -158,6 +316,12 @@
         if (!clientes.length) { cont.innerHTML = aviso('Aún no hay clientes. Pulsa + para añadir el primero.'); return; }
         if (!lista.length) { cont.innerHTML = aviso('No se encontraron resultados.'); return; }
         cont.innerHTML = lista.map(({ c, obras }) => htmlCliente(c, obras)).join('');
+        if (hist) pintarHistorial();
+        if (desplazarA) {
+            const el = cont.querySelector(`[data-obra="${CSS.escape(desplazarA)}"]`);
+            desplazarA = null;
+            if (el) el.scrollIntoView({ block: 'start' });
+        }
     }
 
     function actualizarDatalist() {
@@ -181,8 +345,10 @@
         }
         clientes = (data || []).sort((a, b) => nombreCliente(a).localeCompare(nombreCliente(b), 'es', { sensitivity: 'base' }));
         clientes.forEach((c) => (c.obras || []).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es', { sensitivity: 'base' })));
+        if (hist && !datosObra()) hist = null;
         pintarLista();
         actualizarDatalist();
+        if (hist) cargarHistorial();
     }
 
     function avisarCambios() {
@@ -488,7 +654,17 @@
             else if (accion === 'editar-obra') abrirFormulario('editar-obra', { clienteId: cliente, obraId: id });
             else if (accion === 'eliminar-obra') eliminarObra(cliente, id);
             else if (accion === 'reintentar') cargar();
+            else if (accion === 'historial') alternarHistorial(cliente, id);
+            else if (accion === 'reg-ver' || accion === 'reg-editar' || accion === 'reg-eliminar') accionRegistro(accion, btn.dataset.tipo, id);
+            else if (accion === 'reg-mas') { histCompletos.add(btn.dataset.tipo); pintarHistorial(); }
+            else if (accion === 'reg-foto' && window.BomiFotos && hist && Array.isArray(hist.grupos.fotos)) window.BomiFotos.historial.ver(hist.grupos.fotos, id);
         });
+        // Recuerda qué grupos del historial se han plegado (el evento "toggle" no sube: se escucha en captura).
+        document.getElementById('view-clientes').addEventListener('toggle', (e) => {
+            const k = e.target && e.target.dataset && e.target.dataset.tipoHist;
+            if (!k) return;
+            if (e.target.open) histCerrados.delete(k); else histCerrados.add(k);
+        }, true);
         document.getElementById('fab-new-cliente').addEventListener('click', () => abrirFormulario('nuevo'));
         document.getElementById('search-clientes').addEventListener('input', (e) => { busqueda = e.target.value; pintarLista(); });
 

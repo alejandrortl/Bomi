@@ -130,6 +130,7 @@
         }
         registros = data || [];
         pintarLista();
+        window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'bitacora' } }));
     }
 
     async function cargarClientes() {
@@ -627,7 +628,40 @@
 
     if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'b-cliente', obra: 'b-obra', fuente: () => clientes });
 
+    // ---------- Historial de una obra (se abre desde Clientes) ----------
+    async function asegurar(id) {
+        const { data, error } = await db().from('bitacora').select(COLUMNAS).eq('id', id).limit(1);
+        if (error || !data || !data.length) { alert('No se encontró el registro. Puede que se haya eliminado.'); return false; }
+        const i = registros.findIndex((x) => x.id === id);
+        if (i >= 0) registros[i] = data[0]; else registros.push(data[0]);
+        return true;
+    }
+    const patronObra = (t) => '%' + String(t ?? '').trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+    const historial = {
+        async buscar(o) {
+            const { data, error } = await db().from('bitacora').select(COLUMNAS).ilike('obra', patronObra(o.obra)).limit(LIMITE);
+            if (error) throw error;
+            const filas = (data || []).filter((r) => (o.obraId && r.obra_id === o.obraId) || (norm(r.obra) === norm(o.obra) && norm(r.cliente) === norm(o.cliente)));
+            filas.forEach((f) => { const i = registros.findIndex((x) => x.id === f.id); if (i >= 0) registros[i] = f; else registros.push(f); });
+            return filas.map((r) => ({
+                id: r.id,
+                fecha: fechaHora(r.created_at).split(',')[0],
+                orden: r.created_at || '',
+                titulo: 'Por ' + (r.created_by || 'desconocido'),
+                detalle: r.notas || '',
+                etiquetas: imagenDe(r) ? [{ texto: 'Pizarra', tono: 'gris', icono: 'draw' }] : [],
+                puedeEditar: true,
+                puedeEliminar: true,
+            }));
+        },
+        async ver(id) { iniciar(); if (await asegurar(id)) abrirVista(id); },
+        async editar(id) { iniciar(); if (await asegurar(id)) abrirFormulario('editar', id); },
+        async eliminar(id) { iniciar(); if (await asegurar(id)) eliminar(id); },
+    };
+
     window.BomiBitacora = {
+        historial,
+        preparar() { iniciar(); },
         abrir() { iniciar(); return cambiarPestana(pestana, false); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre un registro nuevo con cliente, obra, dirección, localidad y notas ya rellenos.

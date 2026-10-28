@@ -553,6 +553,7 @@
             if (!visor.lista.length) cerrarVisor();
             else { visor.i = Math.min(visor.i, visor.lista.length - 1); pintarVisor(); }
             pintarLista();
+            window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'fotos' } }));
         } catch (ex) {
             alert('No se pudo eliminar: ' + mensajeError(ex));
         }
@@ -676,7 +677,39 @@
     }
     if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'f-cliente', obra: 'f-obra', fuente: () => clientes });
 
+    // ---------- Historial de una obra (se abre desde Clientes) ----------
+    // El visor vive junto a la pestaña de fotos de la Bitácora: se monta (oculto) si aún no se había abierto.
+    function prepararVisor() {
+        if (iniciado) return;
+        if (!document.getElementById('bitacora-fotos') && window.BomiBitacora) window.BomiBitacora.preparar();
+        montar(document.getElementById('bitacora-fotos'));
+    }
+    const historial = {
+        // Devuelve null si la bitácora fotográfica aún no está activada.
+        async buscar(o) {
+            if (!config || !config.r2) await cargarConfig();
+            if (!config || !config.r2) return null;
+            if (!o.obraId) return [];
+            const { data, error } = await db().from('fotos_obra').select(COLUMNAS).eq('obra_id', o.obraId).order('created_at', { ascending: false }).limit(LIMITE);
+            if (error) throw error;
+            return (data || []).sort((a, b) => String(fechaDe(b)).localeCompare(String(fechaDe(a))));
+        },
+        rellenar: rellenarImagenes,
+        fecha: (f) => fechaHora(fechaDe(f)).split(',')[0],
+        ver(lista, id) {
+            prepararVisor();
+            const i = lista.findIndex((f) => f.id === id);
+            if (i < 0) return;
+            visor = { lista: lista.slice(), i };
+            const v = document.getElementById('visor-fotos');
+            v.classList.remove('hidden');
+            v.classList.add('flex');
+            pintarVisor();
+        },
+    };
+
     window.BomiFotos = {
+        historial,
         montar,
         abrir() { return cargar(); },
         nuevoConDatos(datos) { return abrirFormulario(datos || null); },

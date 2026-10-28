@@ -390,8 +390,16 @@
         });
     }
 
-    document.getElementById('btn-cancel-tarea').addEventListener('click', () => navHome.click());
-    document.getElementById('btn-back-tarea-list').addEventListener('click', () => navHome.click());
+    // Al abrir una tarea desde otra pantalla (p. ej. el historial de una obra en Clientes), al terminar se vuelve allí.
+    let volverA = null;
+    function salirTarea() {
+        const f = volverA;
+        volverA = null;
+        if (f) f(); else navHome.click();
+    }
+    [navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => { if (nav) nav.addEventListener('click', () => { volverA = null; }, true); });
+    document.getElementById('btn-cancel-tarea').addEventListener('click', salirTarea);
+    document.getElementById('btn-back-tarea-list').addEventListener('click', salirTarea);
     // Pueden editar y eliminar una tarea: Admin/SuperAdmin y quien la creó.
     const puedeGestionarTarea = (t) => {
         const yo = window.currentUserProfile || {};
@@ -416,22 +424,27 @@
         navMateriales.click();
         window.BomiMateriales.nuevoConDatos(datosDeTarea(t));
     });
-    document.getElementById('btn-eliminar-tarea').addEventListener('click', async () => {
-        const t = currentTareaItem;
-        if (!t || !puedeGestionarTarea(t)) return;
-        if (!confirm('¿Eliminar esta tarea?\n\n' + (t.cliente || '') + (t.obra ? ' - ' + t.obra : '') + '\nNo se puede deshacer.')) return;
-        const btn = document.getElementById('btn-eliminar-tarea');
-        btn.disabled = true;
+    // Devuelve true si se eliminó.
+    async function eliminarTarea(t) {
+        if (!t || !puedeGestionarTarea(t)) return false;
+        if (!confirm('¿Eliminar esta tarea?\n\n' + (t.cliente || '') + (t.obra ? ' - ' + t.obra : '') + '\nNo se puede deshacer.')) return false;
         try {
             const { data, error } = await supabaseClient.from('tareas').delete().eq('id', t.id).select('id');
             if (error) throw error;
             if (!data || data.length === 0) throw new Error('no tienes permiso o la tarea ya no existe');
-            currentTareaItem = null;
+            if (currentTareaItem && currentTareaItem.id === t.id) currentTareaItem = null;
             await loadTasksFromDB();
-            navHome.click();
+            return true;
         } catch (ex) {
             alert('No se pudo eliminar la tarea: ' + (ex.message || ex));
-        } finally { btn.disabled = false; }
+            return false;
+        }
+    }
+    document.getElementById('btn-eliminar-tarea').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-eliminar-tarea');
+        btn.disabled = true;
+        try { if (await eliminarTarea(currentTareaItem)) salirTarea(); }
+        finally { btn.disabled = false; }
     });
 
     let guardandoTarea = false;
@@ -509,7 +522,7 @@
                     if (creados) window.dispatchEvent(new CustomEvent('clientesActualizados'));
                     await loadTasksFromDB();
                 }
-                navHome.click();
+                salirTarea();
                 return;
             }
 
@@ -527,7 +540,7 @@
                 if (!enviado) alert('La tarea se guardó, pero no se pudo avisar a ' + operarioNombre + '.');
             }
             await loadTasksFromDB();
-            navHome.click();
+            salirTarea();
         } catch (ex) {
             const sinRed = O.esRed(ex);
             const motivo = sinRed ? 'Sin conexión o con la señal muy débil.' : O.mensaje(ex);
@@ -551,6 +564,7 @@
         }
         allTareas = data || [];
         renderTareas();
+        window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'diario' } }));
     }
 
     if(searchTareasInput) searchTareasInput.addEventListener('input', renderTareas);
@@ -755,6 +769,43 @@
             btn.innerHTML = textoOriginal;
         }
     });
+
+    // ---------- Historial de una obra (se abre desde Clientes) ----------
+    async function asegurarTarea(id) {
+        const { data, error } = await supabaseClient.from('tareas').select('*').eq('id', id).limit(1);
+        if (error || !data || !data.length) { alert('No se encontró la tarea. Puede que se haya eliminado.'); return null; }
+        const i = allTareas.findIndex(t => t.id === id);
+        if (i >= 0) allTareas[i] = data[0]; else allTareas.push(data[0]);
+        return data[0];
+    }
+    const patronObraT = (t) => '%' + String(t ?? '').trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+    window.BomiDiario = {
+        historial: {
+            async buscar(o) {
+                const { data, error } = await supabaseClient.from('tareas').select('*').ilike('obra', patronObraT(o.obra)).limit(500);
+                if (error) throw error;
+                return (data || []).filter(t => normT(t.obra) === normT(o.obra) && normT(t.cliente) === normT(o.cliente)).map(t => ({
+                    id: t.id,
+                    fecha: fechaES(t.fecha),
+                    orden: (t.fecha || '') + '|' + (t.created_at || ''),
+                    titulo: t.operario_asignado || 'Sin asignar',
+                    detalle: t.notas || '',
+                    etiquetas: [t.completada ? { texto: 'Hecha', tono: 'verde', icono: 'check' } : { texto: 'Pendiente', tono: 'ambar' }],
+                    puedeEditar: puedeGestionarTarea(t),
+                    puedeEliminar: puedeGestionarTarea(t),
+                }));
+            },
+            // volver: qué hacer al salir de la tarea (por defecto, ir al Diario).
+            async ver(id, volver) { if (!(await asegurarTarea(id))) return; window.verDetalleTarea(id); volverA = volver || null; },
+            async editar(id, volver) {
+                const t = await asegurarTarea(id);
+                if (!t || !puedeGestionarTarea(t)) return;
+                window.editarTarea(id);
+                volverA = volver || null;
+            },
+            async eliminar(id) { const t = await asegurarTarea(id); if (t) await eliminarTarea(t); },
+        },
+    };
 
     window.editarTarea = function(id) {
         const item = allTareas.find(t => t.id === id);

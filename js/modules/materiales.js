@@ -222,8 +222,9 @@
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los materiales: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
             return;
         }
-        solicitudes = res.data || [];
+        solicitudes = await conFijados(res.data || []);
         pintarLista();
+        window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'materiales' } }));
     }
 
     // Supabase devuelve como máximo 1000 filas por consulta: se lee por páginas para traer el catálogo completo.
@@ -947,7 +948,62 @@
 
     if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'm-cliente', obra: 'm-obra', fuente: () => clientes });
 
+    // ---------- Historial de una obra (se abre desde Clientes) ----------
+    // Las solicitudes abiertas desde allí pueden ser más antiguas que las que carga la lista: se guardan aparte ("fijadas")
+    // para que ver, editar, cambiar de estado y eliminar las encuentren aunque la lista se vuelva a cargar.
+    const fijadas = new Set();
+    function fijar(filas) {
+        for (const f of filas) {
+            fijadas.add(f.id);
+            const i = solicitudes.findIndex((x) => x.id === f.id);
+            if (i >= 0) solicitudes[i] = f; else solicitudes.push(f);
+        }
+    }
+    async function conFijados(filas) {
+        const faltan = [...fijadas].filter((id) => !filas.some((f) => f.id === id));
+        if (!faltan.length) return filas;
+        const { data, error } = await db().from('materiales_solicitudes').select(SELECT).in('id', faltan);
+        if (error) return filas;
+        const vivas = new Set((data || []).map((f) => f.id));
+        faltan.forEach((id) => { if (!vivas.has(id)) fijadas.delete(id); });
+        return filas.concat(data || []);
+    }
+    async function asegurar(id) {
+        if (solicitudes.some((x) => x.id === id)) return true;
+        const { data, error } = await db().from('materiales_solicitudes').select(SELECT).eq('id', id).limit(1);
+        if (error || !data || !data.length) { alert('No se encontró la solicitud. Puede que se haya eliminado.'); return false; }
+        fijar(data);
+        return true;
+    }
+    const patronObra = (t) => '%' + String(t ?? '').trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+    const fechaCorta = (iso) => fechaHora(iso).split(',')[0];
+    const historial = {
+        async buscar(o) {
+            const { data, error } = await db().from('materiales_solicitudes').select(SELECT).ilike('obra', patronObra(o.obra)).limit(LIMITE);
+            if (error) throw error;
+            const filas = (data || []).filter((r) => norm(r.obra) === norm(o.obra) && norm(r.cliente) === norm(o.cliente));
+            fijar(filas);
+            return filas.map((r) => {
+                const ls = lineasDe(r);
+                return {
+                    id: r.id,
+                    fecha: fechaCorta(r.created_at),
+                    orden: r.created_at || '',
+                    titulo: 'Solicitado por ' + (r.created_by || 'desconocido'),
+                    detalle: ls.map((l) => `${cant(l.cantidad)} × ${l.material}`).join(' · '),
+                    etiquetas: [esRecibido(r) ? { texto: 'Recibido', tono: 'azul' } : esPedido(r) ? { texto: 'Pedido', tono: 'verde' } : { texto: 'Pendiente', tono: 'ambar' }],
+                    puedeEditar: true,
+                    puedeEliminar: true,
+                };
+            });
+        },
+        async ver(id) { iniciar(); if (await asegurar(id)) abrirVista(id); },
+        async editar(id) { iniciar(); if (await asegurar(id)) abrirFormulario('editar', id); },
+        async eliminar(id) { iniciar(); if (await asegurar(id)) eliminar(id); },
+    };
+
     window.BomiMateriales = {
+        historial,
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre "Pedir material" con cliente, obra, dirección y localidad ya rellenos.

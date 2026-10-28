@@ -241,9 +241,10 @@
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los partes: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
             return;
         }
-        partes = res.data || [];
+        partes = await conFijados(res.data || []);
         pintarLista();
         reintentarNube();
+        window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'partes' } }));
     }
 
     // ---------- Copia en la nube ----------
@@ -1003,7 +1004,61 @@
 
     if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'par-cliente', obra: 'par-obra', fuente: () => clientes });
 
+    // ---------- Historial de una obra (se abre desde Clientes) ----------
+    // Los partes abiertos desde allí pueden ser más antiguos que los que carga la lista: se guardan aparte ("fijados")
+    // para que ver, editar, bloquear y eliminar los encuentren aunque la lista se vuelva a cargar.
+    const fijados = new Set();
+    function fijar(filas) {
+        for (const f of filas) {
+            fijados.add(f.id);
+            const i = partes.findIndex((x) => x.id === f.id);
+            if (i >= 0) partes[i] = f; else partes.push(f);
+        }
+    }
+    async function conFijados(filas) {
+        const faltan = [...fijados].filter((id) => !filas.some((f) => f.id === id));
+        if (!faltan.length) return filas;
+        const { data, error } = await db().from('partes_trabajo').select(SELECT).in('id', faltan);
+        if (error) return filas;
+        const vivos = new Set((data || []).map((f) => f.id));
+        faltan.forEach((id) => { if (!vivos.has(id)) fijados.delete(id); });
+        return filas.concat(data || []);
+    }
+    async function asegurar(id) {
+        if (partes.some((x) => x.id === id)) return true;
+        const { data, error } = await db().from('partes_trabajo').select(SELECT).eq('id', id).limit(1);
+        if (error || !data || !data.length) { alert('No se encontró el parte. Puede que se haya eliminado.'); return false; }
+        fijar(data);
+        return true;
+    }
+    const patronObra = (t) => '%' + String(t ?? '').trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+    const historial = {
+        async buscar(o) {
+            const [res] = await Promise.all([
+                db().from('partes_trabajo').select(SELECT).ilike('obra', patronObra(o.obra)).limit(LIMITE),
+                cargarNube().catch(() => {}),
+            ]);
+            if (res.error) throw res.error;
+            const filas = (res.data || []).filter((p) => norm(p.obra) === norm(o.obra) && norm(p.cliente) === norm(o.cliente));
+            fijar(filas);
+            return filas.map((p) => ({
+                id: p.id,
+                fecha: fechaES(p.fecha),
+                orden: (p.fecha || '') + '|' + (p.created_at || ''),
+                titulo: ops(p).map((x) => x.operario_nombre).filter(Boolean).join(', ') || 'Sin operarios',
+                detalle: p.detalle_trabajo || '',
+                etiquetas: [semanaDe(p) ? { texto: 'S' + semanaDe(p), tono: 'azul' } : null, p.bloqueado ? { texto: 'Bloqueado', tono: 'ambar', icono: 'lock' } : null].filter(Boolean),
+                puedeEditar: puedeEditar(p),
+                puedeEliminar: puedeEditar(p),
+            }));
+        },
+        async ver(id) { iniciar(); if (await asegurar(id)) abrirVista(id); },
+        async editar(id) { iniciar(); if (await asegurar(id)) abrirFormulario('editar', id); },
+        async eliminar(id) { iniciar(); if (await asegurar(id)) eliminar(id); },
+    };
+
     window.BomiPartes = {
+        historial,
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre "Nuevo parte" con cliente, obra, dirección y localidad ya rellenos.
