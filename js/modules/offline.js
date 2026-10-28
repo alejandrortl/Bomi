@@ -99,6 +99,17 @@
             if (!p.filas || !p.filas.length) return;
             const { error } = await sb.from(p.tabla).upsert(p.filas, { onConflict: 'id', ignoreDuplicates: true });
             if (error) throw error;
+        } else if (p.k === 'funcion') {
+            // Llamada a una Edge Function (p. ej. subir una foto). Un fallo de conexión deja el trabajo pendiente.
+            const { data, error } = await sb.functions.invoke(p.nombre, { body: p.cuerpo, headers: p.cabeceras || {} });
+            if (error) {
+                if (error.name === 'FunctionsFetchError' || error.name === 'FunctionsRelayError') { const e = new Error('Failed to fetch'); e.name = 'TypeError'; throw e; }
+                if (error.context && error.context.status === 401) { const e = new Error('JWT expired'); e.code = 'PGRST301'; throw e; }
+                let msg = error.message;
+                try { const d = await error.context.json(); if (d && d.error) msg = d.error; } catch (e) { /* sin detalle */ }
+                throw new Error(msg);
+            }
+            if (data && data.error) throw new Error(data.error);
         } else if (p.k === 'gancho') {
             const f = ganchos[p.nombre];
             if (!f) return;

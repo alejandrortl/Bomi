@@ -10,7 +10,7 @@ const supabaseAnonKey = 'sb_publishable_4LVqnwoHy428agwAYTcESQ_3r4HwgLM';
 // Toda petición tiene un tiempo máximo: con la señal muy débil no se queda "Guardando..." para siempre.
 function fetchConTiempo(url, opciones) {
     const o = opciones || {};
-    const ms = /\/storage\/v1\//.test(String(url)) ? 90000 : 30000;
+    const ms = /\/storage\/v1\/|\/functions\/v1\/fotos-obra/.test(String(url)) ? 90000 : 30000;
     const ctl = new AbortController();
     const reloj = setTimeout(() => ctl.abort(), ms);
     if (o.signal) { if (o.signal.aborted) ctl.abort(); else o.signal.addEventListener('abort', () => ctl.abort(), { once: true }); }

@@ -512,13 +512,40 @@
 
     const blobADataUrl = (blob) => new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(blob); });
 
+    // ---------- Pestañas: bitácora escrita / fotográfica (la elección se recuerda en este móvil) ----------
+    const CLAVE_PESTANA = 'bomi-bitacora-pestana';
+    let pestana = 'escrita';
+    try { if (localStorage.getItem(CLAVE_PESTANA) === 'fotos') pestana = 'fotos'; } catch (e) { /* sin almacenamiento */ }
+
+    function cambiarPestana(p, recordar) {
+        pestana = p === 'fotos' && window.BomiFotos ? 'fotos' : 'escrita';
+        if (recordar) { try { localStorage.setItem(CLAVE_PESTANA, pestana); } catch (e) { /* sin almacenamiento */ } }
+        const fotos = pestana === 'fotos';
+        document.getElementById('bitacora-escrita').classList.toggle('hidden', fotos);
+        const cf = document.getElementById('bitacora-fotos');
+        cf.classList.toggle('hidden', !fotos);
+        cf.classList.toggle('flex', fotos);
+        document.querySelectorAll('#view-bitacora [data-pestana]').forEach((b) => {
+            const act = b.dataset.pestana === pestana;
+            b.className = 'flex-1 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-1.5 transition-colors ' + (act ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300');
+            b.setAttribute('aria-pressed', String(act));
+        });
+        if (fotos) { window.BomiFotos.montar(cf); return window.BomiFotos.abrir(); }
+        return cargar();
+    }
+
     // ---------- Montaje ----------
     function construirVista() {
         document.getElementById('view-bitacora').innerHTML = `
             <div class="flex justify-between items-center">
                 <h2 class="text-lg font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600">menu_book</span> Bitácora</h2>
-                <span id="bitacora-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium"></span>
             </div>
+            <div class="flex gap-1 bg-slate-100 dark:bg-zinc-800 rounded-full p-1" role="group" aria-label="Qué bitácora ver">
+                <button type="button" data-pestana="escrita" class="flex-1 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">edit_note</span> Escrita</button>
+                <button type="button" data-pestana="fotos" class="flex-1 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">photo_camera</span> Fotográfica</button>
+            </div>
+            <div id="bitacora-escrita" class="flex flex-col gap-4">
+            <div class="flex justify-end -mt-2"><span id="bitacora-count" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-medium"></span></div>
             <div class="sticky top-0 z-10 bg-slate-50 dark:bg-black pt-1 pb-2">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                     <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
@@ -526,7 +553,9 @@
                 </div>
             </div>
             <div id="bitacora-lista" class="flex flex-col gap-3 pb-6"></div>
-            <button type="button" id="fab-new-bitacora" aria-label="Añadir registro" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95"><span class="material-symbols-outlined">add</span></button>`;
+            <button type="button" id="fab-new-bitacora" aria-label="Añadir registro" class="fixed bottom-20 right-4 sm:right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-2xl z-30 flex items-center justify-center transition-transform active:scale-95"><span class="material-symbols-outlined">add</span></button>
+            </div>
+            <div id="bitacora-fotos" class="hidden flex-col gap-4"></div>`;
 
         document.body.insertAdjacentHTML('beforeend', `
             <datalist id="bit-clientes-dl"></datalist>
@@ -544,7 +573,9 @@
 
     function enlazarEventos() {
         document.getElementById('view-bitacora').addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-accion]');
+            const pb = e.target.closest('[data-pestana]');
+            if (pb) { cambiarPestana(pb.dataset.pestana, true); return; }
+            const btn = e.target.closest('#bitacora-escrita [data-accion]');
             if (!btn) return;
             const { accion, id } = btn.dataset;
             if (accion === 'ver') abrirVista(id);
@@ -581,7 +612,10 @@
             if (e.key === 'Escape' && modo && !(window.BomiPizarra && window.BomiPizarra.estaAbierta())) cerrarModal();
         });
         window.addEventListener('clientesActualizados', () => { clientesViejos = true; });
-        window.addEventListener('bomiSincronizado', () => { if (iniciado) cargar().catch(() => {}); });
+        window.addEventListener('bomiSincronizado', (e) => {
+            const tipos = (e.detail && e.detail.tipos) || [];
+            if (iniciado && (!tipos.length || tipos.includes('bitacora'))) cargar().catch(() => {});
+        });
     }
 
     function iniciar() {
@@ -594,9 +628,9 @@
     if (window.BomiAuto) window.BomiAuto.registrar({ cliente: 'b-cliente', obra: 'b-obra', fuente: () => clientes });
 
     window.BomiBitacora = {
-        abrir() { iniciar(); return cargar(); },
+        abrir() { iniciar(); return cambiarPestana(pestana, false); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre un registro nuevo con cliente, obra, dirección, localidad y notas ya rellenos.
-        nuevoConDatos(datos) { iniciar(); return abrirFormulario('nuevo', null, datos || {}); },
+        nuevoConDatos(datos) { iniciar(); cambiarPestana('escrita', false); return abrirFormulario('nuevo', null, datos || {}); },
     };
 })();
