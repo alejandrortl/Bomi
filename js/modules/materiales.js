@@ -633,7 +633,31 @@
         if (campo !== '' || fila.length) { fila.push(campo); filas.push(fila); }
         return filas;
     }
+    // ---------- Descargar el catálogo en CSV (referencia;nombre), listo para Excel y para volver a importar ----------
+    const campoCsv = (v) => { const t = String(v ?? ''); return /[;"\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    // Excel convierte en número las referencias solo de cifras (quita ceros a la izquierda): se escriben como ="0123".
+    const refCsv = (r) => (/^\d+$/.test(String(r ?? '')) ? `="${r}"` : campoCsv(r));
+    async function descargarCatalogo() {
+        const err = document.getElementById('cat-error');
+        const info = document.getElementById('cat-info');
+        err.classList.add('hidden'); info.classList.add('hidden');
+        if (!esAdmin()) return;
+        try { await cargarCatalogo(); } catch (ex) { return fallo(err, 'No se pudo leer el catálogo: ' + mensajeError(ex)); }
+        if (!catalogo.length) return fallo(err, 'El catálogo está vacío: no hay nada que descargar.');
+        const lineas = ['referencia;nombre', ...catalogo.map((m) => refCsv(m.referencia) + ';' + campoCsv(m.nombre_material))];
+        const blob = new Blob(['\uFEFF' + lineas.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `catalogo-materiales-${new Date().toISOString().slice(0, 10)}.csv`; a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+        mensajeInfo(info, `Descargados ${catalogo.length} materiales. Puedes abrir el archivo con Excel, cambiarlo y volver a importarlo.`);
+    }
+
     const limpiarTexto = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+    // Quita el ="0123" que se pone al descargar a las referencias de solo cifras (tras leer el CSV queda =0123).
+    const limpiarRef = (v) => limpiarTexto(v).replace(/^="?(\d+)"?$/, '$1');
 
     async function importarCsv(archivo) {
         const err = document.getElementById('cat-error');
@@ -650,7 +674,7 @@
         // Se limpia: espacios sobrantes, filas vacías y referencias repetidas dentro del archivo (se queda la primera).
         const vistos = new Set(); const lista = []; let vacias = 0, repetidas = 0;
         filas.slice(1).forEach((f) => {
-            const ref = limpiarTexto(f[iRef]); const nombre = limpiarTexto(f[iNom]);
+            const ref = limpiarRef(f[iRef]); const nombre = limpiarTexto(f[iNom]);
             if (!nombre) { vacias++; return; }
             if (ref) { const k = ref.toUpperCase(); if (vistos.has(k)) { repetidas++; return; } vistos.add(k); }
             lista.push({ nombre_material: nombre, referencia: ref || null });
@@ -819,6 +843,7 @@
                         </form>
                         <div class="flex items-center gap-3 flex-wrap">
                             <button type="button" id="cat-importar" data-accion="cat-importar" class="${BTN_SEC} !py-1.5 text-sm"><span class="material-symbols-outlined text-[18px]">upload_file</span> Importar lista (CSV)</button>
+                            <button type="button" id="cat-descargar" data-accion="cat-descargar" class="${BTN_SEC} !py-1.5 text-sm"><span class="material-symbols-outlined text-[18px]">download</span> Descargar lista (CSV)</button>
                             <input id="cat-archivo" type="file" accept=".csv,.txt,text/csv,text/plain" class="hidden" aria-label="Elegir archivo CSV">
                             <span class="text-xs text-slate-500">Columnas: referencia;nombre</span>
                             <label class="w-full flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">Los que no estén en el archivo:
@@ -897,6 +922,7 @@
             else if (a === 'cat-editar') { catEditando = btn.dataset.id; pintarFormCatalogo(); document.getElementById('cat-error').classList.add('hidden'); document.getElementById('cat-material').focus(); }
             else if (a === 'cat-cancelar') { catEditando = null; pintarFormCatalogo(); }
             else if (a === 'cat-importar') document.getElementById('cat-archivo').click();
+            else if (a === 'cat-descargar') descargarCatalogo();
             else if (a === 'cat-eliminar') eliminarCatalogo(btn.dataset.id);
         });
         document.getElementById('form-catalogo').addEventListener('submit', guardarCatalogo);
