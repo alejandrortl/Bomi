@@ -144,7 +144,7 @@
         if (!el) return;
         const falta = config && !config.r2;
         el.classList.toggle('hidden', !falta);
-        el.innerHTML = falta ? '<span class="material-symbols-outlined text-[18px]">info</span><span>La bitácora fotográfica aún no está activada: falta configurar el almacén de fotos. Avisa a un administrador.</span>' : '';
+        el.innerHTML = falta ? `<span class="material-symbols-outlined text-[18px]">info</span><span>La bitácora fotográfica aún no está activada: falta configurar el almacén de fotos. Avisa a un administrador.${esAdmin() && config.motivo ? `<br><span class="text-xs">${esc(config.motivo)}</span>` : ''}</span>` : '';
     }
 
     function pintarLista() {
@@ -161,16 +161,21 @@
 
     // ---------- Carga ----------
     async function cargarConfig() {
-        try { const d = await llamar({ accion: 'estado' }); config = { r2: !!d.r2, drive: !!d.drive }; }
-        // Si no hay red se vuelve a preguntar más tarde; cualquier otro fallo (p. ej. la función aún no está instalada) = sin configurar.
-        catch (ex) { if (navigator.onLine !== false) config = { r2: false, drive: false }; }
+        // El motivo se enseña en el aviso para saber qué paso falta.
+        try {
+            const d = await llamar({ accion: 'estado' });
+            config = { r2: !!d.r2, drive: !!d.drive, motivo: d.r2 ? '' : 'La función fotos-obra responde, pero faltan o están mal los secretos de R2 (R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY).' };
+        } catch (ex) {
+            // Si no hay red se vuelve a preguntar más tarde; cualquier otro fallo (p. ej. la función aún no está instalada) = sin configurar.
+            if (navigator.onLine !== false) config = { r2: false, drive: false, motivo: 'No se puede usar la función fotos-obra (' + (ex && ex.message ? ex.message : 'sin respuesta') + '). Revisa que exista con ese nombre y que «Verify JWT» esté desactivado.' };
+        }
         pintarAvisoConfig();
     }
 
     async function cargar() {
         const cont = document.getElementById('fotos-lista');
         if (cont && !cargado) cont.innerHTML = spinner;
-        if (!config) await cargarConfig();
+        if (!config || !config.r2) await cargarConfig();   // si aún no estaba activada, se vuelve a comprobar cada vez
         if (config && !config.r2) {
             if (cont) cont.innerHTML = aviso('Cuando se active el almacén de fotos, aquí aparecerán las fotos de obra.');
             return;
@@ -372,7 +377,8 @@
     const modalAbierto = () => { const m = document.getElementById('modal-fotos'); return !!m && !m.classList.contains('hidden'); };
 
     async function abrirFormulario(datos) {
-        if (config && !config.r2) { alert('La bitácora fotográfica aún no está activada: falta configurar el almacén de fotos.'); return; }
+        if (config && !config.r2) await cargarConfig();
+        if (config && !config.r2) { alert('La bitácora fotográfica aún no está activada: falta configurar el almacén de fotos.\n\n' + config.motivo); return; }
         try { if (clientesViejos) await cargarClientes(); } catch (ex) { alert('No se pudieron cargar los clientes: ' + mensajeError(ex)); return; }
         liberarSeleccion();
         obraAutorrellena = false;
