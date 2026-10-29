@@ -16,6 +16,8 @@
     async function imagenDataUrl(url) {
         if (!url) return '';
         if (/^data:/.test(url)) return url;
+        // Pizarra guardada en R2 (privada): se pide a través de la función de fotos.
+        if (/^r2:/.test(url)) { try { return window.BomiPizarraNube ? await window.BomiPizarraNube.dataUrl(url) : ''; } catch (e) { return ''; } }
         try {
             const r = await fetch(url, { cache: 'force-cache' });
             if (!r.ok) return '';

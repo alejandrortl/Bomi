@@ -21,7 +21,7 @@
     let guardando = false;
     let modo = null;            // 'nuevo' | 'editar' | 'ver'
     let actual = null;          // registro en edición / visualización
-    let pizarra = null;         // { url, blob, quitada } estado de la pizarra en el formulario
+    let pizarra = null;         // { url, nueva, pend, vistaPrevia, quitada } estado de la pizarra en el formulario
     let reconocimiento = null;
     let escuchando = false;
 
@@ -39,8 +39,11 @@
         const d = new Date(iso);
         return isNaN(d) ? '' : d.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
-    // Solo se pintan imágenes de almacenamiento (https) o PNG incrustados de registros antiguos.
-    const imagenSegura = (u) => (/^https:\/\//.test(u || '') || /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(u || '')) ? u : '';
+    // Solo se pintan pizarras de R2 ("r2:..."), imágenes de almacenamiento (https) o PNG incrustados de registros antiguos.
+    const nube = () => window.BomiPizarraNube;
+    const imagenSegura = (u) => ((nube() && nube().esNube(u)) || /^https:\/\//.test(u || '') || /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(u || '')) ? u : '';
+    const imgPizarra = (v, clases) => (nube() ? nube().img(v, clases) : `<img src="${esc(v)}" alt="Pizarra" class="${esc(clases)}">`);
+    const rellenarPizarras = (raiz) => { if (nube()) nube().rellenar(raiz); };
     const imagenDe = (r) => imagenSegura(r.imagen_pizarra) || imagenSegura(r.pizarra_data);
     const modificado = (r) => !!r.updated_at && !!r.created_at && (new Date(r.updated_at) - new Date(r.created_at) > 5000);
 
@@ -103,7 +106,7 @@
                 </div>
             </div>
             ${r.notas ? `<p class="text-sm whitespace-pre-wrap break-words" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(r.notas)}</p>` : ''}
-            ${img ? `<div class="flex items-center gap-2 text-xs text-slate-500"><img src="${esc(img)}" alt="Pizarra" loading="lazy" class="h-14 w-20 object-contain bg-white rounded-lg border border-slate-200 dark:border-zinc-700"><span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">draw</span> Incluye pizarra</span></div>` : ''}
+            ${img ? `<div class="flex items-center gap-2 text-xs text-slate-500">${imgPizarra(img, 'h-14 w-20 object-contain bg-white rounded-lg border border-slate-200 dark:border-zinc-700')}<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">draw</span> Incluye pizarra</span></div>` : ''}
             ${autoriaHtml(r, false)}
         </article>`;
     }
@@ -117,6 +120,7 @@
         if (!registros.length) { cont.innerHTML = aviso('Aún no hay registros. Pulsa + para añadir el primero.'); return; }
         if (!lista.length) { cont.innerHTML = aviso('No se encontraron resultados.'); return; }
         cont.innerHTML = lista.map(htmlRegistro).join('');
+        rellenarPizarras(cont);
     }
 
     // ---------- Carga ----------
@@ -187,11 +191,12 @@
         if (!cont) return;
         const img = pizarra.nueva ? pizarra.vistaPrevia : (pizarra.quitada ? '' : pizarra.url);
         cont.innerHTML = `
-            ${img ? `<img src="${esc(img)}" alt="Pizarra" class="max-h-48 max-w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700">` : ''}
+            ${img ? imgPizarra(img, 'max-h-48 max-w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700') : ''}
             <div class="flex flex-wrap gap-2">
                 <button type="button" data-accion="pizarra" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">draw</span> ${img ? 'Editar pizarra' : 'Añadir pizarra'}</button>
                 ${img ? `<button type="button" data-accion="quitar-pizarra" class="${BTN_SEC} text-red-600 dark:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span> Quitar</button>` : ''}
             </div>`;
+        rellenarPizarras(cont);
     }
 
     function actualizarDatalists() {
@@ -325,7 +330,7 @@
         modo = m;
         actual = r;
         obraAutorrellena = false;
-        pizarra = { url: r ? imagenDe(r) : '', nueva: false, blob: null, vistaPrevia: '', quitada: false };
+        pizarra = { url: r ? imagenDe(r) : '', nueva: false, pend: null, vistaPrevia: '', quitada: false };
         const form = document.getElementById('form-bitacora');
         form.innerHTML = htmlFormulario(r);
         mostrarModal(m === 'nuevo' ? 'Nuevo registro' : 'Editar registro');
@@ -364,7 +369,7 @@
                 ${direccionHtml(r.direccion, r.localidad)}
             </div>
             <div class="flex flex-col gap-1"><span class="text-xs font-medium">Notas</span>${r.notas ? `<p class="text-sm whitespace-pre-wrap break-words">${esc(r.notas)}</p>` : '<p class="text-sm text-slate-500">Sin notas.</p>'}</div>
-            ${img ? `<div class="flex flex-col gap-1"><span class="text-xs font-medium">Pizarra</span><img src="${esc(img)}" alt="Pizarra" class="w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700"></div>` : ''}
+            ${img ? `<div class="flex flex-col gap-1"><span class="text-xs font-medium">Pizarra</span>${imgPizarra(img, 'w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700')}</div>` : ''}
             <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(r, true)}</div>
             <div class="flex justify-end gap-3">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
@@ -372,6 +377,7 @@
                 <button type="button" data-accion="editar-desde-ver" data-id="${esc(r.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
             </div>`;
         mostrarModal('Registro de bitácora');
+        rellenarPizarras(document.getElementById('form-bitacora'));
     }
 
     // ---------- PDF ----------
@@ -418,12 +424,6 @@
         return { clienteId, obraId, cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, creados: true, pasos };
     }
 
-    // Prepara la subida de la pizarra: devuelve el paso y la URL pública definitiva (se conoce antes de subirla).
-    function planSubirPizarra(blob) {
-        const ruta = `bitacora_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
-        return { paso: { k: 'subida', bucket: 'pizarras', ruta, blob, tipo: 'image/png' }, url: db().storage.from('pizarras').getPublicUrl(ruta).data.publicUrl };
-    }
-
     async function enviar(e) {
         e.preventDefault();
         if (guardando || (modo !== 'nuevo' && modo !== 'editar')) return;
@@ -431,7 +431,7 @@
         const btn = document.getElementById('b-guardar');
         const f = { cliente: val('b-cliente'), obra: val('b-obra'), direccion: val('b-direccion'), localidad: val('b-localidad'), notas: val('b-notas') };
         err.classList.add('hidden');
-        const hayPizarra = pizarra.nueva ? !!pizarra.blob : (!pizarra.quitada && !!pizarra.url);
+        const hayPizarra = pizarra.nueva ? !!pizarra.pend : (!pizarra.quitada && !!pizarra.url);
         if (!f.cliente) return fallo(err, 'Indica el cliente.');
         if (!f.obra) return fallo(err, 'Indica la obra.');
         if (!f.notas && !hayPizarra) return fallo(err, 'Escribe alguna nota o añade una pizarra.');
@@ -454,12 +454,17 @@
             const creados = datos.creados;
             const fila = { cliente_id: datos.clienteId, obra_id: datos.obraId, cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad, notas: f.notas || null };
             const pasos = [...datos.pasos];
-            if (pizarra.nueva && pizarra.blob) { const sp = planSubirPizarra(pizarra.blob); pasos.push(sp.paso); fila.imagen_pizarra = sp.url; fila.pizarra_data = null; }
+            const registroId = modo === 'nuevo' ? O.uuid() : actual.id;
+            if (pizarra.nueva && pizarra.pend) {
+                // La pizarra va a R2 (con copia en Drive) antes que el registro que la usa.
+                const sp = nube().plan(pizarra.pend, { origen: 'bitacora', registroId, cliente: datos.cliente, obra: datos.obra, clienteId: datos.clienteId, obraId: datos.obraId });
+                pasos.push(...sp.pasos); fila.imagen_pizarra = sp.valor; fila.pizarra_data = null;
+            }
             else if (pizarra.quitada) { fila.imagen_pizarra = null; fila.pizarra_data = null; }
 
             if (modo === 'nuevo') {
                 // Un registro nuevo se puede guardar sin conexión: queda en el móvil y se envía solo.
-                pasos.push({ k: 'insert', tabla: 'bitacora', deshacer: true, filas: [{ id: O.uuid(), ...fila, created_by: quien, updated_by: quien }] });
+                pasos.push({ k: 'insert', tabla: 'bitacora', deshacer: true, filas: [{ id: registroId, ...fila, created_by: quien, updated_by: quien }] });
                 const r = await O.guardar({ tipo: 'bitacora', etiqueta: `Bitácora · ${datos.cliente} · ${datos.obra}`, pasos, clientes: creados, pdf: pdfActual() });
                 cerrarModal();
                 if (r.estado === 'enviado') {
@@ -500,14 +505,33 @@
         }
     }
 
+    let abriendoPizarra = false;
     async function abrirPizarra() {
-        if (!window.BomiPizarra) { alert('La pizarra no está disponible.'); return; }
+        if (!window.BomiPizarra || !nube()) { alert('La pizarra no está disponible.'); return; }
+        if (abriendoPizarra) return;
         pararDictado();
-        const imagen = pizarra.nueva ? pizarra.vistaPrevia : (pizarra.quitada ? '' : pizarra.url);
-        const res = await window.BomiPizarra.abrir({ imagen });
+        // Qué se abre: lo dibujado sin guardar todavía, la pizarra guardada (foto de fondo + líneas) o una en blanco.
+        let previo = { claveFondo: null, fondoCambiado: false };
+        let abrir = {};
+        abriendoPizarra = true;
+        try {
+            if (pizarra.nueva && pizarra.pend) {
+                previo = pizarra.pend;
+                abrir = { fondo: previo.fondoBlob ? URL.createObjectURL(previo.fondoBlob) : '', trazos: previo.trazos };
+            } else if (!pizarra.quitada && pizarra.url) {
+                const e = await nube().paraEditar(pizarra.url);
+                previo = { claveFondo: e.claveFondo, fondoCambiado: false };
+                abrir = { fondo: e.fondo, trazos: e.trazos };
+            }
+        } catch (ex) {
+            alert('No se pudo abrir la pizarra guardada: ' + mensajeError(ex) + '\nPara editarla hace falta conexión.');
+            return;
+        } finally { abriendoPizarra = false; }
+        const res = await window.BomiPizarra.abrir(abrir);
+        if (/^blob:/.test(abrir.fondo || '')) URL.revokeObjectURL(abrir.fondo);
         if (!res) return;
-        if (res.vacia) { pizarra = { ...pizarra, nueva: false, blob: null, vistaPrevia: '', quitada: true }; }
-        else { pizarra = { ...pizarra, nueva: true, blob: res.blob, vistaPrevia: await blobADataUrl(res.blob), quitada: false }; }
+        if (res.vacia) { pizarra = { ...pizarra, nueva: false, pend: null, vistaPrevia: '', quitada: true }; }
+        else { pizarra = { ...pizarra, nueva: true, pend: nube().pendiente(res, previo), vistaPrevia: await blobADataUrl(res.blob), quitada: false }; }
         pintarPizarraForm();
     }
 
@@ -596,7 +620,7 @@
             if (a === 'cerrar') cerrarModal();
             else if (a === 'dictar') alternarDictado();
             else if (a === 'pizarra') abrirPizarra();
-            else if (a === 'quitar-pizarra') { pizarra = { ...pizarra, nueva: false, blob: null, vistaPrevia: '', quitada: true }; pintarPizarraForm(); }
+            else if (a === 'quitar-pizarra') { pizarra = { ...pizarra, nueva: false, pend: null, vistaPrevia: '', quitada: true }; pintarPizarraForm(); }
             else if (a === 'pdf') descargarPdf(btn.dataset.id);
             else if (a === 'editar-desde-ver') { const id = btn.dataset.id; cerrarModal(); abrirFormulario('editar', id); }
         });

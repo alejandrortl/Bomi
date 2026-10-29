@@ -7,7 +7,9 @@
 //  - subir  (cabeceras x-accion: subir, x-clave: ruta; cuerpo: la imagen JPG) → la guarda en R2.
 //  - enlaces { claves[] }  → enlaces temporales (6 h) para ver las fotos.
 //  - borrar  { id }        → borra la foto de R2 y su fila. Solo quien la subió o Admin/SuperAdmin.
-//  - drive   { ids? }      → copia a Drive las fotos pendientes (las indicadas o, si no, las más antiguas).
+//  - drive   { ids?, tipo? } → copia a Drive las fotos pendientes (las indicadas o, si no, las más antiguas).
+//                            Con tipo 'pizarras', las pizarras: Bomi - Fotos / <Cliente> / <Obra> / Pizarras / archivo.jpg
+//  - leer    { clave }     → devuelve la imagen (para editar una pizarra con su foto de fondo o meterla en un PDF).
 //  - estado                → si R2 y Drive están configurados.
 //
 // Secretos: R2_ENDPOINT (la URL "S3 API" del bucket), R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY;
@@ -17,7 +19,8 @@ import { AwsClient } from 'npm:aws4fetch@1.0.20';
 
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const MAX_BYTES = 4 * 1024 * 1024;
-const CLAVE_OK = /^fotos\/\d{4}\/\d{2}\/[0-9a-f-]{36}(-m)?\.jpg$/;
+// fotos/AAAA/MM/<id>.jpg (y -m, miniatura) · pizarras/AAAA/MM/<id>.jpg (y -f, la foto de fondo sola)
+const CLAVE_OK = /^(fotos\/\d{4}\/\d{2}\/[0-9a-f-]{36}(-m)?|pizarras\/\d{4}\/\d{2}\/[0-9a-f-]{36}(-f)?)\.jpg$/;
 const CARPETA_DRIVE = 'Bomi - Fotos';
 const DRIVE_POR_LLAMADA = 5;
 const DRIVE_MAX_INTENTOS = 5;
@@ -79,16 +82,24 @@ const limpio = (s: unknown, max: number) => String(s ?? '').replace(/[\\/:*?"<>|
 
 type Foto = { id: string; cliente: string; obra: string; clave: string; subida_por: string | null; tomada_at: string | null; created_at: string; drive_intentos: number };
 
+// Fotos y pizarras se copian igual; cambia la tabla, las columnas y la carpeta final.
+const TIPOS = {
+  fotos: { tabla: 'fotos_obra', columnas: 'id, cliente, obra, clave, subida_por, tomada_at, created_at, drive_intentos', sub: [] as string[], extra: '' },
+  pizarras: { tabla: 'pizarras', columnas: 'id, cliente, obra, clave, subida_por:creada_por, created_at, drive_intentos', sub: ['Pizarras'], extra: ' · Pizarra' },
+};
+type Tipo = keyof typeof TIPOS;
+
 // 2026-10-28 17.20 · Alejandro Ruiz · 1a2b3c.jpg (hora de Madrid; el final del id evita nombres repetidos)
-function nombreDrive(f: Foto): string {
+function nombreDrive(f: Foto, extra = ''): string {
   const d = new Date(f.tomada_at ?? f.created_at);
   const p = Object.fromEntries(new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
     .formatToParts(d).map((x) => [x.type, x.value]));
-  return limpio(`${p.year}-${p.month}-${p.day} ${p.hour}.${p.minute} · ${f.subida_por || 'Sin nombre'} · ${f.id.slice(0, 6)}`, 150) + '.jpg';
+  return limpio(`${p.year}-${p.month}-${p.day} ${p.hour}.${p.minute} · ${f.subida_por || 'Sin nombre'}${extra} · ${f.id.slice(0, 6)}`, 150) + '.jpg';
 }
 
-async function copiarADrive(ids: string[] | null): Promise<{ guardadas: number; errores: number }> {
-  let q = sb.from('fotos_obra').select('id, cliente, obra, clave, subida_por, tomada_at, created_at, drive_intentos')
+async function copiarADrive(ids: string[] | null, tipo: Tipo = 'fotos'): Promise<{ guardadas: number; errores: number }> {
+  const T = TIPOS[tipo];
+  let q = sb.from(T.tabla).select(T.columnas)
     .neq('drive_estado', 'guardada')
     // Tras varios fallos seguidos (p. ej. el script de Drive sin actualizar) solo se vuelve a probar una vez al día.
     .or(`drive_intentos.lt.${DRIVE_MAX_INTENTOS},drive_intento_at.lt.${new Date(Date.now() - 86400000).toISOString()}`)
@@ -97,18 +108,18 @@ async function copiarADrive(ids: string[] | null): Promise<{ guardadas: number; 
   const { data, error } = await q;
   if (error) throw error;
   let guardadas = 0, errores = 0;
-  for (const f of (data ?? []) as Foto[]) {
+  for (const f of (data ?? []) as unknown as Foto[]) {
     // Se marca el intento antes de empezar: si dos llamadas coinciden, solo una se queda con la foto.
-    const { data: mia } = await sb.from('fotos_obra').update({ drive_intentos: f.drive_intentos + 1, drive_intento_at: new Date().toISOString() })
+    const { data: mia } = await sb.from(T.tabla).update({ drive_intentos: f.drive_intentos + 1, drive_intento_at: new Date().toISOString() })
       .eq('id', f.id).eq('drive_intentos', f.drive_intentos).neq('drive_estado', 'guardada').select('id');
     if (!mia || !mia.length) continue;
     try {
       const img = new Uint8Array(await (await r2Pedir('GET', f.clave)).arrayBuffer());
-      const g = await subirDrive([limpio(f.cliente, 80) || 'Sin cliente', limpio(f.obra, 80) || 'Sin obra'], nombreDrive(f), aBase64(img));
-      await sb.from('fotos_obra').update({ drive_estado: 'guardada', drive_id: g.id, drive_enlace: g.enlace, drive_error: null }).eq('id', f.id);
+      const g = await subirDrive([limpio(f.cliente, 80) || 'Sin cliente', limpio(f.obra, 80) || 'Sin obra', ...T.sub], nombreDrive(f, T.extra), aBase64(img));
+      await sb.from(T.tabla).update({ drive_estado: 'guardada', drive_id: g.id, drive_enlace: g.enlace, drive_error: null }).eq('id', f.id);
       guardadas++;
     } catch (e) {
-      await sb.from('fotos_obra').update({ drive_estado: 'error', drive_error: String((e as Error).message ?? e).slice(0, 300) }).eq('id', f.id);
+      await sb.from(T.tabla).update({ drive_estado: 'error', drive_error: String((e as Error).message ?? e).slice(0, 300) }).eq('id', f.id);
       errores++;
     }
   }
@@ -168,7 +179,15 @@ Deno.serve(async (req) => {
     if (accion === 'drive') {
       if (!driveConfigurado() || !r2Configurado()) return json({ estado: 'sin_configurar' });
       const ids = Array.isArray(cuerpo.ids) ? cuerpo.ids.filter((x: unknown) => typeof x === 'string') : null;
-      return json({ estado: 'hecho', ...(await copiarADrive(ids)) });
+      return json({ estado: 'hecho', ...(await copiarADrive(ids, cuerpo.tipo === 'pizarras' ? 'pizarras' : 'fotos')) });
+    }
+
+    if (accion === 'leer') {
+      if (!r2Configurado()) return json({ error: 'El almacén de fotos (R2) aún no está configurado.', codigo: 'sin_configurar' }, 503);
+      if (typeof cuerpo.clave !== 'string' || !CLAVE_OK.test(cuerpo.clave)) return json({ error: 'Nombre de imagen no válido' }, 400);
+      const r = await r2Pedir('GET', cuerpo.clave);
+      // octet-stream: así supabase-js lo entrega como Blob (con image/jpeg lo convertiría en texto).
+      return new Response(r.body, { headers: { ...CORS, 'Content-Type': 'application/octet-stream', 'Cache-Control': 'private, max-age=86400' } });
     }
 
     return json({ error: 'Acción desconocida' }, 400);

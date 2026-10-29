@@ -332,43 +332,56 @@
 
     // PIZARRA (la misma que usa la Bitácora: js/modules/pizarra.js)
     // El contenedor lleva "hidden" e "inline-block" a la vez; se alterna con style para que no compitan.
-    // Dibujo hecho sin conexión: se sube junto con la tarea cuando haya señal.
-    let dibujoPend = null;   // { ruta, blob, url, vista }
-    function setDibujo(url, vista) {
-        if (!vista) dibujoPend = null;
+    // El dibujo se guarda en R2 (con copia en Drive) al guardar la tarea, también si se guarda sin conexión.
+    // tarea-dibujo-url guarda lo que ya está guardado ("r2:..." o la URL de un dibujo antiguo); lo nuevo espera en dibujoPend.
+    let dibujoPend = null;   // { blob, trazos, fondoBlob, fondoCambiado, claveFondo, vista }
+    const nubeT = () => window.BomiPizarraNube;
+    function setDibujo(url) {
+        dibujoPend = null;
         document.getElementById('tarea-dibujo-url').value = url || '';
+        pintarDibujo();
+    }
+    function pintarDibujo() {
+        const url = document.getElementById('tarea-dibujo-url').value;
         const prev = document.getElementById('preview-dibujo');
-        if (url) document.getElementById('img-dibujo-preview').src = vista || url;
-        if (prev) prev.style.display = url ? 'inline-block' : 'none';
+        const img = document.getElementById('img-dibujo-preview');
+        const hay = !!(dibujoPend || url);
+        if (dibujoPend) img.src = dibujoPend.vista;
+        else if (url && nubeT() && nubeT().esNube(url)) { img.removeAttribute('src'); nubeT().enlace(url).then((u) => { if (u && document.getElementById('tarea-dibujo-url').value === url && !dibujoPend) img.src = u; }).catch(() => {}); }
+        else if (url) img.src = url;
+        if (prev) prev.style.display = hay ? 'inline-block' : 'none';
     }
     const blobADataUrlT = (blob) => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(blob); });
 
     const btnAbrirPizarra = document.getElementById('btn-abrir-pizarra');
+    let abriendoDibujo = false;
     if (btnAbrirPizarra) {
         btnAbrirPizarra.addEventListener('click', async () => {
-            if (!window.BomiPizarra) { alert('La pizarra no está disponible.'); return; }
+            if (!window.BomiPizarra || !nubeT()) { alert('La pizarra no está disponible.'); return; }
+            if (abriendoDibujo) return;
             const actualUrl = document.getElementById('tarea-dibujo-url').value;
-            const res = await window.BomiPizarra.abrir({ imagen: dibujoPend ? dibujoPend.vista : actualUrl });
+            let previo = { claveFondo: null, fondoCambiado: false };
+            let abrir = {};
+            abriendoDibujo = true;
+            try {
+                if (dibujoPend) {
+                    previo = dibujoPend;
+                    abrir = { fondo: previo.fondoBlob ? URL.createObjectURL(previo.fondoBlob) : '', trazos: previo.trazos };
+                } else if (actualUrl) {
+                    const e = await nubeT().paraEditar(actualUrl);
+                    previo = { claveFondo: e.claveFondo, fondoCambiado: false };
+                    abrir = { fondo: e.fondo, trazos: e.trazos };
+                }
+            } catch (ex) {
+                alert('No se pudo abrir el dibujo guardado: ' + window.BomiOffline.mensaje(ex) + '\nPara editarlo hace falta conexión.');
+                return;
+            } finally { abriendoDibujo = false; }
+            const res = await window.BomiPizarra.abrir(abrir);
+            if (/^blob:/.test(abrir.fondo || '')) URL.revokeObjectURL(abrir.fondo);
             if (!res) return;
             if (res.vacia) { setDibujo(''); return; }
-            const fileName = `diario_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
-            const url = supabaseClient.storage.from('pizarras').getPublicUrl(fileName).data.publicUrl;
-            let error = null;
-            try { ({ error } = await supabaseClient.storage.from('pizarras').upload(fileName, res.blob, { contentType: 'image/png' })); }
-            catch (ex) { error = ex; }
-            if (error) {
-                if (window.BomiOffline.esRed(error)) {
-                    // Sin conexión: se conserva el dibujo y se sube al guardar la tarea.
-                    const vista = await blobADataUrlT(res.blob);
-                    setDibujo(url, vista);
-                    dibujoPend = { ruta: fileName, blob: res.blob, url, vista };
-                    window.BomiOffline.toast('Sin conexión: el dibujo se enviará al guardar la tarea.', 'aviso');
-                    return;
-                }
-                alert('No se pudo guardar el dibujo: ' + (error.message || error));
-                return;
-            }
-            setDibujo(url);
+            dibujoPend = { ...nubeT().pendiente(res, previo), vista: await blobADataUrlT(res.blob) };
+            pintarDibujo();
         });
         document.getElementById('btn-borrar-dibujo').addEventListener('click', () => setDibujo(''));
     }
@@ -477,10 +490,10 @@
             notas,
             dibujo_url: dibujoUrl
         };
-        const dibujoSinSubir = !!dibujoPend && dibujoPend.url === dibujoUrl;
+        const pendDibujo = dibujoPend;
         // PDF con lo que hay escrito (por si no se puede guardar).
         const pdfTarea = () => ({
-            items: itemsPdfTarea({ ...tareaData, created_by: username, completada: false, dibujo_url: dibujoSinSubir ? dibujoPend.vista : dibujoUrl }),
+            items: itemsPdfTarea({ ...tareaData, created_by: username, completada: false, dibujo_url: pendDibujo ? pendDibujo.vista : dibujoUrl }),
             nombre: window.BomiPdf.nombreSeguro(['tarea', tareaData.fecha, cName, oName], 80)
         });
 
@@ -503,7 +516,13 @@
                 pasos.push({ k: 'insert', tabla: 'obras', filas: [{ id: O.uuid(), cliente_id: clienteId, nombre: oName, direccion: dName, localidad: lName }] });
                 creados = true;
             }
-            if (dibujoSinSubir) pasos.push({ k: 'subida', bucket: 'pizarras', ruta: dibujoPend.ruta, blob: dibujoPend.blob, tipo: 'image/png' });
+            const tareaId = editId || O.uuid();
+            if (pendDibujo) {
+                // El dibujo va a R2 (con copia en Drive) antes que la tarea que lo usa.
+                const sp = nubeT().plan(pendDibujo, { origen: 'tarea', registroId: tareaId, cliente: cName, obra: oName, clienteId });
+                pasos.push(...sp.pasos);
+                tareaData.dibujo_url = sp.valor;
+            }
             const avisoDatos = operario && (!window.currentUserProfile || operario.id !== window.currentUserProfile.id)
                 ? { operarioId: operario.id, fecha: tareaData.fecha, cliente: cName, obra: oName, quien: username } : null;
 
@@ -514,7 +533,7 @@
                 tareaData.user_id = window.currentUserProfile ? window.currentUserProfile.id : null;
                 tareaData.created_by = username;
                 tareaData.completada = false;
-                pasos.push({ k: 'insert', tabla: 'tareas', deshacer: true, filas: [{ id: O.uuid(), ...tareaData }] });
+                pasos.push({ k: 'insert', tabla: 'tareas', deshacer: true, filas: [{ id: tareaId, ...tareaData }] });
                 if (avisoDatos) pasos.push({ k: 'gancho', nombre: 'tarea-aviso', datos: avisoDatos });
                 const r = await O.guardar({ tipo: 'diario', etiqueta: `Tarea del ${fechaES(tareaData.fecha)} · ${cName} · ${oName}`, pasos, clientes: creados, pdf: pdfTarea() });
                 dibujoPend = null;
@@ -726,11 +745,12 @@
             ${contactos ? `<div><span class="text-xs text-slate-500">Contacto:</span>${contactos}</div>` : ''}
             <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || '')}</p></div>
             <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-wrap break-words">${escT(item.notas || 'N/A')}</p></div>
-            ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span><img src="${escT(item.dibujo_url)}" class="mt-2 rounded-xl max-h-48 border border-slate-200"></div>` : ''}
+            ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span>${window.BomiPizarraNube ? window.BomiPizarraNube.img(item.dibujo_url, 'mt-2 rounded-xl max-h-48 border border-slate-200', 'Dibujo') : `<img src="${escT(item.dibujo_url)}" class="mt-2 rounded-xl max-h-48 border border-slate-200">`}</div>` : ''}
             <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 mt-4">
                 <span>Creado por: ${escT(item.created_by || '?')} ${item.updated_by ? '<br>Editado por: ' + escT(item.updated_by) : ''}</span>
             </div>
         `;
+        if (window.BomiPizarraNube) window.BomiPizarraNube.rellenar(document.getElementById('detalle-tarea-content'));
     };
 
     // PDF de la tarea: BomiPdf lo dibuja directamente (con logotipo y datos de la empresa arriba), sin capturar la pantalla.

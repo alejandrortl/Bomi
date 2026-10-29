@@ -1,9 +1,14 @@
 // js/modules/pizarra.js
 // Pizarra de dibujo a mano alzada. Script clásico: expone window.BomiPizarra.abrir(opciones).
 // Herramientas: lápiz, línea recta, círculo, óvalo y borrador; 4 colores; 2 grosores; deshacer y borrar todo.
-// abrir({ imagen }) devuelve una promesa con:
-//   null                      -> el usuario canceló
-//   { blob, vacia: false }    -> imagen PNG lista para subir
+// Foto de fondo opcional (cámara o galería): se reduce a 1000×700 (JPG) y se dibuja encima.
+// El dibujo va en una capa aparte: el borrador solo borra líneas, nunca la foto.
+// abrir({ fondo, trazos }) — fondo: URL de la foto de fondo (o de un dibujo antiguo); trazos: líneas guardadas.
+// Devuelve una promesa con:
+//   null                        -> el usuario canceló
+//   { vacia: false, blob, trazos, fondoBlob, fondoCambiado }
+//        blob: imagen final JPG (foto + dibujo); trazos: las líneas (para poder editarlas después);
+//        fondoBlob: la foto de fondo sola en JPG 1000×700 (null si no hay); fondoCambiado: si se puso, cambió o quitó la foto.
 //   { blob: null, vacia: true } -> dejó la pizarra en blanco (equivale a quitar el dibujo)
 (function () {
     'use strict';
@@ -24,6 +29,7 @@
         ['borrador', 'ink_eraser', 'Borrador'],
     ];
     const FACTOR_BORRADOR = 4;   // el borrador es 4 veces más ancho que el lápiz
+    const CALIDAD = 0.85;
     const ANCHOS = [['Fino', 3], ['Grueso', 8]];
     const BTN = 'shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800';
     const ACTIVO = ['ring-2', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-950'];
@@ -31,6 +37,8 @@
     let modal = null;
     let canvas = null;
     let ctx = null;
+    let capa = null;        // lienzo invisible con solo el dibujo (sobre fondo transparente)
+    let cctx = null;
     let st = null;          // estado de la sesión de dibujo
     let resolver = null;
 
@@ -48,6 +56,11 @@
                     <div class="flex gap-1" role="group" aria-label="Grosor">
                         ${ANCHOS.map(([et, w]) => `<button type="button" data-ancho="${w}" aria-label="${et}" title="${et}" class="${BTN}"><span class="rounded-full bg-current" style="width:${w + 4}px;height:${w + 4}px"></span></button>`).join('')}
                     </div>
+                    <div class="flex gap-1" role="group" aria-label="Foto de fondo">
+                        <button type="button" id="piz-foto" aria-label="Foto de fondo" title="Foto de fondo" class="${BTN}"><span class="material-symbols-outlined">add_a_photo</span></button>
+                        <button type="button" id="piz-quitar-foto" aria-label="Quitar foto de fondo" title="Quitar foto de fondo" class="${BTN}" style="display:none"><span class="material-symbols-outlined">close</span></button>
+                        <input type="file" id="piz-foto-input" accept="image/*" class="hidden">
+                    </div>
                     <div class="flex gap-1 ml-auto">
                         <button type="button" id="piz-deshacer" aria-label="Deshacer" title="Deshacer" class="${BTN}"><span class="material-symbols-outlined">undo</span></button>
                         <button type="button" id="piz-borrar" aria-label="Borrar todo" title="Borrar todo" class="${BTN} text-red-600"><span class="material-symbols-outlined">delete</span></button>
@@ -64,6 +77,14 @@
         modal = document.getElementById('modal-pizarra-bit');
         canvas = document.getElementById('piz-canvas');
         ctx = canvas.getContext('2d');
+        capa = document.createElement('canvas');
+        capa.width = W; capa.height = H;
+        cctx = capa.getContext('2d');
+        document.getElementById('piz-foto-input').addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (file && st) await ponerFoto(file);
+        });
 
         modal.addEventListener('click', (e) => {
             const b = e.target.closest('button');
@@ -72,7 +93,13 @@
             else if (b.dataset.color) { st.color = b.dataset.color; marcar(); }
             else if (b.dataset.ancho) { st.ancho = Number(b.dataset.ancho); marcar(); }
             else if (b.id === 'piz-deshacer') { st.formas.pop(); dibujar(); }
-            else if (b.id === 'piz-borrar') { st.formas = []; st.base = null; dibujar(); }
+            else if (b.id === 'piz-borrar') {
+                if ((st.formas.length || st.base) && !confirm('¿Borrar todo el dibujo' + (st.base ? ' y la foto de fondo' : '') + '?')) return;
+                if (st.base) st.fondoCambiado = true;
+                st.formas = []; quitarFondo(); dibujar();
+            }
+            else if (b.id === 'piz-foto') document.getElementById('piz-foto-input').click();
+            else if (b.id === 'piz-quitar-foto') { if (confirm('¿Quitar la foto de fondo? El dibujo se mantiene.')) { quitarFondo(); st.fondoCambiado = true; dibujar(); } }
             else if (b.id === 'piz-cancelar') cerrar(null);
             else if (b.id === 'piz-listo') terminar();
         });
@@ -86,6 +113,8 @@
     const abierta = () => !!modal && !modal.classList.contains('hidden');
 
     function marcar() {
+        // style en vez de la clase hidden: el botón ya trae "flex" y ambas clases competirían.
+        document.getElementById('piz-quitar-foto').style.display = st.base ? '' : 'none';
         modal.querySelectorAll('[data-herramienta]').forEach((b) => ACTIVO.forEach((c) => b.classList.toggle(c, b.dataset.herramienta === st.herramienta)));
         modal.querySelectorAll('[data-ancho]').forEach((b) => ACTIVO.forEach((c) => b.classList.toggle(c, Number(b.dataset.ancho) === st.ancho)));
         modal.querySelectorAll('[data-color]').forEach((b) => {
@@ -99,6 +128,9 @@
 
     // ---------- Dibujo ----------
     function trazar(f) {
+        const ctx = cctx;
+        // El borrador quita lo dibujado en la capa (deja ver la foto o el blanco de debajo).
+        ctx.globalCompositeOperation = f.tipo === 'borrador' ? 'destination-out' : 'source-over';
         ctx.strokeStyle = f.color;
         ctx.fillStyle = f.color;
         ctx.lineWidth = f.ancho;
@@ -123,17 +155,50 @@
         ctx.stroke();
     }
 
+    // La foto (o un dibujo antiguo) se encaja entera en 1000×700, centrada, con blanco alrededor.
+    function pintarFondo(c, img) {
+        c.fillStyle = '#ffffff';
+        c.fillRect(0, 0, W, H);
+        if (!img) return;
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        const k = Math.min(W / iw, H / ih);
+        c.imageSmoothingQuality = 'high';
+        c.drawImage(img, (W - iw * k) / 2, (H - ih * k) / 2, iw * k, ih * k);
+    }
+
     function dibujar() {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, W, H);
-        if (st.base) {
-            const k = Math.min(W / st.base.naturalWidth, H / st.base.naturalHeight);
-            const w = st.base.naturalWidth * k;
-            const h = st.base.naturalHeight * k;
-            ctx.drawImage(st.base, (W - w) / 2, (H - h) / 2, w, h);
-        }
+        cctx.globalCompositeOperation = 'source-over';
+        cctx.clearRect(0, 0, W, H);
         st.formas.forEach(trazar);
         if (st.actual) trazar(st.actual);
+        cctx.globalCompositeOperation = 'source-over';
+        pintarFondo(ctx, st.base);
+        ctx.drawImage(capa, 0, 0);
+    }
+
+    function quitarFondo() {
+        if (st.base && st.base.close) st.base.close();
+        st.base = null;
+    }
+
+    async function ponerFoto(file) {
+        let img = null;
+        try {
+            if (window.createImageBitmap) {
+                try { img = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { img = null; }
+            }
+            if (!img) {
+                const url = URL.createObjectURL(file);
+                img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('formato')); i.src = url; });
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+        } catch (e) { alert('No se pudo abrir esa foto. Prueba con otra (JPG o PNG).'); return; }
+        if (!st) return;
+        quitarFondo();
+        st.base = img;
+        st.fondoCambiado = true;
+        marcar();
+        dibujar();
     }
 
     function pos(e) {
@@ -146,7 +211,7 @@
         e.preventDefault();
         canvas.setPointerCapture(e.pointerId);
         const borra = st.herramienta === 'borrador';
-        // El borrador pinta de blanco (el fondo del lienzo), también sobre un dibujo anterior; se puede deshacer.
+        // El borrador quita lo dibujado (no la foto de fondo); se puede deshacer.
         st.actual = { tipo: st.herramienta, color: borra ? '#ffffff' : st.color, ancho: borra ? st.ancho * FACTOR_BORRADOR : st.ancho, puntos: [pos(e)] };
         dibujar();
     }
@@ -175,7 +240,7 @@
             if (!url) { ok(null); return; }
             const img = new Image();
             // Las imágenes del almacenamiento de Supabase admiten CORS; sin esto el lienzo no se podría exportar.
-            if (!/^data:/.test(url)) img.crossOrigin = 'anonymous';
+            if (!/^(data|blob):/.test(url)) img.crossOrigin = 'anonymous';
             img.onload = () => ok(img);
             img.onerror = () => ok(false);
             img.src = url;
@@ -191,21 +256,37 @@
         if (r) r(resultado);
     }
 
-    function terminar() {
+    const aJpg = (c) => new Promise((ok) => c.toBlob(ok, 'image/jpeg', CALIDAD));
+    // Coordenadas con un decimal: el dibujo ocupa poco y se ve igual.
+    const redondear = (formas) => formas.map((f) => ({ tipo: f.tipo, color: f.color, ancho: f.ancho, puntos: f.puntos.map((p) => ({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 })) }));
+
+    async function terminar() {
+        if (st.terminando) return;
         const vacia = !st.base && st.formas.length === 0;
         // Si no se pudo cargar el dibujo anterior, "vacía" no significa que el usuario lo borrara: no se toca nada.
         if (vacia) { cerrar(st.falloBase ? null : { blob: null, vacia: true }); return; }
-        canvas.toBlob((blob) => {
-            if (!blob) { alert('No se pudo generar la imagen de la pizarra.'); return; }
-            cerrar({ blob, vacia: false });
-        }, 'image/png');
+        st.terminando = true;
+        dibujar();
+        let fondoBlob = null;
+        if (st.base) {
+            const c = document.createElement('canvas');
+            c.width = W; c.height = H;
+            pintarFondo(c.getContext('2d'), st.base);
+            fondoBlob = await aJpg(c);
+        }
+        const blob = await aJpg(canvas);
+        if (!st) return;
+        st.terminando = false;
+        if (!blob || (st.base && !fondoBlob)) { alert('No se pudo generar la imagen de la pizarra.'); return; }
+        cerrar({ vacia: false, blob, trazos: redondear(st.formas), fondoBlob, fondoCambiado: st.fondoCambiado });
     }
 
     async function abrir(opciones = {}) {
         construir();
         if (resolver) return null;
-        const base = await cargarImagen(opciones.imagen);
-        st = { herramienta: 'lapiz', color: COLORES[0][1], ancho: ANCHOS[0][1], formas: [], base: base || null, falloBase: base === false, actual: null };
+        const base = await cargarImagen(opciones.fondo || opciones.imagen);
+        const formas = Array.isArray(opciones.trazos) ? opciones.trazos.filter((f) => f && Array.isArray(f.puntos) && f.puntos.length) : [];
+        st = { herramienta: 'lapiz', color: COLORES[0][1], ancho: ANCHOS[0][1], formas, base: base || null, falloBase: base === false, actual: null, fondoCambiado: false };
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         marcar();
