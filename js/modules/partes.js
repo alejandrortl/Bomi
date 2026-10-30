@@ -25,6 +25,7 @@
     let busqueda = '';
     let soloMios = false;
     let guardando = false;
+    let union = null;            // parte nuevo: el parte del mismo día y obra y lo que eligió el operario (ver avisarUnion)
     // Mientras no se ejecute en Supabase la migración de «unir partes», no existe la columna aportado_por del material.
     let conAportado = true;
     const sel = () => (conAportado ? SELECT_CON_APORTADO : SELECT_SIN_APORTADO);
@@ -486,23 +487,66 @@
         avisarUnion();
     }
 
-    // Parte nuevo: si ese día ya hay un parte sin bloquear en la misma obra, lo que se guarde se añadirá a él.
-    // Es solo un aviso con los partes de la lista: quien decide al guardar es el servidor (crear_parte).
+    // Parte nuevo: si ese día ya hay un parte sin bloquear en la misma obra, el operario elige si añadir lo suyo a ese parte
+    // o crear uno nuevo. Si ya figura en él como operario, elige entre modificar ese parte, crear uno nuevo o cancelar.
+    // Se mira con los partes de la lista; al guardar decide el servidor (crear_parte), que también une los guardados sin conexión.
     function avisarUnion() {
-        const el = document.getElementById('par-union');
-        if (!el) return;
-        let msg = '';
         const fecha = val('par-fecha'), obra = norm(val('par-obra')), cli = norm(val('par-cliente'));
+        let abierto = null, bloqueado = false;
         if (modo === 'nuevo' && fecha && obra) {
             const mismos = partes.filter((p) => p.fecha === fecha && norm(p.obra) === obra && norm(p.cliente) === cli);
-            const abierto = mismos.filter((p) => !p.bloqueado).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
-            if (abierto) {
-                const quienes = ops(abierto).map((o) => o.operario_nombre).filter(Boolean).join(', ') || abierto.created_by || 'otro operario';
-                msg = `Ya hay un parte del ${fechaES(fecha)} en esta obra (${quienes}). Lo que escribas se añadirá a ese parte, con tu nombre.`;
-            } else if (mismos.length) msg = `El parte del ${fechaES(fecha)} en esta obra ya está bloqueado: se creará un parte nuevo.`;
+            abierto = mismos.filter((p) => !p.bloqueado).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0] || null;
+            bloqueado = !abierto && mismos.length > 0;
         }
-        el.innerHTML = msg ? `<span class="material-symbols-outlined text-[20px] shrink-0">group</span><span>${esc(msg)}</span>` : '';
-        el.classList.toggle('hidden', !msg);
+        if (!abierto) union = bloqueado ? { bloqueado: true, fecha } : null;
+        else if (!union || union.id !== abierto.id) {
+            const mias = ops(abierto).filter((o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === norm(miNombre()));
+            union = { id: abierto.id, fecha, figuro: mias.length > 0, horas: mias.map((o) => o.horas).filter(Boolean).join(' + '),
+                quienes: ops(abierto).map((o) => o.operario_nombre).filter(Boolean).join(', ') || abierto.created_by || 'otro operario',
+                firma: null, eleccion: mias.length ? null : 'unir' };
+            const u = union;
+            tieneFirma(abierto.id).then((v) => { u.firma = v; if (union === u) pintarUnion(); });
+        }
+        pintarUnion();
+    }
+    async function tieneFirma(id) {
+        try {
+            const { data, error } = await db().from('partes_trabajo').select('id').eq('id', id).not('firma_digital', 'is', null).limit(1);
+            return error ? null : !!(data && data.length);
+        } catch (e) { return null; }   // sin conexión: no se sabe (decide el servidor)
+    }
+    // Ese parte ya tiene firma y se quiere añadir otra: no caben dos firmas, se creará un parte nuevo.
+    const firmaChoca = () => !!union && union.eleccion === 'unir' && union.firma === true;
+    function pintarUnion() {
+        const el = document.getElementById('par-union');
+        if (!el) return;
+        const u = union;
+        const opcion = (accion, texto, activa) => `<button type="button" data-accion="${accion}" aria-pressed="${activa}" class="text-sm px-4 py-2 rounded-full font-medium border ${activa ? 'bg-blue-600 border-blue-600 text-white' : 'border-blue-600 text-blue-700 dark:text-blue-300'}">${texto}</button>`;
+        let html = '';
+        if (u && u.bloqueado) html = `<p>El parte del ${esc(fechaES(u.fecha))} en esta obra ya está bloqueado: se creará un parte nuevo.</p>`;
+        else if (u && u.figuro && u.eleccion !== 'nuevo') {
+            html = `<p>Ya hay un parte del ${esc(fechaES(u.fecha))} en esta obra y <strong>ya figuras en él como operario</strong> ${u.horas ? `con ${esc(u.horas)} horas` : 'sin horas apuntadas'}. ¿Qué quieres hacer?</p>
+                <div class="flex flex-wrap gap-2">${opcion('union-modificar', 'Modificar ese parte', false)}${opcion('union-nuevo', 'Crear parte nuevo', false)}${opcion('cerrar', 'Cancelar', false)}</div>`;
+        } else if (u && u.figuro) {
+            html = `<p>Se creará un parte nuevo, aparte del que ya hay ese día en esta obra.</p><div>${opcion('union-volver', 'Cambiar', false)}</div>`;
+        } else if (u) {
+            html = `<p>Ya hay un parte del ${esc(fechaES(u.fecha))} en esta obra (${esc(u.quienes)}). ¿Qué quieres hacer?</p>
+                <div class="flex flex-wrap gap-2">${opcion('union-unir', 'Añadir a ese parte', u.eleccion === 'unir')}${opcion('union-nuevo', 'Crear parte nuevo', u.eleccion === 'nuevo')}</div>
+                <p class="text-xs">${u.eleccion === 'unir' ? 'Lo que escribas se añadirá a ese parte con tu nombre, y figurarás como operario.' : 'Se creará un parte nuevo, aparte del que ya hay.'}</p>
+                ${u.eleccion === 'unir' && u.firma ? '<p class="text-xs font-semibold">Ese parte ya tiene la firma del cliente: si añades una firma, se creará un parte nuevo.</p>' : ''}`;
+        }
+        el.innerHTML = html ? `<span class="material-symbols-outlined text-[20px] shrink-0">group</span><div class="flex flex-col gap-2 min-w-0">${html}</div>` : '';
+        el.classList.toggle('hidden', !html);
+    }
+    function elegirUnion(accion) {
+        if (!union || union.bloqueado) return;
+        if (accion === 'union-modificar') { const id = union.id; cerrarModal(); abrirFormulario('editar', id); return; }
+        union.eleccion = accion === 'union-unir' ? 'unir' : accion === 'union-nuevo' ? 'nuevo' : null;
+        if (union.eleccion === 'unir' && union.firma && firma.url && !firma.quitada) {
+            alert('Ese parte ya tiene la firma del cliente. Como has añadido una firma, se creará un parte nuevo.');
+            union.eleccion = 'nuevo';
+        }
+        pintarUnion();
     }
 
     // Material ↔ referencia: al elegir un material de la lista se rellena la referencia, y al elegir una referencia se rellena el material.
@@ -655,7 +699,7 @@
         const m = document.getElementById('modal-parte');
         if (!m) return;
         m.classList.add('hidden'); m.classList.remove('flex');
-        modo = null; actual = null; obraAutorrellena = false;
+        modo = null; actual = null; obraAutorrellena = false; union = null;
     }
 
     async function abrirFormulario(m, id, datos) {
@@ -667,7 +711,7 @@
             await Promise.all([clientesViejos ? cargarClientes().catch(sinRed) : null, cargarEmpleados().catch(sinRed), cargarCatalogo().catch(() => {})]);
             firma = { url: p ? await cargarFirma(p.id) : '', quitada: false, cambiada: false };
         } catch (ex) { alert('No se pudieron cargar los datos: ' + mensajeError(ex)); return; }
-        modo = m; actual = p; obraAutorrellena = false;
+        modo = m; actual = p; obraAutorrellena = false; union = null;
         document.getElementById('form-parte').innerHTML = htmlFormulario(p);
         mostrarModal(m === 'nuevo' ? 'Nuevo parte' : 'Editar parte');
         actualizarDatalists();
@@ -793,6 +837,7 @@
         const materiales = leerMateriales();
         if (!f.obra) return fallo(err, 'Indica la obra.');
         if (!f.fecha) return fallo(err, 'Indica la fecha.');
+        if (modo === 'nuevo' && union && !union.bloqueado && !union.eleccion) return fallo(err, 'Ya figuras en el parte de ese día en esta obra: elige si modificar ese parte, crear uno nuevo o cancelar.');
         if (!operarios.length || operarios.some((o) => !o.nombre)) return fallo(err, 'Indica el nombre de cada operario (o quita las líneas vacías).');
         const yoEstoy = operarios.some((o) => norm(o.nombre) === norm(miNombre()));
         if (modo === 'editar' && !esAdmin() && actual.created_by_id !== yo().id && !yoEstoy) return fallo(err, 'Tu nombre debe seguir figurando entre los operarios para poder guardar el parte.');
@@ -837,12 +882,13 @@
                     { k: 'insert', tabla: 'partes_operarios', deshacer: true, filas: opsParte }];
                 if (items.length) deSiempre.push({ k: 'insert', tabla: 'partes_materiales', deshacer: true, filas: items.map(({ aportado_por, ...it }) => ({ id: O.uuid(), ...it, parte_id: parteId })) });
                 const pasoParte = { k: 'rpc', nombre: 'crear_parte', siNoExiste: deSiempre,
-                    args: { p_parte: filaParte, p_operarios: opsParte.map(({ id, parte_id, ...r }) => r), p_materiales: items } };
+                    args: { p_parte: filaParte, p_operarios: opsParte.map(({ id, parte_id, ...r }) => r), p_materiales: items, p_unir: !(union && union.eleccion === 'nuevo') } };
                 const r = await O.guardar({ tipo: 'parte', etiqueta: `Parte del ${fechaES(f.fecha)} · ${datos.cliente} · ${datos.obra}`, pasos: [...datos.pasos, pasoParte], clientes: creados, pdf: pdfActual() });
                 cerrarModal();
                 if (r.estado === 'enviado') {
                     const res = pasoParte.resultado;
                     if (res && res.unido) O.toast(`Añadido al parte de ${res.autor || 'otro operario'}: ya había un parte ese día en esta obra.`, 'ok');
+                    else if (res && res.motivo === 'firma') O.toast('Se ha creado un parte nuevo: el que ya había ese día en esta obra tiene la firma del cliente.', 'ok');
                     await cargar();
                     if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
                 }
@@ -1020,7 +1066,13 @@
                 fs[fs.length - 1].querySelector('[data-campo=cantidad]').focus();
             } else if (a === 'quitar-material') btn.closest('[data-material]').remove();
             else if (a === 'dictar') alternarDictado();
-            else if (a === 'firmar') abrirFirma();
+            else if (a === 'firmar') {
+                if (firmaChoca()) {
+                    if (!confirm('Ese parte ya tiene la firma del cliente.\n\nSi añades una firma, se creará un parte nuevo en vez de añadirlo a ese. ¿Continuar?')) return;
+                    union.eleccion = 'nuevo'; pintarUnion();
+                }
+                abrirFirma();
+            } else if (a.startsWith('union-')) elegirUnion(a);
             else if (a === 'quitar-firma') { firma = { url: '', quitada: true, cambiada: false }; pintarFirmaForm(); }
             else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'eliminar-desde-ver') eliminar(id);

@@ -1,10 +1,11 @@
 -- Unir partes del mismo día y la misma obra.
--- Al crear un parte, si ya hay otro NO bloqueado con la misma fecha, cliente y obra, lo nuevo se añade a ese parte:
+-- Al crear un parte, si ya hay otro NO bloqueado con la misma fecha, cliente y obra, el operario elige en la app si
+-- añadirlo a ese parte (p_unir = true) o crear uno nuevo. Si lo añade:
 --  - el trabajo realizado se añade al final, con el nombre de quien lo aporta y la hora;
 --  - los operarios nuevos se suman a la lista (y así figuran y pueden editarlo);
 --  - el material se suma, apuntando quién lo añadió (columna aportado_por);
---  - la firma solo se añade si el parte aún no tenía.
--- Si el parte de ese día está bloqueado (bloqueo definitivo), se crea uno nuevo.
+--  - quien creó el parte recibe un aviso (si tiene activados los avisos generales).
+-- Se crea un parte nuevo si el de ese día está bloqueado (bloqueo definitivo) o si los dos traen firma del cliente.
 -- Lo hace la función crear_parte(), en el servidor, para que funcione igual con los partes guardados sin conexión
 -- (se decide al enviarse) y aunque dos operarios guarden a la vez.
 
@@ -24,7 +25,8 @@ create policy "partes_uniones ver aprobados" on public.partes_uniones
   for select to authenticated using ((select public.es_activo()));
 revoke insert, update, delete on public.partes_uniones from anon, authenticated;
 
-create or replace function public.crear_parte(p_parte jsonb, p_operarios jsonb, p_materiales jsonb)
+drop function if exists public.crear_parte(jsonb, jsonb, jsonb);
+create or replace function public.crear_parte(p_parte jsonb, p_operarios jsonb, p_materiales jsonb, p_unir boolean default true)
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
@@ -34,6 +36,8 @@ declare
   v_existente public.partes_trabajo%rowtype;
   v_destino uuid;
   v_detalle text := nullif(btrim(coalesce(p_parte->>'detalle_trabajo', '')), '');
+  v_firma text := nullif(p_parte->>'firma_digital', '');
+  v_motivo text;
   o jsonb;
 begin
   if auth.uid() is null or not public.es_activo() then
@@ -56,28 +60,36 @@ begin
   -- Un solo guardado a la vez por día y obra, para que dos operarios a la vez no creen dos partes.
   perform pg_advisory_xact_lock(hashtext('parte|' || v_fecha::text || '|' || public.norm_txt(p_parte->>'cliente') || '|' || public.norm_txt(p_parte->>'obra')));
 
-  select * into v_existente from public.partes_trabajo t
-  where t.fecha = v_fecha
-    and public.norm_txt(t.obra) = public.norm_txt(p_parte->>'obra')
-    and public.norm_txt(t.cliente) = public.norm_txt(p_parte->>'cliente')
-    and coalesce(t.bloqueado, false) = false
-  order by t.created_at asc
-  limit 1
-  for update;
+  if coalesce(p_unir, true) then
+    select * into v_existente from public.partes_trabajo t
+    where t.fecha = v_fecha
+      and public.norm_txt(t.obra) = public.norm_txt(p_parte->>'obra')
+      and public.norm_txt(t.cliente) = public.norm_txt(p_parte->>'cliente')
+      and coalesce(t.bloqueado, false) = false
+    order by t.created_at asc
+    limit 1
+    for update;
+  end if;
 
-  if not found then
-    -- Parte nuevo
+  -- Los dos traen firma del cliente: no se pueden juntar en un parte, se crea uno nuevo.
+  if v_existente.id is not null and v_existente.firma_digital is not null and v_firma is not null then
+    v_motivo := 'firma';
+    v_existente := null;
+  end if;
+
+  if v_existente.id is null then
+    -- Parte nuevo (no había ninguno, se eligió crear uno nuevo, el del día está bloqueado o los dos traen firma)
     insert into public.partes_trabajo (id, cliente, obra, direccion, localidad, fecha, detalle_trabajo, firma_digital,
                                        bloqueado, created_by, created_by_id, updated_by)
     values (v_id, p_parte->>'cliente', p_parte->>'obra', p_parte->>'direccion', p_parte->>'localidad', v_fecha, v_detalle,
-            nullif(p_parte->>'firma_digital', ''), false, v_quien, auth.uid(), v_quien);
+            v_firma, false, v_quien, auth.uid(), v_quien);
     insert into public.partes_operarios (parte_id, operario_nombre, operario_id, horas)
     select v_id, r.operario_nombre, r.operario_id, r.horas
     from jsonb_populate_recordset(null::public.partes_operarios, coalesce(p_operarios, '[]'::jsonb)) r;
     insert into public.partes_materiales (parte_id, unidades, material, referencia, aportado_por)
     select v_id, r.unidades, r.material, r.referencia, coalesce(r.aportado_por, v_quien)
     from jsonb_populate_recordset(null::public.partes_materiales, coalesce(p_materiales, '[]'::jsonb)) r;
-    return jsonb_build_object('parte_id', v_id, 'unido', false);
+    return jsonb_build_object('parte_id', v_id, 'unido', false, 'motivo', v_motivo);
   end if;
 
   -- Se añade al parte que ya existe
@@ -88,7 +100,7 @@ begin
       else concat_ws(E'\n\n', nullif(btrim(coalesce(detalle_trabajo, '')), ''),
              '— Añadido por ' || coalesce(v_quien, 'otro operario') || ' (' || to_char(now() at time zone 'Europe/Madrid', 'HH24:MI') || ') —' || E'\n' || v_detalle)
     end,
-    firma_digital = coalesce(firma_digital, nullif(p_parte->>'firma_digital', '')),
+    firma_digital = coalesce(firma_digital, v_firma),
     updated_by = v_quien,
     updated_at = now()
   where id = v_existente.id;
@@ -119,8 +131,18 @@ begin
   from jsonb_populate_recordset(null::public.partes_materiales, coalesce(p_materiales, '[]'::jsonb)) r;
 
   insert into public.partes_uniones (id, parte_id, unido_por, unido_por_id) values (v_id, v_existente.id, v_quien, auth.uid());
+
+  -- Aviso (y push) a quien creó el parte, salvo que sea uno mismo o tenga apagados los avisos generales.
+  insert into public.notificaciones (user_id, titulo, mensaje)
+  select p.id, 'Se han añadido datos a tu parte',
+         coalesce(v_quien, 'Otro operario') || ' ha añadido su trabajo a tu parte del ' || to_char(v_fecha, 'DD/MM') || ' en '
+         || coalesce(nullif(v_existente.cliente, ''), 'sin cliente') || ' · ' || coalesce(nullif(v_existente.obra, ''), 'sin obra') || '.'
+  from public.perfiles p
+  where p.id = v_existente.created_by_id and p.id <> auth.uid() and p.activo is true
+    and coalesce(p.preferencias_notificaciones ->> 'generales', 'true') <> 'false';
+
   return jsonb_build_object('parte_id', v_existente.id, 'unido', true, 'autor', v_existente.created_by);
 end $$;
 
-revoke all on function public.crear_parte(jsonb, jsonb, jsonb) from public, anon;
-grant execute on function public.crear_parte(jsonb, jsonb, jsonb) to authenticated;
+revoke all on function public.crear_parte(jsonb, jsonb, jsonb, boolean) from public, anon;
+grant execute on function public.crear_parte(jsonb, jsonb, jsonb, boolean) to authenticated;

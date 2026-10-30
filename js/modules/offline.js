@@ -222,7 +222,8 @@
                 // Un parte que, al enviarse, se ha unido al que ya había ese día en la misma obra.
                 const unidos = enviados.flatMap((j) => j.pasos.filter((p) => p.k === 'rpc' && p.resultado && p.resultado.unido).map((p) => p.resultado.autor || 'otro operario'));
                 toast((enviados.length === 1 ? 'Se ha enviado el registro pendiente.' : `Se han enviado ${enviados.length} registros pendientes.`)
-                    + (unidos.length ? ` Tu parte se ha añadido al que ya había ese día en la obra (de ${[...new Set(unidos)].join(', ')}).` : ''), 'ok');
+                    + (unidos.length ? ` Tu parte se ha añadido al que ya había ese día en la obra (de ${[...new Set(unidos)].join(', ')}).` : '')
+                    + (enviados.some((j) => j.pasos.some((p) => p.k === 'rpc' && p.resultado && p.resultado.motivo === 'firma')) ? ' Se ha creado un parte nuevo porque el que ya había ese día en la obra tiene la firma del cliente.' : ''), 'ok');
                 if (enviados.some((j) => j.clientes)) window.dispatchEvent(new CustomEvent('clientesActualizados'));
                 window.dispatchEvent(new CustomEvent('bomiSincronizado', { detail: { tipos: enviados.map((j) => j.tipo) } }));
             }
