@@ -99,6 +99,18 @@
             if (!p.filas || !p.filas.length) return;
             const { error } = await sb.from(p.tabla).upsert(p.filas, { onConflict: 'id', ignoreDuplicates: true });
             if (error) throw error;
+        } else if (p.k === 'rpc') {
+            // Función de la base de datos (p. ej. crear_parte, que decide en el servidor si se une a otro parte).
+            // Debe ser idempotente. Si la función aún no existe en Supabase, se hacen los pasos de siempre (siNoExiste).
+            const { data, error } = await sb.rpc(p.nombre, p.args);
+            if (error && p.siNoExiste && (error.code === 'PGRST202' || error.code === '42883')) {
+                const job = { pasos: p.siNoExiste, hecho: 0 };
+                await ejecutar(job);
+                p.resultado = null;
+                return;
+            }
+            if (error) throw error;
+            p.resultado = data;
         } else if (p.k === 'funcion') {
             // Llamada a una Edge Function (p. ej. subir una foto). Un fallo de conexión deja el trabajo pendiente.
             const { data, error } = await sb.functions.invoke(p.nombre, { body: p.cuerpo, headers: p.cabeceras || {} });
@@ -207,7 +219,10 @@
             sincronizando = false;
             await pintar();
             if (enviados.length) {
-                toast(enviados.length === 1 ? 'Se ha enviado el registro pendiente.' : `Se han enviado ${enviados.length} registros pendientes.`, 'ok');
+                // Un parte que, al enviarse, se ha unido al que ya había ese día en la misma obra.
+                const unidos = enviados.flatMap((j) => j.pasos.filter((p) => p.k === 'rpc' && p.resultado && p.resultado.unido).map((p) => p.resultado.autor || 'otro operario'));
+                toast((enviados.length === 1 ? 'Se ha enviado el registro pendiente.' : `Se han enviado ${enviados.length} registros pendientes.`)
+                    + (unidos.length ? ` Tu parte se ha añadido al que ya había ese día en la obra (de ${[...new Set(unidos)].join(', ')}).` : ''), 'ok');
                 if (enviados.some((j) => j.clientes)) window.dispatchEvent(new CustomEvent('clientesActualizados'));
                 window.dispatchEvent(new CustomEvent('bomiSincronizado', { detail: { tipos: enviados.map((j) => j.tipo) } }));
             }

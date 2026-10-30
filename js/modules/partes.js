@@ -11,7 +11,8 @@
     const BTN_SEC = 'text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5';
     const LIMITE = 500;
     const COLS = 'id, cliente, obra, direccion, localidad, fecha, detalle_trabajo, bloqueado, bloqueado_por, bloqueado_at, created_by, created_by_id, updated_by, updated_at, created_at';
-    const SELECT = COLS + ', partes_operarios ( id, operario_nombre, operario_id, horas ), partes_materiales ( id, unidades, material, referencia )';
+    const SELECT_SIN_APORTADO = COLS + ', partes_operarios ( id, operario_nombre, operario_id, horas ), partes_materiales ( id, unidades, material, referencia )';
+    const SELECT_CON_APORTADO = COLS + ', partes_operarios ( id, operario_nombre, operario_id, horas ), partes_materiales ( id, unidades, material, referencia, aportado_por )';
     const CLAVE_LOCAL = 'bomi_partes_solo_mios';
 
     let partes = [];
@@ -24,6 +25,16 @@
     let busqueda = '';
     let soloMios = false;
     let guardando = false;
+    // Mientras no se ejecute en Supabase la migración de «unir partes», no existe la columna aportado_por del material.
+    let conAportado = true;
+    const sel = () => (conAportado ? SELECT_CON_APORTADO : SELECT_SIN_APORTADO);
+    const faltaAportado = (ex) => !!ex && /aportado_por/.test([ex.message, ex.details, ex.hint].filter(Boolean).join(' '));
+    // Lanza la consulta de partes; si falla porque falta la columna aportado_por, se repite sin ella.
+    async function consultar(hacer) {
+        const res = await hacer(sel());
+        if (res.error && conAportado && faltaAportado(res.error)) { conAportado = false; return hacer(sel()); }
+        return res;
+    }
     let modo = null;             // 'nuevo' | 'editar' | 'ver'
     let actual = null;
     let firma = { url: '', quitada: false };   // firma del formulario (dataURL)
@@ -58,6 +69,9 @@
     const modificado = (p) => !!p.updated_at && !!p.created_at && (new Date(p.updated_at) - new Date(p.created_at) > 5000);
     const ops = (p) => p.partes_operarios || [];
     const mats = (p) => p.partes_materiales || [];
+    // Quién añadió cada material. Solo se enseña si en el parte hay material de más de una persona (partes unidos).
+    const aportadoDe = (p, m) => m.aportado_por || p.created_by || '';
+    const variosAportan = (p) => new Set(mats(p).map((m) => norm(aportadoDe(p, m)))).size > 1;
     const fallo = (el, txt) => { el.textContent = txt; el.classList.remove('hidden'); };
     const imagenSegura = (u) => /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(u || '') || /^https:\/\//.test(u || '') ? u : '';
 
@@ -232,7 +246,7 @@
         soloMios = leerSoloMios();
         pintarInterruptor();
         const [res] = await Promise.all([
-            db().from('partes_trabajo').select(SELECT).order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(LIMITE),
+            consultar((c) => db().from('partes_trabajo').select(c).order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(LIMITE)),
             cargarEmpleados().catch(() => {}),
             cargarCatalogo().catch(() => {}),
             cargarNube().catch(() => {}),
@@ -348,7 +362,7 @@
     }
     function htmlMaterial(m) {
         return `
-        <div class="grid grid-cols-[4.5rem_1fr_auto] gap-2 items-start" data-material>
+        <div class="grid grid-cols-[4.5rem_1fr_auto] gap-2 items-start" data-material${m && m.id ? ` data-existente="1" data-aportado="${esc(m.aportado_por ?? '')}"` : ''}>
             <input type="number" inputmode="decimal" min="0" step="any" data-campo="cantidad" aria-label="Cantidad" placeholder="Cant." value="${esc(m?.unidades ?? '')}" class="${INPUT} !px-2">
             <div class="flex flex-col gap-2 min-w-0">
                 <input type="text" list="par-materiales-dl" autocomplete="off" data-campo="material" aria-label="Material" placeholder="Material (escribe o elige)" value="${esc(m?.material ?? '')}" class="${INPUT}">
@@ -379,6 +393,7 @@
                 <label for="par-fecha" class="text-xs font-medium">Fecha</label>
                 <input id="par-fecha" type="date" required value="${esc(p?.fecha || hoy())}" class="${INPUT}">
             </div>
+            <p id="par-union" class="hidden text-sm text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-950 rounded-xl p-3 flex gap-2" role="status"></p>
             <div class="flex flex-col gap-2">
                 <div class="grid grid-cols-[1fr_5.5rem_auto] gap-2 text-xs font-medium"><span>Operario</span><span>Horas</span><span class="w-9"></span></div>
                 <div id="par-operarios" class="flex flex-col gap-2">${os.map(htmlOperario).join('')}</div>
@@ -468,6 +483,26 @@
         else if (cli && norm(obraTxt) && !obra) msg = `Obra nueva en «${cli.nombre}»: se creará con esta dirección y localidad.`;
         else if (cli && obra) msg = `Obra existente de «${cli.nombre}»: se usan su dirección y localidad.`;
         if (hint) { hint.textContent = msg; hint.classList.toggle('hidden', !msg); }
+        avisarUnion();
+    }
+
+    // Parte nuevo: si ese día ya hay un parte sin bloquear en la misma obra, lo que se guarde se añadirá a él.
+    // Es solo un aviso con los partes de la lista: quien decide al guardar es el servidor (crear_parte).
+    function avisarUnion() {
+        const el = document.getElementById('par-union');
+        if (!el) return;
+        let msg = '';
+        const fecha = val('par-fecha'), obra = norm(val('par-obra')), cli = norm(val('par-cliente'));
+        if (modo === 'nuevo' && fecha && obra) {
+            const mismos = partes.filter((p) => p.fecha === fecha && norm(p.obra) === obra && norm(p.cliente) === cli);
+            const abierto = mismos.filter((p) => !p.bloqueado).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
+            if (abierto) {
+                const quienes = ops(abierto).map((o) => o.operario_nombre).filter(Boolean).join(', ') || abierto.created_by || 'otro operario';
+                msg = `Ya hay un parte del ${fechaES(fecha)} en esta obra (${quienes}). Lo que escribas se añadirá a ese parte, con tu nombre.`;
+            } else if (mismos.length) msg = `El parte del ${fechaES(fecha)} en esta obra ya está bloqueado: se creará un parte nuevo.`;
+        }
+        el.innerHTML = msg ? `<span class="material-symbols-outlined text-[20px] shrink-0">group</span><span>${esc(msg)}</span>` : '';
+        el.classList.toggle('hidden', !msg);
     }
 
     // Material ↔ referencia: al elegir un material de la lista se rellena la referencia, y al elegir una referencia se rellena el material.
@@ -506,6 +541,8 @@
             cantidad: f.querySelector('[data-campo=cantidad]').value.trim(),
             material: f.querySelector('[data-campo=material]').value.trim(),
             referencia: f.querySelector('[data-campo=referencia]').value.trim(),
+            // Quién añadió cada material: el de las líneas que ya estaban se conserva; las nuevas son de quien guarda.
+            aportado: f.dataset.existente ? (f.dataset.aportado || null) : miNombre(),
         })).filter((m) => m.cantidad || m.material || m.referencia);
     }
 
@@ -625,7 +662,9 @@
         const p = id ? partes.find((x) => x.id === id) : null;
         if (m === 'editar' && (!p || !puedeEditar(p))) return;
         try {
-            await Promise.all([clientesViejos ? cargarClientes() : null, cargarEmpleados(), cargarCatalogo().catch(() => {})]);
+            // Sin conexión se abre igual con lo que ya había cargado (un parte nuevo se puede guardar en el móvil).
+            const sinRed = (ex) => { if (!(window.BomiOffline && window.BomiOffline.esRed(ex))) throw ex; };
+            await Promise.all([clientesViejos ? cargarClientes().catch(sinRed) : null, cargarEmpleados().catch(sinRed), cargarCatalogo().catch(() => {})]);
             firma = { url: p ? await cargarFirma(p.id) : '', quitada: false, cambiada: false };
         } catch (ex) { alert('No se pudieron cargar los datos: ' + mensajeError(ex)); return; }
         modo = m; actual = p; obraAutorrellena = false;
@@ -661,7 +700,8 @@
     function tablaMateriales(p) {
         const ms = mats(p);
         if (!ms.length) return '<p class="text-sm text-slate-500">Sin material.</p>';
-        return `<ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl">${ms.map((m) => `<li class="flex gap-3 p-3 text-sm"><strong class="shrink-0 min-w-[3rem]">${esc(cant(m.unidades))}</strong><span class="min-w-0 break-words">${esc(m.material)}${m.referencia ? `<span class="block text-xs text-slate-500">Ref.: ${esc(m.referencia)}</span>` : ''}</span></li>`).join('')}</ul>`;
+        const varios = variosAportan(p);
+        return `<ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl">${ms.map((m) => `<li class="flex gap-3 p-3 text-sm"><strong class="shrink-0 min-w-[3rem]">${esc(cant(m.unidades))}</strong><span class="min-w-0 break-words">${esc(m.material)}${m.referencia ? `<span class="block text-xs text-slate-500">Ref.: ${esc(m.referencia)}</span>` : ''}${varios && aportadoDe(p, m) ? `<span class="block text-xs text-slate-500">Añadido por ${esc(aportadoDe(p, m))}</span>` : ''}</span></li>`).join('')}</ul>`;
     }
     function autoriaHtml(p) {
         const l = [`Creado por <strong>${esc(p.created_by || 'desconocido')}</strong> · ${esc(fechaHora(p.created_at))}`];
@@ -761,7 +801,7 @@
             const n = Number(String(m.cantidad).replace(',', '.'));
             if (!m.material) return fallo(err, `Material ${i + 1}: indica el material.`);
             if (!m.cantidad || !isFinite(n) || n <= 0) return fallo(err, `Material ${i + 1}: indica la cantidad (un número mayor que 0).`);
-            items.push({ unidades: n, material: m.material, referencia: m.referencia || null });
+            items.push({ unidades: n, material: m.material, referencia: m.referencia || null, aportado_por: m.aportado });
         }
         pararDictado();
         guardando = true; btn.disabled = true; btn.textContent = 'Guardando...';
@@ -786,14 +826,23 @@
 
             if (modo === 'nuevo') {
                 // Un parte nuevo se puede guardar sin conexión: queda en el móvil y se envía solo.
+                // Lo guarda crear_parte en el servidor: si ese día ya hay un parte sin bloquear en la misma obra, se añade a él
+                // (se decide al enviarse, también para los guardados sin conexión).
                 const parteId = O.uuid();
-                const pasos = [...datos.pasos,
-                    { k: 'insert', tabla: 'partes_trabajo', deshacer: true, filas: [{ id: parteId, ...fila, bloqueado: false, created_by: quien, created_by_id: yo().id, updated_by: quien }] },
-                    { k: 'insert', tabla: 'partes_operarios', deshacer: true, filas: filasOp(parteId) }];
-                if (items.length) pasos.push({ k: 'insert', tabla: 'partes_materiales', deshacer: true, filas: items.map((it) => ({ id: O.uuid(), ...it, parte_id: parteId })) });
-                const r = await O.guardar({ tipo: 'parte', etiqueta: `Parte del ${fechaES(f.fecha)} · ${datos.cliente} · ${datos.obra}`, pasos, clientes: creados, pdf: pdfActual() });
+                const filaParte = { id: parteId, ...fila, bloqueado: false, created_by: quien, created_by_id: yo().id, updated_by: quien };
+                const opsParte = filasOp(parteId);
+                // Por si aún no se ha ejecutado la migración en Supabase: el guardado de siempre, sin unir.
+                const deSiempre = [
+                    { k: 'insert', tabla: 'partes_trabajo', deshacer: true, filas: [filaParte] },
+                    { k: 'insert', tabla: 'partes_operarios', deshacer: true, filas: opsParte }];
+                if (items.length) deSiempre.push({ k: 'insert', tabla: 'partes_materiales', deshacer: true, filas: items.map(({ aportado_por, ...it }) => ({ id: O.uuid(), ...it, parte_id: parteId })) });
+                const pasoParte = { k: 'rpc', nombre: 'crear_parte', siNoExiste: deSiempre,
+                    args: { p_parte: filaParte, p_operarios: opsParte.map(({ id, parte_id, ...r }) => r), p_materiales: items } };
+                const r = await O.guardar({ tipo: 'parte', etiqueta: `Parte del ${fechaES(f.fecha)} · ${datos.cliente} · ${datos.obra}`, pasos: [...datos.pasos, pasoParte], clientes: creados, pdf: pdfActual() });
                 cerrarModal();
                 if (r.estado === 'enviado') {
+                    const res = pasoParte.resultado;
+                    if (res && res.unido) O.toast(`Añadido al parte de ${res.autor || 'otro operario'}: ya había un parte ese día en esta obra.`, 'ok');
                     await cargar();
                     if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
                 }
@@ -807,7 +856,10 @@
             let insertadosOp = [], insertadosMat = [];
             try {
                 insertadosOp = (await exigir(db().from('partes_operarios').insert(filasOp(parteId).map(({ id, ...r }) => r)).select('id'), 'No se pudieron guardar los operarios.')).map((x) => x.id);
-                if (items.length) insertadosMat = (await exigir(db().from('partes_materiales').insert(items.map((it) => ({ ...it, parte_id: parteId }))).select('id'), 'No se pudo guardar el material.')).map((x) => x.id);
+                if (items.length) {
+                    const filasMat = items.map((it) => (conAportado ? { ...it, parte_id: parteId } : { unidades: it.unidades, material: it.material, referencia: it.referencia, parte_id: parteId }));
+                    insertadosMat = (await exigir(db().from('partes_materiales').insert(filasMat).select('id'), 'No se pudo guardar el material.')).map((x) => x.id);
+                }
             } catch (ex) {
                 // Se deshace lo insertado para no dejar el parte con líneas duplicadas.
                 if (insertadosOp.length) { try { await db().from('partes_operarios').delete().in('id', insertadosOp); } catch (x) { /* sin más */ } }
@@ -855,7 +907,8 @@
         ];
         if (mats(p).length) {
             it.push({ t: 'h', text: 'Material utilizado' });
-            it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: mats(p).map((m) => [cant(m.unidades), m.material, m.referencia || '']) });
+            if (variosAportan(p)) it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 4.5 }, { title: 'Referencia', w: 2 }, { title: 'Añadido por', w: 2.5 }], rows: mats(p).map((m) => [cant(m.unidades), m.material, m.referencia || '', aportadoDe(p, m)]) });
+            else it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: mats(p).map((m) => [cant(m.unidades), m.material, m.referencia || '']) });
         }
         if (imgFirma) { it.push({ t: 'h', text: 'Firma del cliente' }); it.push({ t: 'img', src: imgFirma, maxW: 240, maxH: 110 }); }
         it.push({ t: 'note', text: 'Creado por ' + (p.created_by || 'desconocido') + ' · ' + fechaHora(p.created_at)
@@ -979,6 +1032,7 @@
             const t = e.target;
             if (t.id === 'par-cliente') sincronizar('cliente');
             else if (t.id === 'par-obra') sincronizar('obra');
+            else if (t.id === 'par-fecha') avisarUnion();
             else if (t.dataset && t.dataset.campo === 'material') materialCambiado(t);
             else if (t.dataset && t.dataset.campo === 'referencia') referenciaCambiada(t);
         };
@@ -1018,7 +1072,7 @@
     async function conFijados(filas) {
         const faltan = [...fijados].filter((id) => !filas.some((f) => f.id === id));
         if (!faltan.length) return filas;
-        const { data, error } = await db().from('partes_trabajo').select(SELECT).in('id', faltan);
+        const { data, error } = await consultar((c) => db().from('partes_trabajo').select(c).in('id', faltan));
         if (error) return filas;
         const vivos = new Set((data || []).map((f) => f.id));
         faltan.forEach((id) => { if (!vivos.has(id)) fijados.delete(id); });
@@ -1026,7 +1080,7 @@
     }
     async function asegurar(id) {
         if (partes.some((x) => x.id === id)) return true;
-        const { data, error } = await db().from('partes_trabajo').select(SELECT).eq('id', id).limit(1);
+        const { data, error } = await consultar((c) => db().from('partes_trabajo').select(c).eq('id', id).limit(1));
         if (error || !data || !data.length) { alert('No se encontró el parte. Puede que se haya eliminado.'); return false; }
         fijar(data);
         return true;
@@ -1035,7 +1089,7 @@
     const historial = {
         async buscar(o) {
             const [res] = await Promise.all([
-                db().from('partes_trabajo').select(SELECT).ilike('obra', patronObra(o.obra)).limit(LIMITE),
+                consultar((c) => db().from('partes_trabajo').select(c).ilike('obra', patronObra(o.obra)).limit(LIMITE)),
                 cargarNube().catch(() => {}),
             ]);
             if (res.error) throw res.error;
