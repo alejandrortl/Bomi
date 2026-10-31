@@ -506,7 +506,8 @@
     }
 
     let abriendoPizarra = false;
-    async function abrirPizarra() {
+    // foto: URL local de una foto de obra que se pone de fondo y se encuadra al abrir (pizarra nueva).
+    async function abrirPizarra(foto) {
         if (!window.BomiPizarra || !nube()) { alert('La pizarra no está disponible.'); return; }
         if (abriendoPizarra) return;
         pararDictado();
@@ -515,7 +516,8 @@
         let abrir = {};
         abriendoPizarra = true;
         try {
-            if (pizarra.nueva && pizarra.pend) {
+            if (foto) abrir = { foto };
+            else if (pizarra.nueva && pizarra.pend) {
                 previo = pizarra.pend;
                 abrir = { fondo: previo.fondoBlob ? URL.createObjectURL(previo.fondoBlob) : '', trazos: previo.trazos };
             } else if (!pizarra.quitada && pizarra.url) {
@@ -689,6 +691,12 @@
         abrir() { iniciar(); return cambiarPestana(pestana, false); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre un registro nuevo con cliente, obra, dirección, localidad y notas ya rellenos.
-        nuevoConDatos(datos) { iniciar(); cambiarPestana('escrita', false); return abrirFormulario('nuevo', null, datos || {}); },
+        // Con datos.foto (URL local de una foto de obra) se abre además la pizarra con esa foto de fondo para encuadrarla.
+        async nuevoConDatos(datos) {
+            iniciar();
+            cambiarPestana('escrita', false);
+            await abrirFormulario('nuevo', null, datos || {});
+            if (datos && datos.foto && modo === 'nuevo') await abrirPizarra(datos.foto);
+        },
     };
 })();

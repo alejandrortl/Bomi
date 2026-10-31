@@ -134,5 +134,8 @@
         });
     }
 
-    window.BomiPizarraNube = { esNube, img, rellenar, enlace, dataUrl, paraEditar, pendiente, plan };
+    // Foto de obra (o cualquier imagen de R2) como URL local, para usarla de fondo en la pizarra.
+    async function urlLocal(clave) { return URL.createObjectURL(await blobDe(clave)); }
+
+    window.BomiPizarraNube = { esNube, img, rellenar, enlace, dataUrl, paraEditar, pendiente, plan, urlLocal };
 })();

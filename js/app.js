@@ -355,34 +355,37 @@
 
     const btnAbrirPizarra = document.getElementById('btn-abrir-pizarra');
     let abriendoDibujo = false;
+    // foto: URL local de una foto de obra que se pone de fondo y se encuadra al abrir (dibujo nuevo).
+    async function abrirPizarraTarea(foto) {
+        if (!window.BomiPizarra || !nubeT()) { alert('La pizarra no está disponible.'); return; }
+        if (abriendoDibujo) return;
+        const actualUrl = document.getElementById('tarea-dibujo-url').value;
+        let previo = { claveFondo: null, fondoCambiado: false };
+        let abrir = {};
+        abriendoDibujo = true;
+        try {
+            if (foto) abrir = { foto };
+            else if (dibujoPend) {
+                previo = dibujoPend;
+                abrir = { fondo: previo.fondoBlob ? URL.createObjectURL(previo.fondoBlob) : '', trazos: previo.trazos };
+            } else if (actualUrl) {
+                const e = await nubeT().paraEditar(actualUrl);
+                previo = { claveFondo: e.claveFondo, fondoCambiado: false };
+                abrir = { fondo: e.fondo, trazos: e.trazos };
+            }
+        } catch (ex) {
+            alert('No se pudo abrir el dibujo guardado: ' + window.BomiOffline.mensaje(ex) + '\nPara editarlo hace falta conexión.');
+            return;
+        } finally { abriendoDibujo = false; }
+        const res = await window.BomiPizarra.abrir(abrir);
+        if (/^blob:/.test(abrir.fondo || '')) URL.revokeObjectURL(abrir.fondo);
+        if (!res) return;
+        if (res.vacia) { setDibujo(''); return; }
+        dibujoPend = { ...nubeT().pendiente(res, previo), vista: await blobADataUrlT(res.blob) };
+        pintarDibujo();
+    }
     if (btnAbrirPizarra) {
-        btnAbrirPizarra.addEventListener('click', async () => {
-            if (!window.BomiPizarra || !nubeT()) { alert('La pizarra no está disponible.'); return; }
-            if (abriendoDibujo) return;
-            const actualUrl = document.getElementById('tarea-dibujo-url').value;
-            let previo = { claveFondo: null, fondoCambiado: false };
-            let abrir = {};
-            abriendoDibujo = true;
-            try {
-                if (dibujoPend) {
-                    previo = dibujoPend;
-                    abrir = { fondo: previo.fondoBlob ? URL.createObjectURL(previo.fondoBlob) : '', trazos: previo.trazos };
-                } else if (actualUrl) {
-                    const e = await nubeT().paraEditar(actualUrl);
-                    previo = { claveFondo: e.claveFondo, fondoCambiado: false };
-                    abrir = { fondo: e.fondo, trazos: e.trazos };
-                }
-            } catch (ex) {
-                alert('No se pudo abrir el dibujo guardado: ' + window.BomiOffline.mensaje(ex) + '\nPara editarlo hace falta conexión.');
-                return;
-            } finally { abriendoDibujo = false; }
-            const res = await window.BomiPizarra.abrir(abrir);
-            if (/^blob:/.test(abrir.fondo || '')) URL.revokeObjectURL(abrir.fondo);
-            if (!res) return;
-            if (res.vacia) { setDibujo(''); return; }
-            dibujoPend = { ...nubeT().pendiente(res, previo), vista: await blobADataUrlT(res.blob) };
-            pintarDibujo();
-        });
+        btnAbrirPizarra.addEventListener('click', () => abrirPizarraTarea());
         document.getElementById('btn-borrar-dibujo').addEventListener('click', () => setDibujo(''));
     }
 
@@ -800,6 +803,20 @@
     }
     const patronObraT = (t) => '%' + String(t ?? '').trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
     window.BomiDiario = {
+        // Tarea nueva con cliente, obra, dirección y localidad ya rellenos. Con datos.foto (URL local de una foto
+        // de obra) se abre además la pizarra con esa foto de fondo para encuadrarla y dibujar encima.
+        async nuevoConDatos(datos) {
+            const d = datos || {};
+            navHome.click();
+            fabNewTask.click();
+            document.getElementById('tarea-cliente').value = d.cliente || '';
+            document.getElementById('tarea-obra').value = d.obra || '';
+            document.getElementById('tarea-direccion').value = d.direccion || '';
+            document.getElementById('tarea-localidad').value = d.localidad || '';
+            document.getElementById('tarea-notas').value = d.notas || '';
+            sincronizarTarea('inicio');
+            if (d.foto) await abrirPizarraTarea(d.foto);
+        },
         historial: {
             async buscar(o) {
                 const { data, error } = await supabaseClient.from('tareas').select('*').ilike('obra', patronObraT(o.obra)).limit(500);

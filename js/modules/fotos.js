@@ -519,6 +519,8 @@
                 <p class="text-xs text-white/70">${esc(fechaHora(fechaDe(f)))} · Subida por <strong>${esc(f.subida_por || 'desconocido')}</strong></p>
                 <p class="text-xs text-white/70 flex items-center gap-1">${estadoDrive(f)}</p>
                 <div class="flex flex-wrap gap-2 pt-1">
+                    <button type="button" data-visor="crear-tarea" class="text-sm bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">list_alt</span> Crear tarea (Diario)</button>
+                    <button type="button" data-visor="crear-bitacora" class="text-sm bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">menu_book</span> Crear bitácora</button>
                     <button type="button" data-visor="abrir" class="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">open_in_new</span> Abrir original</button>
                     ${f.drive_enlace && /^https:\/\//.test(f.drive_enlace) ? `<a href="${esc(f.drive_enlace)}" target="_blank" rel="noopener noreferrer" class="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">folder_open</span> Ver en Drive</a>` : ''}
                     ${puedeBorrar(f) ? `<button type="button" data-visor="borrar" class="text-sm bg-red-600/80 hover:bg-red-600 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">delete</span> Eliminar</button>` : ''}
@@ -539,6 +541,37 @@
         } catch (ex) {
             if (w) w.close();
             alert(mensajeError(ex));
+        }
+    }
+
+    // Crea una tarea del Diario o un registro de la Bitácora con los datos de la obra de la foto y abre la pizarra
+    // con la foto de fondo para encuadrarla y dibujar encima. Después se termina de rellenar y se guarda.
+    let creando = false;
+    async function crearDesdeFoto(tipo, boton) {
+        const f = visor && visor.lista[visor.i];
+        const destino = tipo === 'tarea' ? window.BomiDiario : window.BomiBitacora;
+        if (!f || creando || !destino || !destino.nuevoConDatos) return;
+        if (!window.BomiPizarraNube || !window.BomiPizarraNube.urlLocal) { alert('La pizarra no está disponible.'); return; }
+        creando = true;
+        const txt = boton ? boton.innerHTML : '';
+        if (boton) { boton.disabled = true; boton.textContent = 'Cargando foto...'; }
+        let url = '';
+        try {
+            url = await window.BomiPizarraNube.urlLocal(f.clave);
+        } catch (ex) {
+            alert('No se pudo cargar la foto: ' + mensajeError(ex) + '\nPara usarla de fondo hace falta conexión.');
+            if (boton && boton.isConnected) { boton.disabled = false; boton.innerHTML = txt; }
+            creando = false;
+            return;
+        }
+        const datos = { cliente: f.cliente || '', obra: f.obra || '', direccion: f.direccion || '', localidad: f.localidad || '', foto: url };
+        cerrarVisor();
+        try {
+            if (tipo === 'bitacora') { const nav = document.getElementById('nav-bitacora'); if (nav) nav.click(); }
+            await destino.nuevoConDatos(datos);
+        } finally {
+            URL.revokeObjectURL(url);
+            creando = false;
         }
     }
 
@@ -637,6 +670,8 @@
             else if (a === 'sig') mover(1);
             else if (a === 'abrir') abrirOriginal();
             else if (a === 'borrar') borrarFoto();
+            else if (a === 'crear-tarea') crearDesdeFoto('tarea', b);
+            else if (a === 'crear-bitacora') crearDesdeFoto('bitacora', b);
         });
         // Deslizar con el dedo para pasar de foto.
         let x0 = null, y0 = null;

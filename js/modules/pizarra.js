@@ -5,7 +5,8 @@
 // para encuadrar la parte que interesa; se guarda recortada a 1000×700 (JPG) y se dibuja encima.
 // El dibujo va en una capa aparte: el borrador solo borra líneas, nunca la foto ni los textos.
 // Los textos se mueven arrastrándolos con la herramienta de texto; al tocarlos se editan o eliminan.
-// abrir({ fondo, trazos }) — fondo: URL de la foto de fondo (o de un dibujo antiguo); trazos: líneas y textos guardados.
+// abrir({ fondo, trazos, foto }) — fondo: URL de la foto de fondo (o de un dibujo antiguo); trazos: líneas y textos guardados;
+//   foto: URL (blob:) de una foto que se pone de fondo y se abre directamente en el encuadre (p. ej. desde la bitácora fotográfica).
 // Devuelve una promesa con:
 //   null                        -> el usuario canceló
 //   { vacia: false, blob, trazos, fondoBlob, fondoCambiado }
@@ -604,6 +605,7 @@
         construir();
         if (resolver) return null;
         const base = await cargarImagen(opciones.fondo || opciones.imagen);
+        const foto = opciones.foto ? await cargarImagen(opciones.foto) : null;
         const formas = Array.isArray(opciones.trazos) ? opciones.trazos.filter(valida).map((f) => ({ ...f, puntos: f.puntos.map((p) => ({ ...p })) })) : [];
         st = { herramienta: 'lapiz', color: COLORES[0][1], ancho: ANCHOS[0][1], formas, base: base || null, fuente: null, falloBase: base === false,
             actual: null, fondoCambiado: false, ajuste: null, arrastre: null, editor: null };
@@ -613,6 +615,8 @@
         marcar();
         dibujar();
         if (base === false) alert('No se pudo cargar el dibujo anterior. Si guardas, se empezará con la pizarra en blanco.');
+        if (foto) entrarAjuste(foto, null);
+        else if (foto === false) alert('No se pudo cargar la foto. Puedes dibujar en blanco o elegir otra foto de fondo.');
         return new Promise((ok) => { resolver = ok; });
     }
 
