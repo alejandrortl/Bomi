@@ -251,6 +251,7 @@
             cargarEmpleados().catch(() => {}),
             cargarCatalogo().catch(() => {}),
             cargarNube().catch(() => {}),
+            cargarHoras().catch(() => { horasFilas = null; }),
         ]);
         if (res.error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los partes: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
@@ -258,8 +259,96 @@
         }
         partes = await conFijados(res.data || []);
         pintarLista();
+        pintarHoras();
         reintentarNube();
         window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'partes' } }));
+    }
+
+    // ---------- Horas de las 4 últimas semanas (semana ISO, de lunes a domingo; la actual incluida) ----------
+    // Cada operario ve las suyas; Admin y SuperAdmin pueden elegir cualquier operario.
+    const SEMANAS_HORAS = 4;
+    let horasFilas = null;       // [{ fecha, partes_operarios: [...] }] de las últimas semanas (consulta propia)
+    let horasDe = '';            // clave del operario elegido (vacío = yo)
+    // "8", "8,5", "8.5", "8h", "8 h", "8 horas", "7:30", "7h30", "7h 30m" -> número de horas (null si no se entiende)
+    function numHoras(v) {
+        const t = String(v ?? '').toLowerCase().replace(/\s+/g, '').replace(/horas?|hrs?/g, 'h');
+        if (!t) return null;
+        let m = /^(\d{1,2})[:h](\d{1,2})m?(in)?$/.exec(t);
+        if (m && +m[2] < 60) return +m[1] + (+m[2]) / 60;
+        m = /^(\d+(?:[.,]\d+)?)h?$/.exec(t);
+        return m ? Number(m[1].replace(',', '.')) : null;
+    }
+    const fmtHoras = (n) => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 }) + ' h';
+    const isoLocal = (d) => d.toLocaleDateString('sv-SE');
+    // Las 4 semanas: la actual y las 3 anteriores, de la más reciente a la más antigua.
+    function semanasHoras() {
+        const lunes = new Date(); lunes.setHours(12, 0, 0, 0);
+        lunes.setDate(lunes.getDate() - ((lunes.getDay() || 7) - 1));
+        const out = [];
+        for (let i = 0; i < SEMANAS_HORAS; i++) {
+            const ini = new Date(lunes); ini.setDate(lunes.getDate() - 7 * i);
+            const fin = new Date(ini); fin.setDate(ini.getDate() + 6);
+            out.push({ desde: isoLocal(ini), hasta: isoLocal(fin), num: semanaIso(isoLocal(ini)), horas: 0, sinNumero: 0 });
+        }
+        return out;
+    }
+    // Clave de un operario dentro de un parte: el empleado (por id o nombre) o, si no es empleado, su nombre.
+    function claveOperario(o) {
+        const emp = (o.operario_id && empleados.find((e) => e.id === o.operario_id)) || empleados.find((e) => norm(e.nombre) === norm(o.operario_nombre));
+        return norm(emp ? emp.nombre : o.operario_nombre);
+    }
+    async function cargarHoras() {
+        const s = semanasHoras();
+        const desde = s[s.length - 1].desde;
+        const { data, error } = await db().from('partes_trabajo').select('id, fecha, partes_operarios ( operario_nombre, operario_id, horas )')
+            .gte('fecha', desde).lte('fecha', s[0].hasta).limit(5000);
+        if (error) throw error;
+        horasFilas = data || [];
+    }
+    function pintarHoras() {
+        const cont = document.getElementById('partes-horas');
+        if (!cont) return;
+        const semanas = semanasHoras();
+        const desde = semanas[semanas.length - 1].desde, hasta = semanas[0].hasta;
+        // Sin conexión (o si falló la consulta) se usan los partes ya cargados en la lista.
+        const filas = (horasFilas || partes).filter((p) => p.fecha && p.fecha.slice(0, 10) >= desde && p.fecha.slice(0, 10) <= hasta);
+        const yoClave = norm(miNombre());
+        const clave = esAdmin() && horasDe ? horasDe : yoClave;
+        const esYo = (o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === yoClave;
+        const nombres = new Map();
+        for (const p of filas) {
+            const f = p.fecha.slice(0, 10);
+            const sem = semanas.find((x) => f >= x.desde && f <= x.hasta);
+            for (const o of (p.partes_operarios || [])) {
+                const k = esYo(o) ? yoClave : claveOperario(o);
+                if (!nombres.has(k)) nombres.set(k, o.operario_nombre);
+                if (k !== clave || !sem) continue;
+                const n = numHoras(o.horas);
+                if (n == null) { if (String(o.horas ?? '').trim()) sem.sinNumero++; } else sem.horas += n;
+            }
+        }
+        const total = semanas.reduce((a, x) => a + x.horas, 0);
+        const sinNumero = semanas.reduce((a, x) => a + x.sinNumero, 0);
+        let selector = '';
+        if (esAdmin()) {
+            empleados.forEach((e) => { const k = norm(e.nombre); if (!nombres.has(k)) nombres.set(k, e.nombre); });
+            nombres.set(yoClave, miNombre());
+            const opciones = [...nombres.entries()].filter(([k]) => k)
+                .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es', { sensitivity: 'base' }));
+            selector = `<select id="partes-horas-operario" aria-label="Operario" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1 text-sm max-w-[60%]">${opciones.map(([k, n]) => `<option value="${esc(k)}"${k === clave ? ' selected' : ''}>${esc(k === yoClave ? n + ' (yo)' : n)}</option>`).join('')}</select>`;
+        }
+        const titulo = clave === yoClave ? 'Mis horas' : 'Horas';
+        cont.innerHTML = `
+            <div class="flex justify-between items-center gap-2 flex-wrap">
+                <p class="text-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">schedule</span>${titulo} · últimas ${SEMANAS_HORAS} semanas</p>
+                ${selector}
+            </div>
+            <div class="grid grid-cols-4 gap-1.5" data-horas-semanas>
+                ${semanas.map((x) => `<div class="bg-slate-100 dark:bg-zinc-800 rounded-xl px-2 py-1.5 text-center" title="Del ${esc(fechaES(x.desde))} al ${esc(fechaES(x.hasta))}"><p class="text-xs font-bold text-blue-800 dark:text-blue-200">S${x.num}</p><p class="text-sm font-semibold" data-horas="S${x.num}">${esc(fmtHoras(x.horas))}</p></div>`).join('')}
+            </div>
+            <p class="text-sm flex justify-between"><span class="text-slate-500 dark:text-slate-400">Total</span><strong data-horas-total>${esc(fmtHoras(total))}</strong></p>
+            ${sinNumero ? `<p class="text-xs text-amber-700 dark:text-amber-300">${sinNumero === 1 ? 'Hay 1 parte' : `Hay ${sinNumero} partes`} con horas que no son un número y no se han sumado.</p>` : ''}`;
+        cont.classList.remove('hidden');
     }
 
     // ---------- Copia en la nube ----------
@@ -984,6 +1073,7 @@
                 <button type="button" data-filtro="todos" class="flex-1 py-2 rounded-full text-sm font-medium">Todos los partes</button>
                 <button type="button" data-filtro="mios" class="flex-1 py-2 rounded-full text-sm font-medium">Mis partes</button>
             </div>
+            <div id="partes-horas" class="hidden bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm p-3 flex flex-col gap-2"></div>
             <div class="sticky top-0 z-10 bg-slate-50 dark:bg-black pt-1 pb-2">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
                     <span class="material-symbols-outlined text-slate-400 mr-2">search</span>
@@ -1043,6 +1133,7 @@
             else if (accion === 'reintentar') cargar();
         });
         document.getElementById('fab-nuevo-parte').addEventListener('click', () => abrirFormulario('nuevo'));
+        vista.addEventListener('change', (e) => { if (e.target.id === 'partes-horas-operario') { horasDe = e.target.value; pintarHoras(); } });
         document.getElementById('search-partes').addEventListener('input', (e) => { busqueda = e.target.value; pintarLista(); });
 
         const modal = document.getElementById('modal-parte');
