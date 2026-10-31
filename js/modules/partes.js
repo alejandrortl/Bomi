@@ -327,7 +327,6 @@
                 if (n == null) { if (String(o.horas ?? '').trim()) sem.sinNumero++; } else sem.horas += n;
             }
         }
-        const total = semanas.reduce((a, x) => a + x.horas, 0);
         const sinNumero = semanas.reduce((a, x) => a + x.sinNumero, 0);
         let selector = '';
         if (esAdmin()) {
@@ -346,7 +345,6 @@
             <div class="grid grid-cols-4 gap-1.5" data-horas-semanas>
                 ${semanas.map((x) => `<div class="bg-slate-100 dark:bg-zinc-800 rounded-xl px-2 py-1.5 text-center" title="Del ${esc(fechaES(x.desde))} al ${esc(fechaES(x.hasta))}"><p class="text-xs font-bold text-blue-800 dark:text-blue-200">S${x.num}</p><p class="text-sm font-semibold" data-horas="S${x.num}">${esc(fmtHoras(x.horas))}</p></div>`).join('')}
             </div>
-            <p class="text-sm flex justify-between"><span class="text-slate-500 dark:text-slate-400">Total</span><strong data-horas-total>${esc(fmtHoras(total))}</strong></p>
             ${sinNumero ? `<p class="text-xs text-amber-700 dark:text-amber-300">${sinNumero === 1 ? 'Hay 1 parte' : `Hay ${sinNumero} partes`} con horas que no son un número y no se han sumado.</p>` : ''}`;
         cont.classList.remove('hidden');
     }
@@ -446,7 +444,7 @@
         return `
         <div class="grid grid-cols-[1fr_5.5rem_auto] gap-2 items-center" data-operario>
             <input type="text" list="par-operarios-dl" autocomplete="off" data-campo="nombre" aria-label="Operario" placeholder="Operario" value="${esc(o?.nombre ?? '')}" class="${INPUT}">
-            <input type="text" maxlength="10" autocomplete="off" data-campo="horas" aria-label="Horas" placeholder="Horas" value="${esc(o?.horas ?? '')}" class="${INPUT}">
+            <input type="text" inputmode="decimal" maxlength="5" autocomplete="off" data-campo="horas" aria-label="Horas" placeholder="Horas (5,5)" title="Solo números: 8, 5,5 o 6,5" value="${esc(o?.horas ?? '')}" class="${INPUT}">
             <button type="button" data-accion="quitar-operario" aria-label="Quitar operario" title="Quitar operario" class="${BTN_DANGER}"><span class="material-symbols-outlined text-[20px]">close</span></button>
         </div>`;
     }
@@ -928,6 +926,13 @@
         if (!f.fecha) return fallo(err, 'Indica la fecha.');
         if (modo === 'nuevo' && union && !union.bloqueado && !union.eleccion) return fallo(err, 'Ya figuras en el parte de ese día en esta obra: elige si modificar ese parte, crear uno nuevo o cancelar.');
         if (!operarios.length || operarios.some((o) => !o.nombre)) return fallo(err, 'Indica el nombre de cada operario (o quita las líneas vacías).');
+        // Horas: solo números (8, 5,5 o 6,5) para que siempre se puedan sumar. Se guardan con coma.
+        for (const o of operarios) {
+            if (!o.horas) continue;
+            const n = /^\d{1,2}([.,]\d{1,2})?$/.test(o.horas) ? Number(o.horas.replace(',', '.')) : NaN;
+            if (!isFinite(n) || n <= 0 || n > 24) return fallo(err, `Horas de ${o.nombre}: escribe solo un número, por ejemplo 8, 5,5 o 6,5 (como mucho 24).`);
+            o.horas = String(n).replace('.', ',');
+        }
         const yoEstoy = operarios.some((o) => norm(o.nombre) === norm(miNombre()));
         if (modo === 'editar' && !esAdmin() && actual.created_by_id !== yo().id && !yoEstoy) return fallo(err, 'Tu nombre debe seguir figurando entre los operarios para poder guardar el parte.');
         const items = [];
