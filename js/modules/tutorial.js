@@ -38,6 +38,8 @@
             hechas: { 2: true },
             cliente: '', obra: '', direccion: '', localidad: '',
             foco: 'cliente',
+            union: 'unir',
+            obraAbierta: null,
         };
     }
 
@@ -132,9 +134,9 @@
                 <h3 class="font-semibold">Nueva tarea (ejemplo)</h3>
                 <div data-foco="buscador" class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1"><label class="text-xs font-medium" for="tuto-cliente">Cliente</label>
-                        <input id="tuto-cliente" data-tuto="campo" data-campo="cliente" autocomplete="off" value="${esc(st.cliente)}" placeholder="Escribe o elige un cliente" class="${INPUT}"></div>
+                        <div class="relative"><input id="tuto-cliente" data-tuto="campo" data-campo="cliente" autocomplete="off" value="${esc(st.cliente)}" placeholder="Escribe o elige un cliente" class="${INPUT} pr-10"><span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 flex">${icono('mic', 'text-[20px]')}</span></div></div>
                     <div class="flex flex-col gap-1"><label class="text-xs font-medium" for="tuto-obra">Obra</label>
-                        <input id="tuto-obra" data-tuto="campo" data-campo="obra" autocomplete="off" value="${esc(st.obra)}" placeholder="Escribe o elige una obra" class="${INPUT}"></div>
+                        <div class="relative"><input id="tuto-obra" data-tuto="campo" data-campo="obra" autocomplete="off" value="${esc(st.obra)}" placeholder="Escribe o elige una obra" class="${INPUT} pr-10"><span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 flex">${icono('mic', 'text-[20px]')}</span></div></div>
                     <div id="tuto-buscador-resto" class="flex flex-col gap-3">${restoBuscador()}</div>
                 </div>
             </div>`;
@@ -168,9 +170,68 @@
             </div>`;
     }
 
+    // Crear un parte cuando ese día ya hay otro en la misma obra
+    function pantallaUnirParte() {
+        const opcion = (v, txt) => `<button type="button" data-tuto="union" data-valor="${v}" class="text-sm px-4 py-2 rounded-full font-medium border ${st.union === v ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 dark:border-zinc-700'}">${txt}</button>`;
+        return `
+            <div class="${TARJETA} p-5 flex flex-col gap-3">
+                <h3 class="font-semibold">Nuevo parte (ejemplo)</h3>
+                <p class="text-sm">Comunidad Las Acacias · Portal 3 - Bajantes · Hoy</p>
+                <div data-foco="unir" class="flex flex-col gap-3 bg-blue-50 dark:bg-blue-950 rounded-xl p-3">
+                    <p class="text-sm">Hoy ya hay un parte de <b>Luis Gómez</b> en esta obra. ¿Qué quieres hacer?</p>
+                    <div class="flex flex-wrap gap-2">${opcion('unir', 'Añadir a ese parte')}${opcion('nuevo', 'Crear parte nuevo')}</div>
+                    <p class="text-xs text-slate-600 dark:text-slate-300">${st.union === 'unir'
+                        ? 'Tu trabajo se añade en un apartado «Añadido por ' + esc(miNombre()) + '», tú pasas a figurar en el parte y tu material queda a tu nombre.'
+                        : 'Se guarda un parte aparte, solo con lo tuyo.'}</p>
+                </div>
+                <p data-foco="firma" class="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950 rounded-xl p-3 flex items-start gap-2">${icono('draw', 'text-[18px] shrink-0')} Ese parte ya tiene la firma del cliente. Si vuelves a pedir firma, se creará un parte nuevo.</p>
+            </div>`;
+    }
+
+    function pestanasBitacora(activa) {
+        const b = (k, ic, txt) => `<span class="flex-1 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-1.5 ${activa === k ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300'}">${icono(ic, 'text-[18px]')} ${txt}</span>`;
+        return `<div data-foco="pestanas-bitacora" class="flex bg-slate-100 dark:bg-zinc-800 rounded-full p-1">${b('escrita', 'edit_note', 'Escrita')}${b('fotos', 'photo_camera', 'Fotográfica')}</div>`;
+    }
+
+    function pantallaFotos() {
+        const foto = (txt) => `<div class="aspect-square rounded-xl bg-slate-200 dark:bg-zinc-800 flex flex-col items-center justify-center text-slate-400 text-[11px] gap-1">${icono('photo_library')}${txt}</div>`;
+        return `
+            <div class="flex flex-col gap-3">
+                ${pestanasBitacora('fotos')}
+                <div data-foco="fotos" class="${TARJETA} p-4 flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-semibold text-sm">Ana Pérez · Reforma de baño</span>
+                        <span class="p-1.5 rounded-full text-slate-500 flex">${icono('add_a_photo', 'text-[22px]')}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">${foto('Antes')}${foto('Tuberías')}${foto('Plato')}</div>
+                </div>
+                <div class="flex justify-end"><span data-foco="subir-fotos" class="bg-blue-600 text-white p-4 rounded-2xl shadow-xl flex">${icono('add_a_photo')}</span></div>
+            </div>`;
+    }
+
+    function pantallaPizarra() {
+        const color = (c) => `<span class="w-6 h-6 rounded-full border-2 border-white dark:border-zinc-900 shadow" style="background:${c}"></span>`;
+        return `
+            <div class="${TARJETA} p-4 flex flex-col gap-3">
+                <h3 class="font-semibold flex items-center gap-2">${icono('draw', 'text-blue-600')} Pizarra</h3>
+                <div data-foco="pizarra-herramientas" class="flex flex-wrap items-center gap-2">
+                    <span class="${BTN_SEC}">${icono('photo_camera', 'text-[18px]')} Foto</span>
+                    <span class="${BTN_SEC}">${icono('crop', 'text-[18px]')} Encuadrar</span>
+                    <span class="${BTN_SEC}">${icono('text_fields', 'text-[18px]')} Texto</span>
+                    <span class="flex gap-1">${['#111827', '#dc2626', '#2563eb', '#16a34a', '#facc15'].map(color).join('')}</span>
+                </div>
+                <div data-foco="pizarra" class="relative h-48 rounded-xl overflow-hidden bg-gradient-to-br from-slate-300 to-slate-400 dark:from-zinc-700 dark:to-zinc-800">
+                    <span class="absolute left-3 top-3 text-[11px] text-white/80 flex items-center gap-1">${icono('photo_camera', 'text-[16px]')} Foto de fondo</span>
+                    <svg viewBox="0 0 300 160" class="absolute inset-0 w-full h-full" aria-hidden="true"><path d="M40 120 C 90 40, 150 40, 200 110" stroke="#dc2626" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M200 110 l-14 -2 m14 2 l-4 -13" stroke="#dc2626" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+                    <span class="absolute right-4 bottom-4 bg-yellow-300 text-slate-900 text-xs font-semibold px-2 py-1 rounded">Llave de paso aquí</span>
+                </div>
+            </div>`;
+    }
+
     function pantallaBitacora() {
         return `
             <div class="flex flex-col gap-3">
+                ${pestanasBitacora('escrita')}
                 <div data-foco="bitacora" class="${TARJETA} p-4 flex flex-col gap-2">
                     <span class="font-semibold text-sm">Hotel Mirador · Habitaciones 2ª planta</span>
                     <p class="text-sm">Llave de corte general detrás de la puerta del cuarto de limpieza. Tuberías de cobre de 22.</p>
@@ -196,12 +257,31 @@
     }
 
     function pantallaClientes() {
+        const historial = (o) => {
+            const grupo = (ic, titulo, filas) => `
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs font-semibold flex items-center gap-1">${icono(ic, 'text-[16px] text-blue-600')} ${titulo}</span>
+                    ${filas.map((f) => `<p class="text-xs text-slate-500 pl-5">${f}</p>`).join('')}
+                </div>`;
+            return `
+                <div class="flex flex-col gap-2 border-l-2 border-blue-200 dark:border-blue-900 pl-3 ml-1">
+                    ${grupo('assignment', 'Partes', ['Hoy · Cambio de bajante (' + esc(miNombre()) + ', Luis Gómez)', '14/10 · Revisión de arquetas'])}
+                    ${grupo('inventory_2', 'Materiales pedidos', ['Ayer · 2 codos PVC 110 · Recibido'])}
+                    ${grupo('menu_book', 'Bitácora', ['10/10 · Llave de corte en el cuarto de contadores'])}
+                    ${grupo('photo_library', 'Bitácora fotográfica', ['3 fotos'])}
+                    ${grupo('list_alt', 'Diario', ['Hoy · Revisar bajante del 2º'])}
+                </div>`;
+        };
         return `
             <div data-foco="clientes" class="flex flex-col gap-3">
                 ${CLIENTES.slice(0, 2).map((c) => `
                     <div class="${TARJETA} p-4 flex flex-col gap-2">
                         <span class="font-semibold text-sm flex items-center gap-2">${icono('business_center', 'text-[18px] text-blue-600')} ${esc(c.nombre)}</span>
-                        ${c.obras.map((o) => `<p class="text-xs text-slate-500 flex items-center gap-1">${icono('location_on', 'text-[14px]')} ${esc(o.nombre)} · ${esc(o.direccion)}, ${esc(o.localidad)}</p>`).join('')}
+                        ${c.obras.map((o) => `
+                            <button type="button" data-tuto="obra" data-valor="${esc(o.nombre)}" ${o.nombre === 'Portal 3 - Bajantes' ? 'data-foco="obra-historial"' : ''} aria-expanded="${st.obraAbierta === o.nombre}" class="text-left text-xs leading-5 hover:underline rounded-lg">
+                                ${icono('construction', 'text-[16px] align-middle text-blue-600 dark:text-blue-400')} <span class="font-medium">${esc(o.nombre)}</span> <span class="text-slate-500">· ${esc(o.direccion)}, ${esc(o.localidad)}</span>
+                            </button>
+                            ${st.obraAbierta === o.nombre ? historial(o) : ''}`).join('')}
                         <span class="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">${icono('call', 'text-[14px]')} 600 000 000</span>
                     </div>`).join('')}
             </div>`;
@@ -266,9 +346,13 @@
         { titulo: 'Crear una tarea', pestana: 'diario', pantalla: pantallaDiario, foco: 'nueva',
           texto: 'Con el botón <b>+</b> creas una tarea nueva. Las notas se pueden escribir o dictar con el micrófono, y puedes hacer un dibujo en la pizarra.' },
         { titulo: 'Buscar cliente y obra', pestana: 'diario', pantalla: pantallaBuscador, foco: 'buscador',
-          texto: 'Puedes buscar <b>directamente por la obra</b>. Si eliges antes un <b>cliente</b>, solo salen <b>las obras de ese cliente</b>. Al elegir la obra se rellenan solas la dirección y la localidad. Funciona igual en Diario, Partes, Materiales y Bitácora. Pruébalo.' },
+          texto: 'Puedes buscar <b>directamente por la obra</b>. Si eliges antes un <b>cliente</b>, solo salen <b>las obras de ese cliente</b>. Al elegir la obra se rellenan solas la dirección y la localidad. Funciona igual en Diario, Partes, Materiales y Bitácora, y con el <b>micrófono</b> también los puedes dictar. Pruébalo.' },
         { titulo: 'Partes de trabajo', pestana: 'partes', pantalla: pantallaPartes, foco: 'parte',
           texto: 'En el parte apuntas quién ha trabajado y cuántas horas, lo que se ha hecho (escrito o dictado), los materiales usados y la <b>firma del cliente</b>. Se descarga en <b>PDF</b>. Puedes editar los partes en los que figuras.' },
+        { titulo: 'Varios en la misma obra y día', pestana: 'partes', pantalla: pantallaUnirParte, foco: 'unir',
+          texto: 'Si ese día ya hay un parte en la misma obra, eliges <b>Añadir a ese parte</b> (lo normal) o <b>Crear parte nuevo</b>. Al añadir, quien hizo el parte recibe un aviso. Si ya figuras en ese parte, te lo dice y puedes modificarlo. Pruébalo.' },
+        { titulo: 'La firma del cliente', pestana: 'partes', pantalla: pantallaUnirParte, foco: 'firma',
+          texto: 'Un parte solo lleva una firma. Si el parte del día ya está firmado y necesitas otra firma, se crea un parte nuevo para ti.' },
         { titulo: 'Buscar por semana', pestana: 'partes', pantalla: pantallaPartes, foco: 'buscar-semana',
           texto: 'Escribe la semana, por ejemplo <b>S43</b>, para ver los partes de esa semana. Arriba eliges ver <b>Todos</b> o <b>Mis partes</b>.' },
         { titulo: 'Partes cerrados', pestana: 'partes', pantalla: pantallaPartes, foco: 'bloqueado',
@@ -277,10 +361,18 @@
           texto: 'Aquí se apunta información útil de cada obra para que la vea todo el equipo: dónde está una llave, qué tubería hay, medidas...' },
         { titulo: 'Notas por voz y pizarra', pestana: 'bitacora', pantalla: pantallaBitacora, foco: 'herramientas',
           texto: 'Puedes <b>dictar</b> la nota en vez de escribirla y hacer un dibujo o esquema en la <b>pizarra</b>.' },
+        { titulo: 'Pizarra con foto', pestana: 'bitacora', pantalla: pantallaPizarra, foco: 'pizarra-herramientas',
+          texto: 'En la pizarra puedes <b>hacer una foto</b> o elegirla de la galería y dibujar encima. La foto se <b>encuadra</b> (acercar, girar, mover), puedes poner <b>cajas de texto</b> y elegir entre cinco colores, amarillo incluido. Después se puede seguir editando. También está en las tareas del Diario.' },
+        { titulo: 'Bitácora fotográfica', pestana: 'bitacora', pantalla: pantallaFotos, foco: 'pestanas-bitacora',
+          texto: 'La Bitácora tiene dos pestañas: <b>Escrita</b> y <b>Fotográfica</b>. En la fotográfica se guardan las fotos de cada obra, agrupadas por obra y con buscador.' },
+        { titulo: 'Subir fotos de obra', pestana: 'bitacora', pantalla: pantallaFotos, foco: 'subir-fotos',
+          texto: 'Con este botón <b>haces una foto</b> o las eliges de la galería (puedes subir varias a la vez). Sin cobertura esperan en el móvil y se suben solas. Puedes borrar las fotos que hayas subido tú.' },
         { titulo: 'Pedir material', pestana: 'materiales', pantalla: pantallaMateriales, foco: 'estados',
           texto: 'Crea una solicitud con lo que necesitas. Verás su estado: <b>Pendiente</b>, <b>Pedido</b> o <b>Recibido</b>. Te llega un aviso cuando se pide. Cuando tengas el material, abre la solicitud y márcala como <b>Recibido</b>.' },
         { titulo: 'Clientes y obras', pestana: 'clientes', pantalla: pantallaClientes, foco: 'clientes',
           texto: 'La agenda de clientes con sus obras, direcciones y teléfonos de contacto.' },
+        { titulo: 'Historial de cada obra', pestana: 'clientes', pantalla: pantallaClientes, foco: 'obra-historial',
+          texto: 'Toca el nombre de una obra y se despliega <b>todo su historial</b>: partes, material pedido, bitácora, fotos y tareas del Diario, de lo más nuevo a lo más antiguo. Pruébalo con «Portal 3 - Bajantes».' },
         { titulo: 'Empleados', pestana: 'empleados', pantalla: pantallaEmpleados, foco: 'empleados',
           texto: 'Aquí están tus compañeros con su teléfono, para llamarles con un toque.' },
         { titulo: 'Mensajes y avisos', pestana: 'diario', pantalla: pantallaDiario, foco: 'cabecera-avisos',
@@ -298,7 +390,9 @@
         ['diario', 'list_alt', 'Diario'], ['partes', 'assignment', 'Partes'], ['bitacora', 'menu_book', 'Bitácora'],
         ['materiales', 'inventory_2', 'Materiales'], ['clientes', 'business_center', 'Clientes'], ['empleados', 'group', 'Empleados'],
     ];
-    const PRIMER_PASO = { diario: 2, partes: 8, bitacora: 11, materiales: 13, clientes: 14, empleados: 15 };
+    // Al tocar una pestaña simulada se salta a su primer paso (el del Diario, después de los dos de presentación).
+    const PRIMER_PASO = {};
+    PASOS.forEach((p, i) => { if (i > 1 && p.pestana && PRIMER_PASO[p.pestana] === undefined) PRIMER_PASO[p.pestana] = i; });
 
     function pintar() {
         if (!raiz) return;
@@ -398,6 +492,8 @@
         else if (a === 'luego') cerrar('luego');
         else if (a === 'descartar') cerrar('descartado');
         else if (a === 'pestana') irA(PRIMER_PASO[el.dataset.pestana] ?? st.paso);
+        else if (a === 'union') { st.union = el.dataset.valor; pintar(); }
+        else if (a === 'obra') { st.obraAbierta = st.obraAbierta === el.dataset.valor ? null : el.dataset.valor; pintar(); }
         else if (a === 'filtro') { st.soloMias = el.dataset.mias === '1'; pintar(); }
         else if (a === 'hecha') { const id = Number(el.dataset.id); st.hechas[id] = !st.hechas[id]; pintar(); }
         else if (a === 'sugerencia') elegir(el.dataset.tipo, el.dataset.valor);
@@ -427,8 +523,9 @@
     }
     function alEnfocar(e) {
         const el = e.target;
-        if (el.closest && el.closest('#tuto-pantalla')) recogerBurbuja(true);
-        if (!el.dataset || el.dataset.tuto !== 'campo' || st.foco === el.dataset.campo) return;
+        if (!el.dataset || el.dataset.tuto !== 'campo') return;   // un botón se recoge al soltar (click), no al pulsar
+        recogerBurbuja(true);
+        if (st.foco === el.dataset.campo) return;
         st.foco = el.dataset.campo;
         repintarBuscador();
     }
