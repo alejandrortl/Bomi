@@ -748,7 +748,7 @@
             ${contactos ? `<div><span class="text-xs text-slate-500">Contacto:</span>${contactos}</div>` : ''}
             <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || '')}</p></div>
             <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-wrap break-words">${escT(item.notas || 'N/A')}</p></div>
-            ${item.dibujo_url ? `<div><span class="text-xs text-slate-500">Dibujo:</span>${window.BomiPizarraNube ? window.BomiPizarraNube.img(item.dibujo_url, 'mt-2 rounded-xl max-h-48 border border-slate-200', 'Dibujo') : `<img src="${escT(item.dibujo_url)}" class="mt-2 rounded-xl max-h-48 border border-slate-200">`}</div>` : ''}
+            ${item.dibujo_url ? `<div><span class="text-xs text-slate-500 flex items-center justify-between gap-2">Dibujo: <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[14px]">zoom_in</span>Toca para ampliar</span></span>${window.BomiPizarraNube ? window.BomiPizarraNube.img(item.dibujo_url, 'mt-2 rounded-xl max-h-48 bg-white border border-slate-200', 'Dibujo', true) : `<img src="${escT(item.dibujo_url)}" data-ampliar="1" class="mt-2 rounded-xl max-h-48 bg-white border border-slate-200 cursor-zoom-in">`}</div>` : ''}
             <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 mt-4">
                 <span>Creado por: ${escT(item.created_by || '?')} ${item.updated_by ? '<br>Editado por: ' + escT(item.updated_by) : ''}</span>
             </div>

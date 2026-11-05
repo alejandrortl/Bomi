@@ -45,9 +45,12 @@
         return url;
     }
     // <img> de una pizarra: si está en R2 la imagen se pone después con rellenar().
-    function img(v, clases, alt) {
-        if (esNube(v)) return `<img data-pizarra="${esc(v)}" alt="${esc(alt || 'Pizarra')}" class="${esc(clases)}">`;
-        return `<img src="${esc(v)}" alt="${esc(alt || 'Pizarra')}" class="${esc(clases)}">`;
+    // ampliar: al tocarla se abre a pantalla completa con zoom (BomiZoom).
+    function img(v, clases, alt, ampliar) {
+        const extra = ampliar ? ' data-ampliar="1"' : '';
+        const cls = esc(clases) + (ampliar ? ' cursor-zoom-in' : '');
+        if (esNube(v)) return `<img data-pizarra="${esc(v)}"${extra} alt="${esc(alt || 'Pizarra')}" class="${cls}">`;
+        return `<img src="${esc(v)}"${extra} alt="${esc(alt || 'Pizarra')}" class="${cls}">`;
     }
     async function rellenar(raiz) {
         const imgs = Array.from((raiz || document).querySelectorAll('img[data-pizarra]'));

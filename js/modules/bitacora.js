@@ -42,7 +42,8 @@
     // Solo se pintan pizarras de R2 ("r2:..."), imágenes de almacenamiento (https) o PNG incrustados de registros antiguos.
     const nube = () => window.BomiPizarraNube;
     const imagenSegura = (u) => ((nube() && nube().esNube(u)) || /^https:\/\//.test(u || '') || /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(u || '')) ? u : '';
-    const imgPizarra = (v, clases) => (nube() ? nube().img(v, clases) : `<img src="${esc(v)}" alt="Pizarra" class="${esc(clases)}">`);
+    const imgPizarra = (v, clases, ampliar) => (nube() ? nube().img(v, clases, 'Pizarra', ampliar) : `<img src="${esc(v)}"${ampliar ? ' data-ampliar="1"' : ''} alt="Pizarra" class="${esc(clases)}${ampliar ? ' cursor-zoom-in' : ''}">`);
+    const AVISO_ZOOM = '<span class="font-normal text-slate-500 flex items-center gap-0.5"><span class="material-symbols-outlined text-[14px]">zoom_in</span>Toca para ampliar</span>';
     const rellenarPizarras = (raiz) => { if (nube()) nube().rellenar(raiz); };
     const imagenDe = (r) => imagenSegura(r.imagen_pizarra) || imagenSegura(r.pizarra_data);
     const modificado = (r) => !!r.updated_at && !!r.created_at && (new Date(r.updated_at) - new Date(r.created_at) > 5000);
@@ -191,7 +192,7 @@
         if (!cont) return;
         const img = pizarra.nueva ? pizarra.vistaPrevia : (pizarra.quitada ? '' : pizarra.url);
         cont.innerHTML = `
-            ${img ? imgPizarra(img, 'max-h-48 max-w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700') : ''}
+            ${img ? imgPizarra(img, 'max-h-48 max-w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700', true) : ''}
             <div class="flex flex-wrap gap-2">
                 <button type="button" data-accion="pizarra" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">draw</span> ${img ? 'Editar pizarra' : 'Añadir pizarra'}</button>
                 ${img ? `<button type="button" data-accion="quitar-pizarra" class="${BTN_SEC} text-red-600 dark:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span> Quitar</button>` : ''}
@@ -369,7 +370,7 @@
                 ${direccionHtml(r.direccion, r.localidad)}
             </div>
             <div class="flex flex-col gap-1"><span class="text-xs font-medium">Notas</span>${r.notas ? `<p class="text-sm whitespace-pre-wrap break-words">${esc(r.notas)}</p>` : '<p class="text-sm text-slate-500">Sin notas.</p>'}</div>
-            ${img ? `<div class="flex flex-col gap-1"><span class="text-xs font-medium">Pizarra</span>${imgPizarra(img, 'w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700')}</div>` : ''}
+            ${img ? `<div class="flex flex-col gap-1"><span class="text-xs font-medium flex items-center justify-between gap-2">Pizarra ${AVISO_ZOOM}</span>${imgPizarra(img, 'w-full object-contain bg-white rounded-xl border border-slate-200 dark:border-zinc-700', true)}</div>` : ''}
             <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(r, true)}</div>
             <div class="flex justify-end gap-3">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
