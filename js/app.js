@@ -29,6 +29,7 @@
     let allClientesCompletos = [];
     let allOperarios = [];
     let currentTareaItem = null;
+    const tareasHechasHoy = new Set(); // tareas arrastradas que se marcan hechas hoy: siguen a la vista hasta recargar
     
     const filtroFechaDiario = document.getElementById('filtro-fecha-diario');
     const searchTareasInput = document.getElementById('search-tareas');
@@ -673,11 +674,18 @@
 
         const soloMias = leerSoloMias();
         pintarInterruptorDiario();
+        // Las tareas sin completar de días anteriores pasan al día de hoy (conservan su fecha original)
+        // con la etiqueta "Pendiente desde el DD/MM". Si se marcan hechas hoy, siguen visibles hasta recargar.
+        const hoy = getTodayLocalString();
+        const esArrastrada = (t) => {
+            const tFecha = t.fecha ? t.fecha.split('T')[0] : '';
+            return searchTxt === '' && fechaSelect === hoy && tFecha !== '' && tFecha < hoy && (!t.completada || tareasHechasHoy.has(t.id));
+        };
         let filtradas = allTareas.filter(t => {
             if (soloMias && !esMiaTarea(t)) return false;
             const tFecha = t.fecha ? t.fecha.split('T')[0] : '';
             if (searchTxt === '') {
-                if (tFecha !== fechaSelect) return false;
+                if (tFecha !== fechaSelect && !esArrastrada(t)) return false;
             } else {
                 const fullText = `${t.cliente || ''} ${t.obra || ''} ${t.direccion || ''} ${t.localidad || ''} ${t.operario_asignado || ''} ${t.fecha || ''} ${t.notas || ''} ${t.created_by || ''}`.toLowerCase();
                 if (!fullText.includes(searchTxt)) return false;
@@ -686,7 +694,16 @@
         });
 
         // Las tareas realizadas van al final (completada puede venir null/false/true: se compara como booleano)
-        filtradas.sort((a, b) => Number(!!a.completada) - Number(!!b.completada));
+        // Entre las pendientes, primero las arrastradas de días anteriores (la más antigua arriba).
+        const fechaOrden = (t) => (t.fecha ? t.fecha.split('T')[0] : '');
+        filtradas.sort((a, b) => {
+            const d = Number(!!a.completada) - Number(!!b.completada);
+            if (d) return d;
+            const aa = esArrastrada(a), ab = esArrastrada(b);
+            if (aa !== ab) return aa ? -1 : 1;
+            if (aa && ab) return fechaOrden(a) < fechaOrden(b) ? -1 : fechaOrden(a) > fechaOrden(b) ? 1 : 0;
+            return 0;
+        });
         c.innerHTML = '';
 
         if (filtradas.length === 0) {
@@ -699,7 +716,11 @@
             const cardBg = isComp ? 'bg-slate-100 dark:bg-zinc-800 opacity-75' : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
             const div = document.createElement('div');
             div.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2`;
+            const arrastrada = esArrastrada(t);
+            const [, mm, dd] = fechaOrden(t).split('-');
+            const etiquetaPendiente = arrastrada ? `<span class="inline-flex items-center self-start gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" data-pendiente-desde="${escT(fechaOrden(t))}"><span class="material-symbols-outlined text-[14px]">schedule</span>Pendiente desde el ${escT(dd)}/${escT(mm)}</span>` : '';
             div.innerHTML = `
+                ${etiquetaPendiente}
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${escT(t.cliente || 'Sin cliente')} - ${escT(t.obra || 'Sin obra')}</span>
                     <div class="flex items-center gap-2 shrink-0 ml-2">
@@ -723,6 +744,7 @@
         if (error) { alert('No se pudo actualizar la tarea: ' + error.message); return; }
         const t = allTareas.find(x => x.id === id);
         if(t) t.completada = status;
+        if (status) tareasHechasHoy.add(id); else tareasHechasHoy.delete(id);
         renderTareas();
     };
 
