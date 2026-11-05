@@ -580,6 +580,8 @@
     async function loadTasksFromDB() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
+        // Las tareas cuyo día acabó sin completarse quedan pendientes y sin operario (lo hace la base de datos).
+        try { await supabaseClient.rpc('pasar_tareas_pendientes'); } catch (e) { /* sin conexión o sin la migración: se sigue */ }
         const { data, error } = await supabaseClient.from('tareas').select('*');
         if (error) {
             c.innerHTML = `<p class="text-red-500 text-center mt-4">Error al cargar tareas: ${error.message}</p>`;
@@ -699,9 +701,11 @@
         filtradas.sort((a, b) => {
             const d = Number(!!a.completada) - Number(!!b.completada);
             if (d) return d;
-            const aa = esArrastrada(a), ab = esArrastrada(b);
+            const desdeDe = (t) => String(t.pendiente_desde || fechaOrden(t)).slice(0, 10);
+            const pend = (t) => esArrastrada(t) || (!!t.pendiente_desde && desdeDe(t) < fechaOrden(t));
+            const aa = pend(a), ab = pend(b);
             if (aa !== ab) return aa ? -1 : 1;
-            if (aa && ab) return fechaOrden(a) < fechaOrden(b) ? -1 : fechaOrden(a) > fechaOrden(b) ? 1 : 0;
+            if (aa && ab) return desdeDe(a) < desdeDe(b) ? -1 : desdeDe(a) > desdeDe(b) ? 1 : 0;
             return 0;
         });
         c.innerHTML = '';
@@ -716,9 +720,11 @@
             const cardBg = isComp ? 'bg-slate-100 dark:bg-zinc-800 opacity-75' : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
             const div = document.createElement('div');
             div.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2`;
-            const arrastrada = esArrastrada(t);
-            const [, mm, dd] = fechaOrden(t).split('-');
-            const etiquetaPendiente = arrastrada ? `<span class="inline-flex items-center self-start gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" data-pendiente-desde="${escT(fechaOrden(t))}"><span class="material-symbols-outlined text-[14px]">schedule</span>Pendiente desde el ${escT(dd)}/${escT(mm)}</span>` : '';
+            // Etiqueta "Pendiente desde": al pasar a hoy, o si un administrador la reasignó a otro día.
+            const desde = String(t.pendiente_desde || fechaOrden(t)).slice(0, 10);
+            const arrastrada = !isComp && (esArrastrada(t) || (!!t.pendiente_desde && desde < fechaOrden(t)));
+            const [, mm, dd] = desde.split('-');
+            const etiquetaPendiente = arrastrada ? `<span class="inline-flex items-center self-start gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" data-pendiente-desde="${escT(desde)}"><span class="material-symbols-outlined text-[14px]">schedule</span>Pendiente desde el ${escT(dd)}/${escT(mm)}</span>` : '';
             div.innerHTML = `
                 ${etiquetaPendiente}
                 <div class="flex justify-between items-start">
@@ -730,6 +736,7 @@
                 </div>
                 <div class="text-sm cursor-pointer" onclick="window.verDetalleTarea('${escT(t.id)}')">
                     <p>📅 <strong>Fecha:</strong> ${escT(t.fecha || 'N/D')} | 👷 <strong>Operario:</strong> ${escT(t.operario_asignado || 'Sin asignar')}</p>
+                    ${!t.operario_asignado && t.operario_original ? `<p class="text-xs text-slate-500">Estaba asignada a ${escT(t.operario_original)}</p>` : ''}
                     <p class="mt-1 text-sm">${direccionLinkHtml(t, true) || '<span class="text-slate-500">Sin dirección</span>'}</p>
                     ${contactosHtmlT(t)}
                     <p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${escT(t.notas || 'Sin notas...')}</p>
@@ -768,7 +775,7 @@
             <div><span class="text-xs text-slate-500">Cliente / Obra:</span><p class="font-medium text-lg">${escT(item.cliente || '')} - ${escT(item.obra || '')}</p></div>
             <div><span class="text-xs text-slate-500">Ubicación y Fecha:</span><div class="flex items-center justify-between mt-1 gap-2"><p class="font-medium">${direccionLinkHtml(item, false) || '<span class="text-slate-500">Sin dirección</span>'} (${escT(item.fecha || '')})</p><a href="${escT(mapsHrefT(item.direccion, item.localidad))}" target="_blank" rel="noopener noreferrer" aria-label="Abrir en Google Maps" class="text-blue-600 bg-blue-50 dark:bg-blue-950 p-1.5 rounded-full flex items-center shrink-0"><span class="material-symbols-outlined text-[18px]">map</span></a></div></div>
             ${contactos ? `<div><span class="text-xs text-slate-500">Contacto:</span>${contactos}</div>` : ''}
-            <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || '')}</p></div>
+            <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || 'Sin asignar')}</p>${!item.operario_asignado && item.operario_original ? `<p class="text-xs text-slate-500">Estaba asignada a ${escT(item.operario_original)}</p>` : ''}</div>
             <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-wrap break-words">${escT(item.notas || 'N/A')}</p></div>
             ${item.dibujo_url ? `<div><span class="text-xs text-slate-500 flex items-center justify-between gap-2">Dibujo: <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[14px]">zoom_in</span>Toca para ampliar</span></span>${window.BomiPizarraNube ? window.BomiPizarraNube.img(item.dibujo_url, 'mt-2 rounded-xl max-h-48 bg-white border border-slate-200', 'Dibujo', true) : `<img src="${escT(item.dibujo_url)}" data-ampliar="1" class="mt-2 rounded-xl max-h-48 bg-white border border-slate-200 cursor-zoom-in">`}</div>` : ''}
             <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 mt-4">
