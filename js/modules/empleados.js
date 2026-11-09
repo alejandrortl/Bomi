@@ -8,7 +8,8 @@
     const BTN_ICON = 'p-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors';
     const BTN_DANGER = 'p-1.5 rounded-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors';
     const ROLES = ['Operario', 'Admin', 'SuperAdmin'];
-    const COLUMNAS_BASE = 'id, nombre, apellido, username, email, telefono, rol, activo';
+    // Sin `rol`: el rol de los demás solo lo reciben Admin/SuperAdmin (ver cargarRoles).
+    const COLUMNAS_BASE = 'id, nombre, apellido, username, email, telefono, activo';
     const TALLAS = [
         ['talla_camiseta', 'Camiseta'], ['talla_polo', 'Polo'], ['talla_sudadera', 'Sudadera'],
         ['talla_pantalon', 'Pantalón'], ['talla_bermudas', 'Bermudas'], ['talla_chaqueta', 'Chaqueta'],
@@ -36,6 +37,9 @@
     const nombreCompleto = (e) => [e.nombre, e.apellido].filter((x) => x && String(x).trim()).join(' ') || e.username || e.email || 'Sin nombre';
     const pendiente = (e) => e.activo !== true;
     const enPapelera = (e) => e.en_papelera === true;
+
+    // El rol de otra persona solo lo ven Admin y SuperAdmin; cada uno ve siempre el suyo.
+    const veRol = (e) => esAdmin() || esYo(e);
 
     // Un admin puede gestionar a cualquiera salvo a un SuperAdmin; el SuperAdmin, a todos.
     const puedeGestionar = (e) => esAdmin() && (esSuper() || rolDe(e) !== 'superadmin');
@@ -66,7 +70,7 @@
         else lista = (esAdmin() ? empleados : empleados.filter((e) => !pendiente(e))).filter((e) => !enPapelera(e));
         if (tokens.length) {
             lista = lista.filter((e) => {
-                const t = norm([e.nombre, e.apellido, e.rol].join(' '));
+                const t = norm([e.nombre, e.apellido, esAdmin() ? e.rol : ''].join(' '));
                 return tokens.every((k) => t.includes(k));
             });
         }
@@ -112,7 +116,7 @@
                 <div class="min-w-0 flex flex-col gap-1">
                     <h3 class="font-bold text-base break-words">${esc(nombreCompleto(e))}${esYo(e) ? ' <span class="text-xs font-normal text-slate-400">(tú)</span>' : ''}</h3>
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="text-xs px-2.5 py-0.5 rounded-full font-medium ${claseRol(e)}">${esc(e.rol || 'Sin rol')}</span>
+                        ${veRol(e) ? `<span data-rol class="text-xs px-2.5 py-0.5 rounded-full font-medium ${claseRol(e)}">${esc(e.rol || 'Sin rol')}</span>` : ''}
                         ${pend ? '<span class="text-xs px-2.5 py-0.5 rounded-full font-medium bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">Pendiente de aprobar</span>' : ''}
                     </div>
                 </div>
@@ -163,6 +167,7 @@
         let { data, error } = await db().from('perfiles').select(COLUMNAS);
         if (error) ({ data, error } = await db().from('perfiles').select(COLUMNAS_TALLAS)); // si aún no existe la papelera
         if (error) ({ data, error } = await db().from('perfiles').select(COLUMNAS_BASE)); // si aún no existen las columnas de tallas
+        if (!error) data = await conRoles(data || []);
         if (error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar empleados: ${esc(error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
             return;
@@ -170,6 +175,29 @@
         empleados = (data || []).sort((a, b) =>
             (pendiente(b) - pendiente(a)) || nombreCompleto(a).localeCompare(nombreCompleto(b), 'es', { sensitivity: 'base' }));
         pintarLista();
+    }
+
+    // Roles: Admin/SuperAdmin los reciben de todos con roles_perfiles(); un Operario solo conoce el suyo.
+    async function conRoles(lista) {
+        const mio = yo();
+        let roles = null;
+        if (esAdmin()) {
+            const r = await db().rpc('roles_perfiles');
+            if (!r.error) roles = r.data;
+            else {
+                // La migración aún no está ejecutada: se lee la columna como antes.
+                const v = await db().from('perfiles').select('id, rol');
+                if (!v.error) roles = v.data;
+            }
+        }
+        const mapa = new Map((roles || []).map((x) => [x.id, x.rol]));
+        return lista.map((e) => {
+            const copia = Object.assign({}, e);
+            delete copia.rol;
+            if (mapa.has(e.id)) copia.rol = mapa.get(e.id);
+            else if (mio && e.id === mio.id) copia.rol = mio.rol;
+            return copia;
+        });
     }
 
     function avisarCambios() {
@@ -346,7 +374,7 @@
         document.getElementById('form-empleados').innerHTML = `
             ${enPapelera(e) ? '<p class="text-xs bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-200 rounded-xl p-3">Este contacto está en la papelera: no aparece en la lista de empleados y no puede entrar en la aplicación.</p>' : ''}
             <div class="border border-slate-200 dark:border-zinc-800 rounded-xl divide-y divide-slate-200 dark:divide-zinc-800">
-                ${fila('Rol', e.rol)}${fila('Teléfono', e.telefono)}${fila('Correo', e.email)}
+                ${veRol(e) ? fila('Rol', e.rol) : ''}${fila('Teléfono', e.telefono)}${fila('Correo', e.email)}
             </div>
             <p class="text-xs font-semibold text-slate-500">Tallas</p>
             <div class="border border-slate-200 dark:border-zinc-800 rounded-xl divide-y divide-slate-200 dark:divide-zinc-800">
@@ -454,6 +482,9 @@
         construirVista();
         enlazarEventos();
     }
+
+    // Si me cambian el rol con la app abierta, la lista se vuelve a pedir (un Operario deja de recibir los roles).
+    window.addEventListener('rolActualizado', () => { if (iniciado) cargar(); });
 
     window.BomiEmpleados = {
         abrir() { iniciar(); vistaPapelera = false; return cargar(); },

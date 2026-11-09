@@ -143,12 +143,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Mi perfil completo (con mi rol). El rol de los demás no se puede leer: la columna `rol` de `perfiles`
+    // solo llega por la función mi_perfil() (el mío) y roles_perfiles() (todos, solo Admin/SuperAdmin).
+    // Si la función aún no existe en la base de datos (migración sin ejecutar), se lee como antes.
+    async function leerMiPerfil(userId) {
+        const r = await supabaseClient.rpc('mi_perfil').maybeSingle();
+        if (!r.error && r.data && r.data.id === userId) return r;
+        if (r.error && window.BomiOffline && window.BomiOffline.esRed(r.error)) return r;
+        if (!r.error && !r.data) return { data: null, error: { message: 'Sin perfil' } };
+        return supabaseClient.from('perfiles').select('*').eq('id', userId).single();
+    }
+    window.leerMiPerfil = leerMiPerfil;
+
     async function checkUserProfileAndLogin(userId) {
-        let { data: profile, error } = await supabaseClient
-            .from('perfiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
+        let { data: profile, error } = await leerMiPerfil(userId);
 
         // Sin conexión al abrir la app: se usa el último perfil conocido en vez de expulsar al usuario.
         if (error && window.BomiOffline && window.BomiOffline.esRed(error)) {
@@ -195,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!yo || !yo.id) return yo;
         if (!forzar && Date.now() - perfilLeidoEn < 15000) return yo;
         try {
-            const { data } = await supabaseClient.from('perfiles').select('*').eq('id', yo.id).single();
+            const { data } = await leerMiPerfil(yo.id);
             perfilLeidoEn = Date.now();
             if (data && data.activo !== false) {
                 window.currentUserProfile = data;
