@@ -4,6 +4,9 @@
 //  - Campo Cliente: busca por nombre de cliente (y también por el nombre de sus obras).
 //  - Campo Obra: si hay un cliente elegido, solo ofrece sus obras; si no hay ninguno, busca entre TODAS las obras
 //    (por obra, cliente, dirección o localidad). Al elegir una, se rellenan cliente, obra, dirección y localidad.
+//  - Campo Dirección: busca las obras por su dirección (y localidad), con la misma regla que el campo Obra (con cliente
+//    elegido, solo sus obras). Al elegir una, se rellenan cliente, obra, dirección y localidad. Si no se elige ninguna,
+//    lo escrito se queda como dirección de una obra nueva. Con la dirección ya rellenada por la obra (solo lectura) no busca.
 //  - Resto de campos con lista de opciones (<input list="...">: productos, referencias, operarios...): se quita la lista
 //    nativa del navegador (en el iPhone sale en la barra sobre el teclado y no se puede desplazar) y se muestra el mismo
 //    desplegable con las opciones del <datalist>, que se puede deslizar igual en iPhone, Android y PC.
@@ -19,6 +22,11 @@
     const norm = (v) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const coincide = (texto, consulta) => { const h = norm(texto); return norm(consulta).split(' ').filter(Boolean).every((t) => h.includes(t)); };
+    // Direcciones: lo dictado dice "calle", "avenida"... y lo guardado suele ir abreviado ("C/", "Av."). Se igualan ambos.
+    const ABREV = [[/\bc\s*\/\s*/g, 'calle '], [/\bav(?:da|d)?\.?(?=\s|$)/g, 'avenida'], [/\bp[lz]a?\.(?=\s|$)|\bpza(?=\s|$)/g, 'plaza'],
+        [/\bctra\.?(?=\s|$)/g, 'carretera'], [/\bp[ºo°]\.?(?=\s|$)/g, 'paseo'], [/\bn[ºo°]\.?\s*(?=\d)|\bnumero\s+(?=\d)/g, ''], [/,/g, ' ']];
+    const normDir = (v) => ABREV.reduce((t, [re, r]) => t.replace(re, r), norm(v)).replace(/\s+/g, ' ').trim();
+    const coincideDir = (texto, consulta) => { const h = normDir(texto); return normDir(consulta).split(' ').filter(Boolean).every((t) => h.includes(t)); };
     const direccionDe = (o) => [o.direccion, o.localidad].map((x) => String(x || '').trim()).filter(Boolean).join(', ');
 
     // ---------- Resultados ----------
@@ -34,14 +42,20 @@
             }
             return salida.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es', { sensitivity: 'base' }));
         }
-        // Obra: solo las del cliente elegido; sin cliente elegido, todas.
+        // Obra y Dirección: solo las del cliente elegido; sin cliente elegido, todas.
         const elegido = clientes.find((c) => norm(c.nombre) === norm(document.getElementById(reg.cliente)?.value));
         const origen = elegido ? [elegido] : clientes;
         for (const c of origen) {
             for (const o of (c.obras || [])) {
                 if (!o || !o.nombre) continue;
+                if (tipo === 'direccion') {
+                    const dir = direccionDe(o);
+                    if (!dir || !coincideDir(dir, consulta)) continue;
+                    salida.push({ titulo: dir, detalle: [o.nombre, elegido ? '' : c.nombre].filter(Boolean).join(' · '), cliente: c.nombre, obra: o.nombre, direccion: o.direccion || '', localidad: o.localidad || '' });
+                    continue;
+                }
                 const texto = elegido ? [o.nombre, o.direccion, o.localidad].join(' ') : [o.nombre, c.nombre, o.direccion, o.localidad].join(' ');
-                if (!coincide(texto, consulta)) continue;
+                if (!coincideDir(texto, consulta)) continue;   // también "calle ..." dictado frente a "C/ ..." guardado
                 salida.push({ titulo: o.nombre, detalle: [elegido ? '' : c.nombre, direccionDe(o)].filter(Boolean).join(' · '), cliente: c.nombre, obra: o.nombre, direccion: o.direccion || '', localidad: o.localidad || '' });
             }
         }
@@ -158,11 +172,15 @@
             lanzar(cli);
             if (obra) obra.focus();
         } else {
-            // Primero el cliente (así se distingue entre obras que se llaman igual) y después la obra: el módulo
+            // Obra o dirección. Primero el cliente (así se distingue entre obras que se llaman igual) y después la obra: el módulo
             // rellena dirección y localidad con los datos guardados.
             if (cli && norm(cli.value) !== norm(it.cliente)) { cli.value = it.cliente; lanzar(cli); }
             obra.value = it.obra;
             lanzar(obra);
+            // Por si el módulo no la rellena (obra con el mismo nombre en otro cliente, etc.), se deja la dirección elegida.
+            const dir = document.getElementById(dirDe(reg)), loc = document.getElementById(dirDe(reg).replace(/direccion$/, 'localidad'));
+            if (tipo === 'direccion' && dir && !dir.value) dir.value = it.direccion;
+            if (tipo === 'direccion' && loc && !loc.value) loc.value = it.localidad;
         }
     }
 
@@ -172,13 +190,16 @@
         for (const r of registros) {
             if (el.id === r.cliente) return { reg: r, tipo: 'cliente' };
             if (el.id === r.obra) return { reg: r, tipo: 'obra' };
+            if (el.id === dirDe(r)) return el.readOnly ? { reg: r, tipo: 'nada' } : { reg: r, tipo: 'direccion' };
         }
         return null;
     }
-    // Campo cliente/obra registrado o, si no, campo con lista de opciones propia.
+    // Campo de dirección de un registro: el indicado o, si no, el del campo obra cambiando "obra" por "direccion".
+    const dirDe = (r) => r.direccion || String(r.obra || '').replace(/obra$/, 'direccion');
+    // Campo cliente/obra/dirección registrado o, si no, campo con lista de opciones propia.
     function campoDe(el) {
         const d = registroDe(el);
-        if (d) return d;
+        if (d) return d.tipo === 'nada' ? null : d;
         if (!el || el.tagName !== 'INPUT') return null;
         quitarNativa(el);
         const dl = el.dataset.lista && document.getElementById(el.dataset.lista);
@@ -230,7 +251,7 @@
         document.addEventListener('scroll', (e) => { if (activo && !(lista && lista.contains(e.target))) colocar(); }, true);
     }
 
-    // reg: { cliente: 'id-del-campo-cliente', obra: 'id-del-campo-obra', fuente: () => [{ nombre, obras: [{ nombre, direccion, localidad }] }] }
+    // reg: { cliente: 'id-del-campo-cliente', obra: 'id-del-campo-obra', [direccion: 'id-del-campo-direccion'], fuente: () => [{ nombre, obras: [{ nombre, direccion, localidad }] }] }
     function registrar(reg) { registros.push(reg); }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enlazar); else enlazar();

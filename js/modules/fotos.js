@@ -301,7 +301,7 @@
                 <input id="f-obra" type="text" required autocomplete="off" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
-                <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="f-direccion" class="text-xs font-medium">Dirección</label><input id="f-direccion" type="text" autocomplete="off" class="${INPUT} read-only:opacity-70"></div>
+                <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="f-direccion" class="text-xs font-medium">Dirección</label><input id="f-direccion" type="text" autocomplete="off" placeholder="Busca la obra por dirección" class="${INPUT} read-only:opacity-70"></div>
                 <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="f-localidad" class="text-xs font-medium">Localidad</label><input id="f-localidad" type="text" autocomplete="off" class="${INPUT} read-only:opacity-70"></div>
             </div>
             <p id="f-hint" class="hidden text-xs text-slate-500 bg-slate-100 dark:bg-zinc-800 rounded-xl p-3"></p>

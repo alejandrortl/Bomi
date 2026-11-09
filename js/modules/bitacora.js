@@ -164,7 +164,7 @@
                 <input id="b-obra" type="text" required autocomplete="off" value="${esc(r?.obra)}" placeholder="Elige una obra del cliente o escribe una nueva" class="${INPUT}">
             </div>
             <div class="flex flex-col sm:flex-row gap-3">
-                <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="b-direccion" class="text-xs font-medium">Dirección</label><input id="b-direccion" type="text" autocomplete="off" value="${esc(r?.direccion)}" class="${INPUT} read-only:opacity-70"></div>
+                <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="b-direccion" class="text-xs font-medium">Dirección</label><input id="b-direccion" type="text" autocomplete="off" placeholder="Busca la obra por dirección" value="${esc(r?.direccion)}" class="${INPUT} read-only:opacity-70"></div>
                 <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="b-localidad" class="text-xs font-medium">Localidad</label><input id="b-localidad" type="text" autocomplete="off" value="${esc(r?.localidad)}" class="${INPUT} read-only:opacity-70"></div>
             </div>
             <p id="b-hint" class="hidden text-xs text-slate-500 bg-slate-100 dark:bg-zinc-800 rounded-xl p-3"></p>

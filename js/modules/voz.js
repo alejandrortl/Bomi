@@ -1,4 +1,4 @@
-// Búsqueda por voz: añade un botón de micrófono a todos los buscadores (barras de búsqueda y campos Cliente/Obra
+// Búsqueda por voz: añade un botón de micrófono a todos los buscadores (barras de búsqueda y campos Cliente/Obra/Dirección
 // de los formularios) y transcribe lo dictado. Si el navegador no sabe dictar (p. ej. la app instalada en iPhone),
 // el micrófono abre el teclado y explica cómo usar el dictado del propio teclado.
 (function () {
@@ -6,7 +6,7 @@
 
     const esBuscador = (el) => el && el.tagName === 'INPUT' && (
         /^(search-|cat-buscar$|msg-buscar$)/.test(el.id || '') ||
-        /^(tarea|par|m|b)-(cliente|obra)$/.test(el.id || ''));
+        /^(tarea|par|m|b)-(cliente|obra|direccion)$/.test(el.id || ''));
     const toast = (txt, tipo) => { if (window.BomiOffline && window.BomiOffline.toast) window.BomiOffline.toast(txt, tipo); };
     const AVISO_TECLADO = 'Para dictar, pulsa el micrófono del teclado del móvil.';
     let activo = null; // { rec, input, btn }
@@ -87,7 +87,12 @@
             wrap.appendChild(btn);
         }
         pintar(btn, false);
-        btn.addEventListener('click', (e) => { e.preventDefault(); if (SR) dictar(input, btn); else sinDictado(input); });
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Dirección rellenada por la obra elegida (solo lectura): no se dicta encima.
+            if (input.readOnly) { toast('La dirección viene de la obra elegida. Borra la obra para buscar otra dirección.'); return; }
+            if (SR) dictar(input, btn); else sinDictado(input);
+        });
     }
 
     function barrer(raiz) {
