@@ -199,7 +199,7 @@
         const sel = document.getElementById('tarea-operario');
         if (!sel) return;
         const actual = extra !== undefined ? extra : sel.value;
-        sel.innerHTML = '<option value="">Selecciona un empleado</option>' +
+        sel.innerHTML = '<option value="">Sin asignar (asignar más tarde)</option>' +
             allOperarios.map(op => `<option value="${escT(nombreOperario(op))}">${escT(nombreOperario(op))}</option>`).join('');
         if (actual && ![...sel.options].some(o => o.value === actual)) sel.insertAdjacentHTML('beforeend', `<option value="${escT(actual)}">${escT(actual)} (ya no activo)</option>`);
         sel.value = actual || '';
@@ -480,16 +480,17 @@
         const itemOriginal = editId ? allTareas.find(t => t.id === editId) : null;
         const operario = allOperarios.find(op => nombreOperario(op) === operarioNombre);
         const mantieneOperario = !!itemOriginal && itemOriginal.operario_asignado === operarioNombre;
-        if (!operarioNombre || (!operario && !mantieneOperario)) {
-            alert('Selecciona un empleado de la lista como operario asignado.');
+        // El operario es opcional: una tarea se puede crear "Sin asignar" y asignarla más tarde.
+        if (operarioNombre && !operario && !mantieneOperario) {
+            alert('Selecciona un empleado de la lista como operario asignado, o deja "Sin asignar".');
             return;
         }
         const notas = document.getElementById('tarea-notas').value.trim();
         const dibujoUrl = document.getElementById('tarea-dibujo-url').value;
         const tareaData = {
             cliente: cName, obra: oName, direccion: dName, localidad: lName,
-            operario_asignado: operarioNombre,
-            operario_username: operario ? operario.username : itemOriginal.operario_username,
+            operario_asignado: operarioNombre || null,
+            operario_username: !operarioNombre ? null : (operario ? operario.username : itemOriginal.operario_username),
             fecha: document.getElementById('tarea-fecha').value,
             notas,
             dibujo_url: dibujoUrl
@@ -658,7 +659,8 @@
     const esMiaTarea = (t) => {
         const p = window.currentUserProfile;
         if (!p) return false;
-        return normT(t.operario_asignado) !== '' && normT(t.operario_asignado) === normT(nombreOperario(p));
+        if (normT(t.operario_asignado) === '') return !!p.id && t.user_id === p.id; // creada por mí y aún sin asignar
+        return normT(t.operario_asignado) === normT(nombreOperario(p));
     };
     document.querySelectorAll('#view-task-list [data-filtro-diario]').forEach((b) => b.addEventListener('click', () => {
         const mias = b.dataset.filtroDiario === 'mias';
@@ -796,7 +798,7 @@
             { t: 'kv', label: 'Localidad', value: t.localidad },
         ];
         if (contactos) it.push({ t: 'kv', label: 'Contacto', value: contactos });
-        it.push({ t: 'kv', label: 'Asignada a', value: t.operario_asignado });
+        it.push({ t: 'kv', label: 'Asignada a', value: t.operario_asignado || 'Sin asignar' });
         it.push({ t: 'h', text: 'Notas' });
         it.push({ t: 'p', text: t.notas || 'N/A' });
         if (t.dibujo_url) { it.push({ t: 'h', text: 'Dibujo' }); it.push({ t: 'img', src: t.dibujo_url, maxW: 420, maxH: 260 }); }
