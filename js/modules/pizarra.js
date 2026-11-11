@@ -53,7 +53,7 @@
     let st = null;          // estado de la sesión de dibujo
     let resolver = null;
 
-    const colorBtn = (c, et, attr) => `<button type="button" ${attr}="${c}" aria-label="${et}" title="${et}" class="w-9 h-9 rounded-full border-2 border-white dark:border-zinc-900 shadow shrink-0" style="background:${c}"></button>`;
+    const colorBtn = (c, et, attr) => `<button type="button" ${attr}="${c}" aria-label="${et}" title="${et}" class="w-9 h-9 rounded-full border-2 border-white dark:border-zinc-500 shadow shrink-0" style="background:${c}"></button>`;
     // style en vez de la clase hidden: los elementos ya traen "flex" y ambas clases competirían.
     const ver = (id, si) => { document.getElementById(id).style.display = si ? '' : 'none'; };
 
@@ -190,6 +190,15 @@
     function menuFoto(abrir) {
         if (abrir) { ver('piz-ajustar', !!st.base); ver('piz-quitar-foto', !!st.base); }
         ver('piz-menu-foto', !!abrir);
+        // Si el menú no cabe a la derecha de la pantalla (móvil estrecho), se alinea por la derecha del botón.
+        const m = document.getElementById('piz-menu-foto');
+        if (abrir && m) {
+            m.style.left = ''; m.style.right = '';
+            const r = m.getBoundingClientRect();
+            if (r.right > window.innerWidth - 8) { m.style.left = 'auto'; m.style.right = '0'; }
+            const r2 = m.getBoundingClientRect();
+            if (r2.left < 8) m.style.right = (r2.left - 8) + 'px';   // tampoco por la izquierda
+        }
     }
 
     function marcar() {
