@@ -595,6 +595,39 @@
     if(searchTareasInput) searchTareasInput.addEventListener('input', renderTareas);
     if(filtroFechaDiario) filtroFechaDiario.addEventListener('change', renderTareas);
 
+    // ---- Día de la agenda: flechas ◀ ▶, botón «Hoy» y nombre del día (Hoy, Mañana, Ayer o el día de la semana) ----
+    function sumarDias(iso, n) {
+        const [a, m, d] = String(iso || getTodayLocalString()).split('-').map(Number);
+        const f = new Date(a, m - 1, d + n);
+        return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+    }
+    function pintarDiaAgenda() {
+        const hoy = getTodayLocalString();
+        const sel = (filtroFechaDiario && filtroFechaDiario.value) || hoy;
+        const nombre = document.getElementById('diario-dia-nombre');
+        const btnHoy = document.getElementById('diario-hoy');
+        if (nombre) {
+            let txt;
+            if (sel === hoy) txt = 'Hoy';
+            else if (sel === sumarDias(hoy, 1)) txt = 'Mañana';
+            else if (sel === sumarDias(hoy, -1)) txt = 'Ayer';
+            else { const [a, m, d] = sel.split('-').map(Number); txt = new Date(a, m - 1, d).toLocaleDateString('es-ES', { weekday: 'long' }); txt = txt.charAt(0).toUpperCase() + txt.slice(1); }
+            nombre.textContent = txt;
+        }
+        if (btnHoy) { btnHoy.classList.toggle('hidden', sel === hoy); }
+    }
+    function cambiarDiaAgenda(iso) {
+        if (!filtroFechaDiario) return;
+        filtroFechaDiario.value = iso;
+        renderTareas();
+    }
+    const btnDiaAnterior = document.getElementById('diario-dia-anterior');
+    const btnDiaSiguiente = document.getElementById('diario-dia-siguiente');
+    const btnDiaHoy = document.getElementById('diario-hoy');
+    if (btnDiaAnterior) btnDiaAnterior.addEventListener('click', () => cambiarDiaAgenda(sumarDias(filtroFechaDiario.value, -1)));
+    if (btnDiaSiguiente) btnDiaSiguiente.addEventListener('click', () => cambiarDiaAgenda(sumarDias(filtroFechaDiario.value, 1)));
+    if (btnDiaHoy) btnDiaHoy.addEventListener('click', () => cambiarDiaAgenda(getTodayLocalString()));
+
     // ---- Dirección (Google Maps) y personas de contacto (llamada) en el Diario ----
     const telHrefT = (t) => 'tel:' + String(t ?? '').replace(/[^\d+]/g, '');
     const mapsHrefT = (dir, loc) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([dir, loc].filter(Boolean).join(', '));
@@ -672,6 +705,7 @@
     function renderTareas() {
         const c = document.getElementById('tasks-container');
         if (!c) return;
+        pintarDiaAgenda();
         const fechaSelect = filtroFechaDiario.value;
         const searchTxt = searchTareasInput.value.toLowerCase().trim();
 

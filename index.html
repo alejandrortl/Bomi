@@ -38,7 +38,7 @@
             } catch (e) { /* sin almacenamiento local */ }
         })();
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.5"></script>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="/api/manifest">
     <meta name="theme-color" content="#2563eb">
@@ -129,9 +129,15 @@
                     <button type="button" data-filtro-diario="todas" class="flex-1 py-2 rounded-full text-sm font-medium">Todas las tareas</button>
                     <button type="button" data-filtro-diario="mias" class="flex-1 py-2 rounded-full text-sm font-medium">Mis tareas</button>
                 </div>
-                <div class="flex justify-between items-center bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <h2 class="text-sm font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600">calendar_month</span> Agenda del Día:</h2>
-                    <input type="date" id="filtro-fecha-diario" aria-label="Filtrar por fecha" class="bg-slate-100 dark:bg-zinc-800 border-none rounded-lg p-2 text-sm font-medium focus:ring-2 focus:ring-blue-600 cursor-pointer">
+                <!-- Día de la agenda: flechas para pasar de día con un toque y botón para volver a hoy -->
+                <div class="flex items-center gap-1 bg-white dark:bg-zinc-900 p-1.5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <button type="button" id="diario-dia-anterior" aria-label="Día anterior" class="shrink-0 p-2.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 active:scale-95 transition-transform flex items-center"><span class="material-symbols-outlined">chevron_left</span></button>
+                    <div class="flex-1 min-w-0 flex flex-col items-center">
+                        <span id="diario-dia-nombre" class="text-xs font-semibold text-blue-600 dark:text-blue-400 leading-tight">Hoy</span>
+                        <input type="date" id="filtro-fecha-diario" aria-label="Fecha de la agenda" class="w-full max-w-[11rem] bg-transparent border-none rounded-lg px-2 py-0.5 text-sm font-medium text-center focus:ring-2 focus:ring-blue-600 cursor-pointer">
+                    </div>
+                    <button type="button" id="diario-hoy" class="hidden shrink-0 text-xs font-semibold px-3 py-2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 active:scale-95 transition-transform">Hoy</button>
+                    <button type="button" id="diario-dia-siguiente" aria-label="Día siguiente" class="shrink-0 p-2.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-zinc-800 active:scale-95 transition-transform flex items-center"><span class="material-symbols-outlined">chevron_right</span></button>
                 </div>
             </div>
             <div id="tasks-container" class="flex flex-col gap-3 pb-6"></div>
@@ -236,7 +242,7 @@
         <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button>
     </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"></script>
     <script src="js/modules/recuperar.js"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
@@ -259,5 +265,6 @@
     <script src="js/modules/voz.js"></script>
     <script src="js/modules/tutorial.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/modules/atras.js"></script>
 </body>
 </html>
