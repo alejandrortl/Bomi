@@ -30,6 +30,7 @@
     const abiertos = new Set();         // obras desplegadas ("Ver todas")
     const enlaces = new Map();          // clave R2 -> { url, hasta }
     let visor = null;                   // { lista, i }
+    let zoomVisor = null;               // zoom de la foto abierta (BomiZoom.controlador)
 
     // ---------- Utilidades ----------
     const db = () => supabaseClient;
@@ -483,6 +484,7 @@
         v.classList.add('hidden');
         v.classList.remove('flex');
         visor = null;
+        if (zoomVisor) zoomVisor.reiniciar();
     }
     const visorAbierto = () => !!visor;
     function mover(d) {
@@ -505,12 +507,13 @@
         const flecha = (d, icono, etq) => n > 1 ? `<button type="button" data-visor="${d}" aria-label="${etq}" class="absolute top-1/2 -translate-y-1/2 ${d === 'ant' ? 'left-2' : 'right-2'} bg-black/50 hover:bg-black/70 text-white rounded-full p-2 flex"><span class="material-symbols-outlined">${icono}</span></button>` : '';
         v.innerHTML = `
             <div class="flex justify-between items-center px-4 py-3 text-white shrink-0">
-                <span class="text-sm font-medium">${visor.i + 1} / ${n}</span>
+                <span class="text-sm font-medium flex items-center gap-2">${visor.i + 1} / ${n}<span id="visor-nivel" class="hidden text-xs bg-white/15 rounded-full px-2 py-0.5"></span></span>
                 <button type="button" data-visor="cerrar" aria-label="Cerrar" class="p-2 rounded-full hover:bg-white/10 flex"><span class="material-symbols-outlined">close</span></button>
             </div>
-            <div id="visor-zona" class="relative flex-1 min-h-0 flex items-center justify-center px-2">
-                <img id="visor-img" data-clave="${esc(f.clave)}" alt="Foto de obra" class="max-w-full max-h-full object-contain select-none" ${enlace(f.clave_miniatura) ? `src="${esc(enlace(f.clave_miniatura))}"` : ''}>
+            <div id="visor-zona" class="relative flex-1 min-h-0 flex items-center justify-center px-2 overflow-hidden select-none" style="touch-action:none">
+                <img id="visor-img" data-clave="${esc(f.clave)}" alt="Foto de obra" draggable="false" class="max-w-full max-h-full object-contain select-none" style="will-change:transform" ${enlace(f.clave_miniatura) ? `src="${esc(enlace(f.clave_miniatura))}"` : ''}>
                 ${flecha('ant', 'chevron_left', 'Foto anterior')}${flecha('sig', 'chevron_right', 'Foto siguiente')}
+                <p class="absolute bottom-1 inset-x-0 text-center text-[11px] text-white/60 pointer-events-none">Pellizca o toca dos veces para ampliar</p>
             </div>
             <div class="text-white px-4 pt-3 pb-5 flex flex-col gap-1.5 shrink-0 max-h-[40dvh] overflow-y-auto">
                 <p class="font-semibold break-words">${esc(f.cliente)} · ${esc(f.obra)}</p>
@@ -526,6 +529,9 @@
                     ${puedeBorrar(f) ? `<button type="button" data-visor="borrar" class="text-sm bg-red-600/80 hover:bg-red-600 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">delete</span> Eliminar</button>` : ''}
                 </div>
             </div>`;
+        const img = v.querySelector('#visor-img');
+        img.addEventListener('load', () => { if (zoomVisor) zoomVisor.aplicar(); });
+        if (zoomVisor) zoomVisor.reiniciar();
         rellenarImagenes(v);
     }
 
@@ -663,7 +669,15 @@
         const v = document.getElementById('visor-fotos');
         v.addEventListener('click', (e) => {
             const b = e.target.closest('[data-visor]');
-            if (!b) { if (e.target.id === 'visor-zona') cerrarVisor(); return; }
+            // Tocar el fondo negro cierra, salvo con la foto ampliada o justo después de arrastrar o pellizcar.
+            if (!b) {
+                if (e.target.id !== 'visor-zona' || (zoomVisor && (zoomVisor.ampliada() || zoomVisor.seMovio()))) return;
+                // Con el dedo "capturado" el toque llega a la zona aunque caiga sobre la foto: solo cierra fuera de ella.
+                const r = v.querySelector('#visor-img').getBoundingClientRect();
+                if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+                cerrarVisor();
+                return;
+            }
             const a = b.dataset.visor;
             if (a === 'cerrar') cerrarVisor();
             else if (a === 'ant') mover(-1);
@@ -673,11 +687,30 @@
             else if (a === 'crear-tarea') crearDesdeFoto('tarea', b);
             else if (a === 'crear-bitacora') crearDesdeFoto('bitacora', b);
         });
-        // Deslizar con el dedo para pasar de foto.
-        let x0 = null, y0 = null;
-        v.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; } }, { passive: true });
+        // Zoom de la foto abierta: pellizco, doble toque, rueda del ratón y arrastre con la foto ampliada.
+        if (window.BomiZoom && window.BomiZoom.controlador) {
+            zoomVisor = window.BomiZoom.controlador({
+                raiz: v,
+                zona: () => v.querySelector('#visor-zona'),
+                foto: () => v.querySelector('#visor-img'),
+                alCambiar(s) {
+                    const etq = v.querySelector('#visor-nivel');
+                    if (!etq) return;
+                    etq.textContent = Math.round(s * 100) + '%';
+                    etq.classList.toggle('hidden', s <= 1.01);
+                    v.querySelectorAll('[data-visor="ant"], [data-visor="sig"]').forEach((b) => b.classList.toggle('hidden', s > 1.01));
+                },
+            });
+            window.addEventListener('resize', () => { if (visorAbierto()) zoomVisor.aplicar(); });
+        }
+        // Deslizar con el dedo para pasar de foto (no con la foto ampliada ni al pellizcar).
+        let x0 = null, y0 = null, varios = false;
+        v.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; varios = false; } else varios = true;
+        }, { passive: true });
         v.addEventListener('touchend', (e) => {
-            if (x0 === null) return;
+            if (x0 === null || e.touches.length) return;
+            if (varios || (zoomVisor && zoomVisor.ampliada())) { x0 = null; return; }
             const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
             x0 = null;
             if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) mover(dx < 0 ? 1 : -1);
@@ -685,6 +718,8 @@
         document.addEventListener('keydown', (e) => {
             if (visorAbierto()) {
                 if (e.key === 'Escape') cerrarVisor();
+                else if (zoomVisor && (e.key === '+' || e.key === '=')) zoomVisor.acercar();
+                else if (zoomVisor && e.key === '-') zoomVisor.alejar();
                 else if (e.key === 'ArrowLeft') mover(-1);
                 else if (e.key === 'ArrowRight') mover(1);
             } else if (e.key === 'Escape' && modalAbierto()) cerrarModal();
