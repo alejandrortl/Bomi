@@ -396,9 +396,8 @@
             document.getElementById('form-tarea').reset();
             document.getElementById('edit-tarea-id').value = "";
             document.getElementById('tarea-fecha').value = getTodayLocalString();
-            // Por defecto, quien crea la tarea (si es un empleado activo de la lista); se puede cambiar.
-            const yoNombre = window.currentUserProfile ? nombreOperario(window.currentUserProfile) : '';
-            poblarSelectOperarios(allOperarios.some(op => nombreOperario(op) === yoNombre) ? yoNombre : '');
+            // Por defecto "Sin asignar": quien la crea suele asignarla a otro más tarde (puede elegirse a sí mismo).
+            poblarSelectOperarios('');
             setDibujo('');
             sincronizarTarea('inicio');
             hideAllViews();
