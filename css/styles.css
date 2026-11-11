@@ -156,3 +156,17 @@ form.overflow-y-auto > div:has(> button[type="submit"]) > button {
     padding-top: .75rem;
     padding-bottom: .75rem;
 }
+
+/* Barra de abajo: iconos y letra más grandes, más contraste y la sección activa marcada con fondo azul. */
+#bottom-nav { padding-left: 2px; padding-right: 2px; }
+#bottom-nav .nav-btn { flex: 1 1 0; min-width: 0; color: #334155; }
+.dark #bottom-nav .nav-btn { color: #cbd5e1; }
+#bottom-nav .nav-btn .material-symbols-outlined { font-size: 28px; padding: 4px 12px; }
+#bottom-nav .nav-btn > span:last-child { font-size: 13px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+#bottom-nav .nav-btn.text-blue-600 { color: #1d4ed8; }
+.dark #bottom-nav .nav-btn.text-blue-600 { color: #93c5fd; }
+#bottom-nav .nav-btn.text-blue-600 .material-symbols-outlined { background: #dbeafe; }
+.dark #bottom-nav .nav-btn.text-blue-600 .material-symbols-outlined { background: #1e3a8a; }
+#bottom-nav .nav-btn.text-blue-600 > span:last-child { font-weight: 800; }
+/* La barra es un poco más alta: los botones «+» suben lo mismo para no quedar pegados a ella. */
+[id^="fab-"] { bottom: 5.5rem; }

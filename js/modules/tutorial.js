@@ -334,7 +334,7 @@
         { titulo: '¡Bienvenido a Bomi!', pestana: 'diario', pantalla: pantallaDiario,
           texto: 'Te enseñamos dónde está cada cosa en un minuto. Esto es una <b>práctica con datos inventados</b>: puedes tocar lo que quieras, no se guarda nada.' },
         { titulo: 'Las pestañas de abajo', pestana: 'diario', pantalla: pantallaDiario, foco: 'nav',
-          texto: 'Desde aquí cambias de sección: <b>Mi día</b> (la pantalla de inicio, con tus tareas de hoy, tu material y tus horas), <b>Diario</b>, <b>Partes</b>, <b>Bitácora</b>, <b>Materiales</b> y <b>Clientes</b>. <b>Empleados</b> está en el menú de tu nombre, arriba a la derecha.' },
+          texto: 'Desde aquí cambias de sección: <b>Mi día</b> (la pantalla de inicio, con tus tareas de hoy, tu material y tus horas), <b>Diario</b>, <b>Partes</b>, <b>Bitácora</b>, <b>Pedido</b> (el material) y <b>Clientes</b>. <b>Empleados</b> está en el menú de tu nombre, arriba a la derecha.' },
         { titulo: 'Diario: tus tareas', pestana: 'diario', pantalla: pantallaDiario, foco: 'filtro',
           texto: 'Al entrar ves <b>Mis tareas</b>, las que tienes asignadas. Pulsa <b>Todas las tareas</b> para ver las de todo el equipo. La app recuerda lo que elijas.' },
         { titulo: 'Cambiar de día', pestana: 'diario', pantalla: pantallaDiario, foco: 'fecha',
@@ -388,7 +388,7 @@
     // ---------- Pintado ----------
     const NAV = [
         ['diario', 'list_alt', 'Diario'], ['partes', 'assignment', 'Partes'], ['bitacora', 'menu_book', 'Bitácora'],
-        ['materiales', 'inventory_2', 'Materiales'], ['clientes', 'business_center', 'Clientes'], ['empleados', 'group', 'Empleados'],
+        ['materiales', 'inventory_2', 'Pedido'], ['clientes', 'business_center', 'Clientes'], ['empleados', 'group', 'Empleados'],
     ];
     // Al tocar una pestaña simulada se salta a su primer paso (el del Diario, después de los dos de presentación).
     const PRIMER_PASO = {};
