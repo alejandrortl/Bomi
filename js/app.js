@@ -708,7 +708,7 @@
     const esMiaTarea = (t) => {
         const p = window.currentUserProfile;
         if (!p) return false;
-        if (normT(t.operario_asignado) === '') return !!p.id && t.user_id === p.id; // creada por mí y aún sin asignar
+        if (normT(t.operario_asignado) === '') return false; // sin operario (o pendiente de otro día que se quedó sin asignar): solo sale en «Todas las tareas»
         return normT(t.operario_asignado) === normT(nombreOperario(p));
     };
     document.querySelectorAll('#view-task-list [data-filtro-diario]').forEach((b) => b.addEventListener('click', () => {
