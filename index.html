@@ -66,11 +66,6 @@
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
                 <span id="badge-notificaciones" class="hidden absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full"></span>
             </button>
-            <select id="select-tema" aria-label="Seleccionar tema" title="Tema" class="text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-2 sm:px-3 py-1.5 focus:outline-none cursor-pointer">
-                <option value="auto" data-corto="🌓" data-largo="🌓 Auto">🌓</option>
-                <option value="claro" data-corto="☀️" data-largo="☀️ Claro">☀️</option>
-                <option value="oscuro" data-corto="🌙" data-largo="🌙 Oscuro">🌙</option>
-            </select>
             <span id="user-role-badge" class="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 px-2.5 py-1 rounded-full font-medium hidden sm:inline-block"></span>
             <div class="relative min-w-0">
                 <button id="btn-menu-perfil" aria-haspopup="true" aria-expanded="false" aria-controls="dropdown-menu-perfil" class="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 px-2 sm:px-3 py-1.5 rounded-full text-xs font-medium hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
@@ -205,6 +200,7 @@
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" id="btn-back-tarea-list" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
                 <button type="button" id="btn-export-pdf-tarea" class="text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
+                <button type="button" id="btn-compartir-tarea" class="text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                 <button type="button" id="btn-tarea-crear-parte" class="text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">assignment</span> Crear parte</button>
                 <button type="button" id="btn-tarea-crear-bitacora" class="text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">menu_book</span> Crear bitácora</button>
                 <button type="button" id="btn-tarea-pedir-material" class="text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">inventory_2</span> Pedir material</button>
@@ -243,6 +239,8 @@
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"></script>
+    <script src="js/modules/dialogo.js"></script>
+    <script src="js/modules/compartir.js"></script>
     <script src="js/modules/recuperar.js"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>

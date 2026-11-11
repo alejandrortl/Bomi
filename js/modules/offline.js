@@ -362,7 +362,7 @@
                     try { await window.BomiPdf.generar(j.pdf.items, j.pdf.nombre); }
                     catch (ex) { alert('No se pudo crear el PDF: ' + mensaje(ex)); }
                 } else if (k === 'borrar') {
-                    if (!confirm('¿Descartar este registro pendiente?\n\nSe perderá si no lo has guardado en PDF.')) return;
+                    if (!(await BomiDialogo.confirmar('¿Descartar este registro pendiente?\n\nSe perderá si no lo has guardado en PDF.'))) return;
                     await almacen.quitar(a.dataset.id);
                     await pintar();
                 }

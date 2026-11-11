@@ -524,6 +524,7 @@
                 <div class="flex flex-wrap gap-2 pt-1">
                     <button type="button" data-visor="crear-tarea" class="text-sm bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">list_alt</span> Crear tarea (Diario)</button>
                     <button type="button" data-visor="crear-bitacora" class="text-sm bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">menu_book</span> Crear bitácora</button>
+                    <button type="button" data-visor="compartir" class="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                     <button type="button" data-visor="abrir" class="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">open_in_new</span> Abrir original</button>
                     ${f.drive_enlace && /^https:\/\//.test(f.drive_enlace) ? `<a href="${esc(f.drive_enlace)}" target="_blank" rel="noopener noreferrer" class="text-sm bg-white/15 hover:bg-white/25 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">folder_open</span> Ver en Drive</a>` : ''}
                     ${puedeBorrar(f) ? `<button type="button" data-visor="borrar" class="text-sm bg-red-600/80 hover:bg-red-600 px-4 py-2 rounded-full font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">delete</span> Eliminar</button>` : ''}
@@ -533,6 +534,30 @@
         img.addEventListener('load', () => { if (zoomVisor) zoomVisor.aplicar(); });
         if (zoomVisor) zoomVisor.reiniciar();
         rellenarImagenes(v);
+    }
+
+    // Compartir la foto abierta (imagen, texto con los datos o PDF), con el mismo menú que el resto de la app.
+    function compartirFoto() {
+        const f = visor && visor.lista[visor.i];
+        if (!f || !window.BomiCompartir) return;
+        window.BomiCompartir.abrir({
+            titulo: 'Foto · ' + (f.cliente || '') + (f.obra ? ' · ' + f.obra : ''),
+            nombre: window.BomiPdf.nombreSeguro(['foto', f.cliente, f.obra], 80),
+            items: async () => {
+                try { await pedirEnlaces([f.clave]); } catch (ex) { /* sin enlace: se comparte sin imagen */ }
+                const it = [
+                    { t: 'title', text: 'Foto de obra', sub: fechaHora(fechaDe(f)) },
+                    { t: 'kv', label: 'Cliente', value: f.cliente },
+                    { t: 'kv', label: 'Obra', value: f.obra },
+                    { t: 'kv', label: 'Dirección', value: [f.direccion, f.localidad].filter(Boolean).join(', ') },
+                ];
+                if (f.nota) { it.push({ t: 'h', text: 'Nota' }); it.push({ t: 'p', text: f.nota }); }
+                const u = enlace(f.clave);
+                if (u) it.push({ t: 'img', src: u, maxW: 511, maxH: 620 });
+                it.push({ t: 'note', text: 'Subida por ' + (f.subida_por || 'desconocido') });
+                return it;
+            },
+        });
     }
 
     async function abrirOriginal() {
@@ -584,7 +609,7 @@
     async function borrarFoto() {
         const f = visor && visor.lista[visor.i];
         if (!f || !puedeBorrar(f)) return;
-        if (!confirm('¿Eliminar esta foto de la app?\n\nSi ya tiene copia en Google Drive, allí se conserva.')) return;
+        if (!(await BomiDialogo.confirmar('¿Eliminar esta foto de la app?\n\nSi ya tiene copia en Google Drive, allí se conserva.'))) return;
         try {
             await llamar({ accion: 'borrar', id: f.id });
             fotos = fotos.filter((x) => x.id !== f.id);
@@ -683,6 +708,7 @@
             else if (a === 'ant') mover(-1);
             else if (a === 'sig') mover(1);
             else if (a === 'abrir') abrirOriginal();
+            else if (a === 'compartir') compartirFoto();
             else if (a === 'borrar') borrarFoto();
             else if (a === 'crear-tarea') crearDesdeFoto('tarea', b);
             else if (a === 'crear-bitacora') crearDesdeFoto('bitacora', b);

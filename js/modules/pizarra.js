@@ -147,15 +147,15 @@
             else if (b.id === 'piz-texto-eliminar') { st.formas = st.formas.filter((f) => f !== st.editor.f); cerrarEditor(); dibujar(); }
             else if (b.id === 'piz-deshacer') { st.formas.pop(); dibujar(); }
             else if (b.id === 'piz-borrar') {
-                if ((st.formas.length || st.base) && !confirm('¿Borrar todo el dibujo' + (st.base ? ' y la foto de fondo' : '') + '?')) return;
-                if (st.base) st.fondoCambiado = true;
-                st.formas = []; quitarFondo(); marcar(); dibujar();
+                const borrarTodo = () => { if (!st) return; if (st.base) st.fondoCambiado = true; st.formas = []; quitarFondo(); marcar(); dibujar(); };
+                if (st.formas.length || st.base) BomiDialogo.confirmar('¿Borrar todo el dibujo' + (st.base ? ' y la foto de fondo' : '') + '?').then((ok) => { if (ok) borrarTodo(); });
+                else borrarTodo();
             }
             else if (b.id === 'piz-foto') menuFoto(document.getElementById('piz-menu-foto').style.display === 'none');
             else if (b.id === 'piz-camara') { menuFoto(false); document.getElementById('piz-input-camara').click(); }
             else if (b.id === 'piz-galeria') { menuFoto(false); document.getElementById('piz-input-galeria').click(); }
             else if (b.id === 'piz-ajustar') { menuFoto(false); reajustar(); }
-            else if (b.id === 'piz-quitar-foto') { menuFoto(false); if (confirm('¿Quitar la foto de fondo? El dibujo se mantiene.')) { quitarFondo(); st.fondoCambiado = true; marcar(); dibujar(); } }
+            else if (b.id === 'piz-quitar-foto') { menuFoto(false); BomiDialogo.confirmar('¿Quitar la foto de fondo? El dibujo se mantiene.').then((ok) => { if (ok && st) { quitarFondo(); st.fondoCambiado = true; marcar(); dibujar(); } }); }
             else if (b.id === 'piz-zoom-mas') zoomAjuste(1.25);
             else if (b.id === 'piz-zoom-menos') zoomAjuste(1 / 1.25);
             else if (b.id === 'piz-girar') { st.ajuste.rot += Math.PI / 2; dibujar(); }

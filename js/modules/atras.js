@@ -31,9 +31,10 @@
     document.addEventListener('click', () => setTimeout(limpiarTocados, 0), true);
 
     const hayCambiosEn = (zona) => { limpiarTocados(); for (const c of tocados) if (zona === c || zona.contains(c) || c.contains(zona)) return true; return false; };
-    function puedeCerrar(zona) {
+    async function puedeCerrar(zona) {
         if (!zona || !hayCambiosEn(zona)) return true;
-        if (!confirm('¿Salir sin guardar? Se perderá lo que has escrito.')) return false;
+        poner();   // mientras se pregunta, otro «atrás» solo cierra la pregunta (no sale de la app)
+        if (!(await BomiDialogo.confirmar('¿Salir sin guardar? Se perderá lo que has escrito.', { aceptar: 'Salir sin guardar', cancelar: 'Seguir editando', peligro: true }))) return false;
         tocados.forEach((c) => { if (zona === c || zona.contains(c) || c.contains(zona)) tocados.delete(c); });
         return true;
     }
@@ -50,11 +51,11 @@
         llenas.forEach((el) => { const z = parseInt(getComputedStyle(el).zIndex, 10) || 0; if (z >= zMejor) { zMejor = z; mejor = el; } });
         return mejor;
     }
-    function cerrarCapa() {
+    async function cerrarCapa() {
         const antes = capas();
         if (antes.length === 0) return false;
         const arriba = capaSuperior();
-        if (arriba && !puedeCerrar(arriba)) return true;   // ha dicho que no: se queda todo como estaba
+        if (arriba && !(await puedeCerrar(arriba))) return true;   // ha dicho que no: se queda todo como estaba
         const destino = (document.activeElement && document.activeElement !== document.body) ? document.activeElement : document.body;
         destino.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
         const despues = capas();
@@ -62,15 +63,15 @@
     }
 
     // ---------- Pantallas ----------
-    function volverPantalla() {
+    async function volverPantalla() {
         if (visible($('view-form-tarea'))) {
-            if (puedeCerrar($('form-tarea'))) $('btn-cancel-tarea').click();
+            if (await puedeCerrar($('form-tarea'))) $('btn-cancel-tarea').click();
             return true;
         }
         if (visible($('view-detalle-tarea'))) { $('btn-back-tarea-list').click(); return true; }
         if (!visible($('view-task-list'))) {
             const abierta = ['view-perfil', 'view-empresa', 'view-mensajes'].map($).find(visible);
-            if (abierta && !puedeCerrar(abierta)) return true;
+            if (abierta && !(await puedeCerrar(abierta))) return true;
             const home = $('nav-home');
             if (home) { home.click(); return true; }
         }
@@ -101,10 +102,10 @@
         try { history.pushState(GUARDIA, ''); } catch (e) { /* sin historial */ }
     }
 
-    window.addEventListener('popstate', () => {
+    window.addEventListener('popstate', async () => {
         if (!activo) return;
         let hecho = false;
-        try { hecho = cerrarCapa() || volverPantalla(); } catch (e) { console.warn('Atrás:', e); hecho = true; }
+        try { hecho = (await cerrarCapa()) || (await volverPantalla()); } catch (e) { console.warn('Atrás:', e); hecho = true; }
         if (hecho) { poner(); return; }
         // Ya estamos en el Diario sin nada abierto: el siguiente «atrás» sale de la app.
         salirPendiente = true;

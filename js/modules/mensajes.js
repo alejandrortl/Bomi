@@ -244,7 +244,7 @@
     }
 
     async function eliminar(id) {
-        if (!confirm('¿Eliminar este mensaje? También desaparecerá para los destinatarios.')) return;
+        if (!(await BomiDialogo.confirmar('¿Eliminar este mensaje? También desaparecerá para los destinatarios.'))) return;
         try {
             const { data, error } = await db().from('mensajes').delete().eq('id', id).select('id');
             if (error) throw error;

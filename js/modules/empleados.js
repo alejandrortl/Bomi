@@ -323,7 +323,7 @@
             : pendiente(e)
                 ? `¿Rechazar la solicitud de «${nombre}»? Se eliminará su perfil.`
                 : `¿Eliminar a «${nombre}»? Dejará de poder entrar en la aplicación. Esta acción no se puede deshacer.\n\nSi tiene registros asociados no se podrá eliminar y pasará a la papelera de contactos.`;
-        if (!confirm(msg)) return;
+        if (!(await BomiDialogo.confirmar(msg))) return;
         try {
             await exigir(db().from('perfiles').delete().eq('id', id).select('id'), 'No tienes permiso para eliminar empleados.');
             await cargar();

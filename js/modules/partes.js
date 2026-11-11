@@ -865,6 +865,7 @@
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
                 <button type="button" data-accion="pdf" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
+                <button type="button" data-accion="compartir" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                 ${esAdmin() && !p.bloqueado ? `<button type="button" data-accion="bloquear" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">lock</span> Bloquear</button>` : ''}
                 ${puedeEditar(p) ? `<button type="button" data-accion="eliminar-desde-ver" data-id="${esc(p.id)}" class="${BTN_SEC} text-red-600 dark:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span> Eliminar</button>` : ''}
                 ${puedeEditar(p) ? `<button type="button" data-accion="editar-desde-ver" data-id="${esc(p.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>` : ''}
@@ -878,7 +879,7 @@
         if (!esAdmin()) return;
         const p = partes.find((x) => x.id === id);
         if (!p || p.bloqueado) return;
-        if (!confirm('¿Bloquear este parte?\n\nUna vez bloqueado NO se podrá editar, eliminar ni desbloquear.')) return;
+        if (!(await BomiDialogo.confirmar('¿Bloquear este parte?\n\nUna vez bloqueado NO se podrá editar, eliminar ni desbloquear.'))) return;
         const err = document.getElementById('par-error');
         const msg = 'No se pudo bloquear: no tienes permiso o el parte ya no existe.';
         try {
@@ -1023,7 +1024,7 @@
     async function eliminar(id) {
         const p = partes.find((x) => x.id === id);
         if (!p || !puedeEditar(p)) return;
-        if (!confirm(`¿Eliminar el parte del ${fechaES(p.fecha)} de «${p.cliente || 'sin cliente'} · ${p.obra || 'sin obra'}»? Esta acción no se puede deshacer.`)) return;
+        if (!(await BomiDialogo.confirmar(`¿Eliminar el parte del ${fechaES(p.fecha)} de «${p.cliente || 'sin cliente'} · ${p.obra || 'sin obra'}»? Esta acción no se puede deshacer.`))) return;
         try {
             await exigir(db().from('partes_trabajo').delete().eq('id', id).select('id'), 'No se pudo eliminar: el parte está bloqueado, no tienes permiso o ya no existe.');
             cerrarModal();
@@ -1055,6 +1056,16 @@
             + (modificado(p) ? '\nModificado por ' + (p.updated_by || 'desconocido') + ' · ' + fechaHora(p.updated_at) : '')
             + (p.bloqueado ? '\nBloqueado por ' + (p.bloqueado_por || 'un administrador') : '') });
         return it;
+    }
+
+    function compartir(id) {
+        const p = partes.find((x) => x.id === id);
+        if (!p || !window.BomiCompartir) return;
+        window.BomiCompartir.abrir({
+            titulo: 'Parte del ' + fechaES(p.fecha) + ' · ' + (p.cliente || 'sin cliente') + (p.obra ? ' · ' + p.obra : ''),
+            nombre: nombrePdf(p),
+            items: async () => { let f = ''; try { f = await cargarFirma(id); } catch (ex) { /* sin firma */ } return itemsPdf(p, f); },
+        });
     }
 
     async function descargarPdf(id) {
@@ -1164,15 +1175,18 @@
             else if (a === 'dictar') alternarDictado();
             else if (a === 'firmar') {
                 if (firmaChoca()) {
-                    if (!confirm('Ese parte ya tiene la firma del cliente.\n\nSi añades una firma, se creará un parte nuevo en vez de añadirlo a ese. ¿Continuar?')) return;
-                    union.eleccion = 'nuevo'; pintarUnion();
-                }
-                abrirFirma();
+                    BomiDialogo.confirmar('Ese parte ya tiene la firma del cliente.\n\nSi añades una firma, se creará un parte nuevo en vez de añadirlo a ese. ¿Continuar?', { aceptar: 'Continuar' }).then((ok) => {
+                        if (!ok || !union) return;
+                        union.eleccion = 'nuevo'; pintarUnion();
+                        abrirFirma();
+                    });
+                } else abrirFirma();
             } else if (a.startsWith('union-')) elegirUnion(a);
             else if (a === 'quitar-firma') { firma = { url: '', quitada: true, cambiada: false }; pintarFirmaForm(); }
             else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'eliminar-desde-ver') eliminar(id);
             else if (a === 'pdf') descargarPdf(id);
+            else if (a === 'compartir') compartir(id);
             else if (a === 'bloquear') bloquear(id);
             else if (a === 'guardar-nube') guardarEnNube(id);
         });

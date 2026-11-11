@@ -375,6 +375,7 @@
             <div class="flex justify-end gap-3">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
                 <button type="button" data-accion="pdf" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
+                <button type="button" data-accion="compartir" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                 <button type="button" data-accion="editar-desde-ver" data-id="${esc(r.id)}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
             </div>`;
         mostrarModal('Registro de bitácora');
@@ -398,6 +399,16 @@
             + (modificado(r) ? '\nModificado por ' + (r.updated_by || 'desconocido') + ' · ' + fechaHora(r.updated_at) : '') });
         return it;
     }
+    function compartir(id) {
+        const r = registros.find((x) => x.id === id);
+        if (!r || !window.BomiCompartir) return;
+        window.BomiCompartir.abrir({
+            titulo: 'Bitácora · ' + (r.cliente || 'sin cliente') + (r.obra ? ' · ' + r.obra : ''),
+            nombre: window.BomiPdf.nombreSeguro(['bitacora', r.cliente, r.obra], 80),
+            items: itemsPdf(r),
+        });
+    }
+
     async function descargarPdf(id) {
         const r = registros.find((x) => x.id === id);
         if (!r) return;
@@ -496,7 +507,7 @@
     async function eliminar(id) {
         const r = registros.find((x) => x.id === id);
         if (!r) return;
-        if (!confirm(`¿Eliminar el registro de «${r.cliente || 'sin cliente'} · ${r.obra || 'sin obra'}»? Esta acción no se puede deshacer.`)) return;
+        if (!(await BomiDialogo.confirmar(`¿Eliminar el registro de «${r.cliente || 'sin cliente'} · ${r.obra || 'sin obra'}»? Esta acción no se puede deshacer.`))) return;
         try {
             await exigir(db().from('bitacora').delete().eq('id', id).select('id'), 'No se pudo eliminar: no tienes permiso o el registro ya no existe.');
             await cargar();
@@ -625,6 +636,7 @@
             else if (a === 'pizarra') abrirPizarra();
             else if (a === 'quitar-pizarra') { pizarra = { ...pizarra, nueva: false, pend: null, vistaPrevia: '', quitada: true }; pintarPizarraForm(); }
             else if (a === 'pdf') descargarPdf(btn.dataset.id);
+            else if (a === 'compartir') compartir(btn.dataset.id);
             else if (a === 'editar-desde-ver') { const id = btn.dataset.id; cerrarModal(); abrirFormulario('editar', id); }
         });
         modal.addEventListener('input', (e) => {

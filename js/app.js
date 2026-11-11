@@ -23,7 +23,6 @@
     
     const headerUsernameLabel = document.getElementById('header-username-label');
     const headerAppTitle = document.getElementById('header-app-title');
-    const selectTema = document.getElementById('select-tema');
 
     let allTareas = [];
     let allClientesCompletos = [];
@@ -40,19 +39,15 @@
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (tema === 'oscuro' || (tema === 'auto' && prefersDark)) root.classList.add('dark');
         else root.classList.remove('dark');
-        localStorage.setItem('theme', tema);
+        try { localStorage.setItem('theme', tema); } catch (e) { /* sin almacenamiento local */ }
     }
 
-    if (selectTema) {
-        const savedTheme = localStorage.getItem('theme') || 'auto';
-        selectTema.value = savedTheme;
-        aplicarTema(savedTheme);
-        selectTema.addEventListener('change', (e) => aplicarTema(e.target.value));
-        // Cerrado: solo el icono (compacto). Abierto: icono + texto.
-        const textoTema = (largo) => Array.from(selectTema.options).forEach((o) => { o.textContent = largo ? o.dataset.largo : o.dataset.corto; });
-        ['mousedown', 'focus', 'touchstart'].forEach((ev) => selectTema.addEventListener(ev, () => textoTema(true)));
-        ['change', 'blur'].forEach((ev) => selectTema.addEventListener(ev, () => setTimeout(() => textoTema(false), 0)));
-    }
+    // El tema se elige en Mi Perfil (antes estaba en la barra de arriba). Se guarda en este dispositivo.
+    const temaGuardado = () => { try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; } };
+    aplicarTema(temaGuardado());
+    // En «Automático», si el móvil cambia entre claro y oscuro, la app lo sigue.
+    try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (temaGuardado() === 'auto') aplicarTema('auto'); }); } catch (e) { /* navegador antiguo */ }
+    window.BomiTema = { aplicar: aplicarTema, actual: temaGuardado };
 
     function getTodayLocalString() {
         const tzOffset = (new Date()).getTimezoneOffset() * 60000;
@@ -443,7 +438,7 @@
     // Devuelve true si se eliminó.
     async function eliminarTarea(t) {
         if (!t || !puedeGestionarTarea(t)) return false;
-        if (!confirm('¿Eliminar esta tarea?\n\n' + (t.cliente || '') + (t.obra ? ' - ' + t.obra : '') + '\nNo se puede deshacer.')) return false;
+        if (!(await BomiDialogo.confirmar('¿Eliminar esta tarea?\n\n' + (t.cliente || '') + (t.obra ? ' - ' + t.obra : '') + '\nNo se puede deshacer.'))) return false;
         try {
             const { data, error } = await supabaseClient.from('tareas').delete().eq('id', t.id).select('id');
             if (error) throw error;
@@ -568,7 +563,7 @@
             const sinRed = O.esRed(ex);
             const motivo = sinRed ? 'Sin conexión o con la señal muy débil.' : O.mensaje(ex);
             const msg = 'No se pudo guardar la tarea: ' + motivo + (sinRed && editId ? '\n\nLos cambios no se han guardado. Vuelve a pulsar Guardar cuando tengas conexión.' : '') + '\n\n¿Quieres guardar lo escrito en PDF?';
-            if (confirm(msg)) {
+            if ((await BomiDialogo.confirmar(msg))) {
                 try { const r = pdfTarea(); await window.BomiPdf.generar(r.items, r.nombre); }
                 catch (x) { alert('No se pudo crear el PDF: ' + O.mensaje(x)); }
             }
@@ -838,6 +833,16 @@
         it.push({ t: 'note', text: 'Creado por ' + (t.created_by || '?') + (t.updated_by ? '\nEditado por ' + t.updated_by : '') });
         return it;
     }
+
+    document.getElementById('btn-compartir-tarea').addEventListener('click', () => {
+        const t = currentTareaItem;
+        if (!t || !window.BomiCompartir) return;
+        window.BomiCompartir.abrir({
+            titulo: 'Tarea del ' + fechaES(t.fecha) + ' · ' + (t.cliente || '') + (t.obra ? ' · ' + t.obra : ''),
+            nombre: window.BomiPdf.nombreSeguro(['Tarea', t.cliente, t.obra || 'trabajo'], 80),
+            items: itemsPdfTarea(t),
+        });
+    });
 
     document.getElementById('btn-export-pdf-tarea').addEventListener('click', async (e) => {
         const btn = e.currentTarget;

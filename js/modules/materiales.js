@@ -438,6 +438,7 @@
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
                 <button type="button" data-accion="pdf" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
+                <button type="button" data-accion="compartir" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                 <button type="button" data-accion="editar-desde-ver" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
                 ${esRecibido(r)
                     ? `<button type="button" data-accion="norecibido" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">undo</span> Quitar recibido</button>`
@@ -537,7 +538,7 @@
     async function eliminar(id) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
-        if (!confirm(`¿Eliminar la solicitud de «${r.cliente || 'sin cliente'} · ${r.obra || 'sin obra'}»? Esta acción no se puede deshacer.`)) return;
+        if (!(await BomiDialogo.confirmar(`¿Eliminar la solicitud de «${r.cliente || 'sin cliente'} · ${r.obra || 'sin obra'}»? Esta acción no se puede deshacer.`))) return;
         try {
             await exigir(db().from('materiales_solicitudes').delete().eq('id', id).select('id'), 'No se pudo eliminar: no tienes permiso o la solicitud ya no existe.');
             await cargar();
@@ -588,6 +589,16 @@
             { t: 'note', text: 'Solicitado por ' + (r.created_by || 'desconocido') + ' · ' + fechaHora(r.created_at)
                 + (modificado(r) ? '\nModificado por ' + (r.updated_by || 'desconocido') + ' · ' + fechaHora(r.updated_at) : '') },
         ];
+    }
+
+    function compartir(id) {
+        const r = solicitudes.find((x) => x.id === id);
+        if (!r || !window.BomiCompartir) return;
+        window.BomiCompartir.abrir({
+            titulo: 'Pedido de material · ' + (r.cliente || 'sin cliente') + (r.obra ? ' · ' + r.obra : ''),
+            nombre: window.BomiPdf.nombreSeguro(['material', r.cliente, r.obra], 80),
+            items: itemsPdf(r),
+        });
     }
 
     async function descargarPdf(id) {
@@ -705,8 +716,8 @@
             (borrarSobrantes
                 ? `• Se ELIMINAN del catálogo (no vienen en el archivo): ${aBorrar.length}\n\nLos partes y solicitudes ya hechos no cambian. ¿Importar?`
                 : `• Se quedan como están (no vienen en el archivo): ${sobrantes.length}\n\n¿Importar?`);
-        if (!window.confirm(resumen)) return;
-        if (aBorrar.length && !window.confirm(`Se van a eliminar ${aBorrar.length} materiales del catálogo. Esto no se puede deshacer. ¿Seguro?`)) return;
+        if (!(await BomiDialogo.confirmar(resumen))) return;
+        if (aBorrar.length && !(await BomiDialogo.confirmar(`Se van a eliminar ${aBorrar.length} materiales del catálogo. Esto no se puede deshacer. ¿Seguro?`))) return;
         const btn = document.getElementById('cat-importar');
         btn.disabled = true;
         const total = nuevos.length + cambios.length + aBorrar.length; let hechos = 0;
@@ -786,7 +797,7 @@
         if (!esAdmin()) return;
         const m = catalogo.find((x) => x.id === id);
         if (!m) return;
-        if (!confirm(`¿Eliminar «${m.nombre_material}» del catálogo? Las solicitudes ya hechas no se modifican.`)) return;
+        if (!(await BomiDialogo.confirmar(`¿Eliminar «${m.nombre_material}» del catálogo? Las solicitudes ya hechas no se modifican.`))) return;
         const err = document.getElementById('cat-error');
         err.classList.add('hidden');
         try {
@@ -875,6 +886,7 @@
             else if (accion === 'editar') abrirFormulario('editar', id);
             else if (accion === 'eliminar') eliminar(id);
             else if (accion === 'pdf') descargarPdf(id);
+            else if (accion === 'compartir') compartir(id);
             else if (accion === 'catalogo') abrirCatalogo();
             else if (accion === 'reintentar') cargar();
         });
@@ -901,6 +913,7 @@
             } else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'pedido' || a === 'pendiente' || a === 'recibido' || a === 'norecibido') cambiarEstado(id, a);
             else if (a === 'pdf') descargarPdf(id);
+            else if (a === 'compartir') compartir(id);
         });
         const alCambiar = (e) => {
             const t = e.target;

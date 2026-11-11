@@ -581,7 +581,7 @@
                 return;
             }
             const resumen = obraIds.length ? ` y sus ${obraIds.length} ${obraIds.length === 1 ? 'obra' : 'obras'}` : '';
-            if (!confirm(`¿Eliminar a «${nombreCliente(c)}»${resumen}, con todos sus contactos? Esta acción no se puede deshacer.`)) return;
+            if (!(await BomiDialogo.confirmar(`¿Eliminar a «${nombreCliente(c)}»${resumen}, con todos sus contactos? Esta acción no se puede deshacer.`))) return;
             // Una sola sentencia: la base de datos borra en cascada sus obras y contactos
             // (ON DELETE CASCADE), así que o se borra todo o no se borra nada.
             await exigir(db().from('clientes').delete().eq('id', id).select('id'), 'No tienes permiso para eliminar clientes.');
@@ -603,7 +603,7 @@
                 alert(`No se puede eliminar la obra «${o.nombre}» porque tiene partes, bitácora, diario o material asociados.`);
                 return;
             }
-            if (!confirm(`¿Eliminar la obra «${o.nombre}» de «${nombreCliente(c)}», con sus contactos? Esta acción no se puede deshacer.`)) return;
+            if (!(await BomiDialogo.confirmar(`¿Eliminar la obra «${o.nombre}» de «${nombreCliente(c)}», con sus contactos? Esta acción no se puede deshacer.`))) return;
             // Sus contactos se borran en cascada (ON DELETE CASCADE).
             await exigir(db().from('obras').delete().eq('id', obraId).select('id'), 'No tienes permiso para eliminar obras.');
             await cargar();

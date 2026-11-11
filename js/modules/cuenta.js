@@ -143,6 +143,35 @@
         }));
     }
 
+    // ---------- Aspecto (claro / oscuro) ----------
+    // Antes era un desplegable en la barra de arriba. Se guarda en este dispositivo.
+    const TEMAS = [
+        ['auto', 'Automático', 'contrast'],
+        ['claro', 'Claro', 'light_mode'],
+        ['oscuro', 'Oscuro', 'dark_mode'],
+    ];
+    const temaActual = () => (window.BomiTema ? window.BomiTema.actual() : 'auto');
+    function htmlTema() {
+        const act = temaActual();
+        return `
+            <div id="tema-tarjeta" class="${tarjeta}">
+                <h3 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-blue-600">contrast</span> Aspecto</h3>
+                <p class="text-xs text-slate-500">«Automático» sigue al móvil: claro de día y oscuro si lo tienes activado.</p>
+                <div class="grid grid-cols-3 gap-2" role="group" aria-label="Aspecto">
+                    ${TEMAS.map(([k, et, ic]) => `<button type="button" data-tema="${k}" aria-pressed="${k === act}" class="flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 ${k === act ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-200'}"><span class="material-symbols-outlined text-[22px]">${ic}</span><span class="text-xs">${et}</span></button>`).join('')}
+                </div>
+            </div>`;
+    }
+    function enlazarTema() {
+        document.querySelectorAll('#tema-tarjeta [data-tema]').forEach((b) => b.addEventListener('click', () => {
+            if (!window.BomiTema || b.dataset.tema === temaActual()) return;
+            window.BomiTema.aplicar(b.dataset.tema);
+            const t = document.getElementById('tema-tarjeta');
+            if (t) t.outerHTML = htmlTema();
+            enlazarTema();
+        }));
+    }
+
     // ---------- Mi Perfil ----------
     function abrirPerfil() {
         const p = yo();
@@ -166,6 +195,7 @@
                 <button type="submit" id="perfil-guardar" class="${BTN}">Guardar</button>
             </form>
             ${htmlLetra()}
+            ${htmlTema()}
             ${htmlPreferencias(p)}
             <div id="push-tarjeta" class="${tarjeta}"></div>
             <form id="form-password" class="${tarjeta}" autocomplete="off">
@@ -186,6 +216,7 @@
         const fn = document.getElementById('form-notif');
         if (fn) fn.addEventListener('change', cambiarPreferencia);
         enlazarLetra();
+        enlazarTema();
         pintarPush();
     }
 
