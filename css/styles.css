@@ -132,3 +132,27 @@
 :root[data-letra="pequena"] { --bomi-letra-usuario: 0.9; }
 :root[data-letra="grande"] { --bomi-letra-usuario: 1.15; }
 :root[data-letra="muy-grande"] { --bomi-letra-usuario: 1.3; }
+
+/* Formularios en ventana (Tarea, Parte, Bitácora, Materiales, Clientes, Empleados, Fotos, Mensajes):
+   Cancelar y Guardar siempre visibles al pie, sin tener que bajar hasta el final. */
+form.overflow-y-auto > div:has(> button[type="submit"]) {
+    position: sticky;
+    bottom: -1.5rem;                 /* el formulario tiene 1.5rem de margen interior (p-6) */
+    z-index: 5;
+    margin: auto -1.5rem -1.5rem;
+    padding: .75rem 1.5rem calc(.75rem + env(safe-area-inset-bottom));
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -6px 16px rgba(15, 23, 42, .08);
+}
+.dark form.overflow-y-auto > div:has(> button[type="submit"]) {
+    background: #18181b;
+    border-top-color: #27272a;
+    box-shadow: 0 -6px 16px rgba(0, 0, 0, .4);
+}
+form.overflow-y-auto > div:has(> button[type="submit"]) > button {
+    flex: 1 1 0;
+    justify-content: center;
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+}

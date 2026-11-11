@@ -1,6 +1,6 @@
 // js/modules/pizarra.js
 // Pizarra de dibujo a mano alzada. Script clásico: expone window.BomiPizarra.abrir(opciones).
-// Herramientas: lápiz, línea recta, círculo, óvalo, borrador y cajas de texto; 5 colores; 2 grosores; deshacer y borrar todo.
+// Herramientas: lápiz, línea recta, círculo, óvalo, borrador y cajas de texto; 6 colores; 3 grosores; deshacer y borrar todo.
 // Foto de fondo opcional (hecha al momento o elegida de la galería): antes de usarla se puede acercar, girar y mover
 // para encuadrar la parte que interesa; se guarda recortada a 1000×700 (JPG) y se dibuja encima.
 // El dibujo va en una capa aparte: el borrador solo borra líneas, nunca la foto ni los textos.
@@ -24,6 +24,7 @@
         ['Rojo', '#dc2626'],
         ['Verde', '#16a34a'],
         ['Amarillo', '#facc15'],
+        ['Naranja', '#ea580c'],
     ];
     const HERRAMIENTAS = [
         ['lapiz', 'edit', 'Lápiz'],
@@ -35,7 +36,7 @@
     ];
     const FACTOR_BORRADOR = 4;   // el borrador es 4 veces más ancho que el lápiz
     const CALIDAD = 0.85;
-    const ANCHOS = [['Fino', 3], ['Grueso', 8]];
+    const ANCHOS = [['Fino', 5], ['Medio', 9], ['Grueso', 14]];   // antes: 3 y 8 (el fino se veía demasiado fino)
     const TAMANOS = [['Pequeño', 26], ['Mediano', 36], ['Grande', 52]];
     const ZOOM_MAX = 12;
     const BTN = 'shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800';
@@ -68,7 +69,7 @@
                         ${COLORES.map(([et, c]) => colorBtn(c, et, 'data-color')).join('')}
                     </div>
                     <div class="flex gap-1" role="group" aria-label="Grosor">
-                        ${ANCHOS.map(([et, w]) => `<button type="button" data-ancho="${w}" aria-label="${et}" title="${et}" class="${BTN}"><span class="rounded-full bg-current" style="width:${w + 4}px;height:${w + 4}px"></span></button>`).join('')}
+                        ${ANCHOS.map(([et, w]) => `<button type="button" data-ancho="${w}" aria-label="${et}" title="${et}" class="${BTN}"><span class="rounded-full bg-current" style="width:${Math.round(w * 0.9 + 3)}px;height:${Math.round(w * 0.9 + 3)}px"></span></button>`).join('')}
                     </div>
                     <div class="relative">
                         <button type="button" id="piz-foto" aria-label="Foto de fondo" title="Foto de fondo" aria-haspopup="menu" class="${BTN}"><span class="material-symbols-outlined">add_a_photo</span></button>

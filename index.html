@@ -142,9 +142,14 @@
         </section>
 
         <!-- Vista: Formulario Tarea -->
-        <section id="view-form-tarea" class="hidden flex-col gap-4">
-            <h2 class="text-lg font-semibold" id="form-tarea-title">Nueva Tarea</h2>
-            <form id="form-tarea" class="flex flex-col gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
+        <!-- Formulario de tarea: ventana que sube desde abajo, igual que Partes, Bitácora y Materiales -->
+        <section id="view-form-tarea" class="hidden fixed inset-0 z-50 justify-center items-end sm:items-center sm:p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="form-tarea-title">
+          <div class="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92dvh]">
+            <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-slate-200 dark:border-zinc-800 shrink-0">
+                <h3 id="form-tarea-title" class="font-semibold text-lg">Nueva Tarea</h3>
+                <button type="button" id="btn-cerrar-form-tarea" aria-label="Cerrar" class="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800 flex"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <form id="form-tarea" class="flex flex-col gap-4 p-6 overflow-y-auto">
                 <input type="hidden" id="edit-tarea-id" value="">
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
@@ -179,11 +184,12 @@
                         <button type="button" id="btn-borrar-dibujo" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1"><span class="material-symbols-outlined text-[14px]">close</span></button>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
-                    <button type="button" id="btn-cancel-tarea" class="px-4 py-2 rounded-full font-medium text-slate-600">Cancelar</button>
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="btn-cancel-tarea" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cancelar</button>
                     <button type="submit" id="btn-submit-tarea" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-md">Guardar Tarea</button>
                 </div>
             </form>
+          </div>
         </section>
 
         <!-- Vista: Detalle Tarea -->

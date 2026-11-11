@@ -395,7 +395,7 @@
             poblarSelectOperarios('');
             setDibujo('');
             sincronizarTarea('inicio');
-            hideAllViews();
+            // Se abre como ventana encima de la pantalla actual (igual que Partes, Bitácora y Materiales)
             viewFormTarea.classList.remove('hidden');
             viewFormTarea.classList.add('flex');
         });
@@ -410,6 +410,16 @@
     }
     [navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => { if (nav) nav.addEventListener('click', () => { volverA = null; }, true); });
     document.getElementById('btn-cancel-tarea').addEventListener('click', salirTarea);
+    // Cerrar la ventana de tarea (X, tocar fuera o Escape): igual que Cancelar
+    function cerrarFormTarea() {
+        if (!viewFormTarea || viewFormTarea.classList.contains('hidden')) return;
+        viewFormTarea.classList.add('hidden'); viewFormTarea.classList.remove('flex');
+        // Si debajo no queda ninguna pantalla (se abrió desde otro sitio), se vuelve como con Cancelar
+        const debajo = [viewTaskList, viewDetalleTarea, viewPartes, viewBitacora, viewMateriales, viewClientes, viewEmpleados, viewPerfil, viewEmpresa, document.getElementById('view-mensajes')].some((v) => v && !v.classList.contains('hidden'));
+        if (!debajo) salirTarea(); else volverA = null;
+    }
+    document.getElementById('btn-cerrar-form-tarea').addEventListener('click', cerrarFormTarea);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarFormTarea(); });
     document.getElementById('btn-back-tarea-list').addEventListener('click', salirTarea);
     // Pueden editar y eliminar una tarea: Admin/SuperAdmin y quien la creó.
     const puedeGestionarTarea = (t) => {
@@ -928,7 +938,6 @@
         setDibujo(item.dibujo_url || '');
         tareaObraAutorrellena = false;
         sincronizarTarea('inicio');
-        hideAllViews();
         viewFormTarea.classList.remove('hidden');
         viewFormTarea.classList.add('flex');
     };
