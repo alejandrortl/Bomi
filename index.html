@@ -71,10 +71,12 @@
                 <button id="btn-menu-perfil" aria-haspopup="true" aria-expanded="false" aria-controls="dropdown-menu-perfil" class="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 px-2 sm:px-3 py-1.5 rounded-full text-xs font-medium hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors">
                     <span class="material-symbols-outlined text-[18px]">account_circle</span>
                     <span id="header-username-label" class="truncate max-w-[4.5rem] min-[400px]:max-w-[5.5rem] sm:max-w-none">Cargando...</span>
+                    <span id="badge-perfil" class="hidden w-2 h-2 bg-red-600 rounded-full shrink-0" title="Hay altas pendientes de aprobar"></span>
                     <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
                 </button>
                 <div id="dropdown-menu-perfil" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-1rem)] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl py-2 z-50 flex-col">
                     <button id="menu-item-perfil" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">person</span> Mi Perfil</button>
+                    <button id="menu-item-empleados" class="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">group</span> Empleados <span id="badge-empleados" class="hidden ml-auto text-xs bg-red-600 text-white min-w-5 px-1.5 py-0.5 rounded-full text-center"></span></button>
                     <button id="menu-item-empresa" class="hidden w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800 items-center gap-2"><span class="material-symbols-outlined text-[18px]">business</span> Logotipo y empresa</button>
                     <div class="border-t border-slate-200 dark:border-zinc-800 my-1"></div>
                     <button id="btn-logout" class="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">logout</span> Cerrar Sesión</button>
@@ -113,6 +115,9 @@
     <!-- BLOQUE 3: CONTENIDO PRINCIPAL -->
     <main id="main-content" class="hidden flex-1 overflow-y-auto p-4 w-full max-w-4xl mx-auto pb-40 relative">
         
+        <!-- Vista: Mi día (pantalla de inicio; la construye js/modules/midia.js) -->
+        <section id="view-midia" class="hidden flex-col gap-4 max-w-xl mx-auto w-full"></section>
+
         <!-- Vista: Diario de Tareas -->
         <section id="view-task-list" class="flex flex-col gap-4 relative min-h-full">
             <div class="flex flex-col gap-3 sticky top-0 bg-slate-50 dark:bg-black z-10 pt-2 pb-3">
@@ -236,12 +241,13 @@
 
     <!-- BLOQUE 5: NAVEGACIÓN INFERIOR -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-40 pb-safe shadow-lg">
+        <button id="nav-midia" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">home</span><span class="text-[11px] font-medium">Mi día</span></button>
         <button id="nav-home" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">list_alt</span><span class="text-[11px] font-medium">Diario</span></button>
         <button id="nav-partes" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">assignment</span><span class="text-[11px] font-medium">Partes</span></button>
         <button id="nav-bitacora" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">menu_book</span><span class="text-[11px] font-medium">Bitácora</span></button>
         <button id="nav-materiales" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">inventory_2</span><span class="text-[11px] font-medium">Materiales</span></button>
         <button id="nav-clientes" class="nav-btn flex flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">business_center</span><span class="text-[11px] font-medium">Clientes</span></button>
-        <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button>
+        <button id="nav-empleados" class="nav-btn hidden flex-col items-center text-slate-500 hover:text-blue-600 transition-colors"><span class="material-symbols-outlined px-4 py-1 rounded-full mb-1">group</span><span class="text-[11px] font-medium">Empleados</span></button><!-- oculto: Empleados se abre desde el menú de tu nombre -->
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"></script>
@@ -268,6 +274,7 @@
     <script src="js/modules/push.js"></script>
     <script src="js/modules/voz.js"></script>
     <script src="js/modules/tutorial.js"></script>
+    <script src="js/modules/midia.js"></script>
     <script src="js/app.js"></script>
     <script src="js/modules/atras.js"></script>
 </body>

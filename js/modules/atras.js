@@ -2,8 +2,8 @@
 // Antes, en Android, pulsar atrás cerraba la app. Ahora va deshaciendo pasos, de lo más reciente a lo más general:
 //   1. Cierra lo que esté encima (ventana, visor de fotos, pizarra, menú, lista de sugerencias…), igual que la tecla Escape.
 //   2. Si estás en una tarea (formulario o detalle), en Mensajes, Mi Perfil o Empresa, vuelve a la pantalla anterior.
-//   3. Si estás en otra sección (Partes, Materiales…), vuelve al Diario.
-//   4. En el Diario avisa «Pulsa otra vez atrás para salir» y, si se vuelve a pulsar, sale.
+//   3. Si estás en otra sección (Diario, Partes, Materiales…), vuelve a «Mi día» (la pantalla de inicio).
+//   4. En «Mi día» avisa «Pulsa otra vez atrás para salir» y, si se vuelve a pulsar, sale.
 // Si hay un formulario a medio rellenar, pregunta antes de cerrarlo para no perder lo escrito.
 (function () {
     const GUARDIA = { bomiAtras: 1 };
@@ -69,10 +69,11 @@
             return true;
         }
         if (visible($('view-detalle-tarea'))) { $('btn-back-tarea-list').click(); return true; }
-        if (!visible($('view-task-list'))) {
+        const inicio = $('view-midia') ? 'view-midia' : 'view-task-list';
+        if (!visible($(inicio))) {
             const abierta = ['view-perfil', 'view-empresa', 'view-mensajes'].map($).find(visible);
             if (abierta && !(await puedeCerrar(abierta))) return true;
-            const home = $('nav-home');
+            const home = $('nav-midia') || $('nav-home');
             if (home) { home.click(); return true; }
         }
         return false;
@@ -107,7 +108,7 @@
         let hecho = false;
         try { hecho = (await cerrarCapa()) || (await volverPantalla()); } catch (e) { console.warn('Atrás:', e); hecho = true; }
         if (hecho) { poner(); return; }
-        // Ya estamos en el Diario sin nada abierto: el siguiente «atrás» sale de la app.
+        // Ya estamos en «Mi día» sin nada abierto: el siguiente «atrás» sale de la app.
         salirPendiente = true;
         mostrarAvisoSalir();
     });

@@ -10,7 +10,9 @@
     const viewEmpleados = document.getElementById('view-empleados');
     const viewPerfil = document.getElementById('view-perfil');
     const viewEmpresa = document.getElementById('view-empresa');
+    const viewMiDia = document.getElementById('view-midia');
     
+    const navMiDia = document.getElementById('nav-midia');
     const navHome = document.getElementById('nav-home');
     const navPartes = document.getElementById('nav-partes');
     const navBitacora = document.getElementById('nav-bitacora');
@@ -25,6 +27,7 @@
     const headerAppTitle = document.getElementById('header-app-title');
 
     let allTareas = [];
+    let tareasCargadas = false;
     let allClientesCompletos = [];
     let allOperarios = [];
     let currentTareaItem = null;
@@ -56,10 +59,10 @@
     if(filtroFechaDiario) filtroFechaDiario.value = getTodayLocalString();
 
     function hideAllViews() {
-        [viewTaskList, viewFormTarea, viewDetalleTarea, viewPartes, viewBitacora, viewMateriales, document.getElementById('view-mensajes'), viewClientes, viewEmpleados, viewPerfil, viewEmpresa].forEach(v => {
+        [viewMiDia, viewTaskList, viewFormTarea, viewDetalleTarea, viewPartes, viewBitacora, viewMateriales, document.getElementById('view-mensajes'), viewClientes, viewEmpleados, viewPerfil, viewEmpresa].forEach(v => {
             if (v) { v.classList.add('hidden'); v.classList.remove('flex'); }
         });
-        [navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => {
+        [navMiDia, navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => {
             if (nav) {
                 nav.classList.remove('text-blue-600', 'dark:text-blue-400');
                 nav.classList.add('text-slate-500', 'dark:text-slate-400');
@@ -77,6 +80,8 @@
 
     // NAVEGACIÓN
     if (navHome) navHome.addEventListener('click', () => { hideAllViews(); viewTaskList.classList.remove('hidden'); setActiveNav(navHome); fabNewTask.classList.remove('hidden'); fabNewTask.classList.add('flex'); renderTareas(); });
+    // «Mi día»: pantalla de inicio con lo de hoy (js/modules/midia.js)
+    if (navMiDia) navMiDia.addEventListener('click', () => { hideAllViews(); viewMiDia.classList.remove('hidden'); viewMiDia.classList.add('flex'); setActiveNav(navMiDia); if (window.BomiMiDia) window.BomiMiDia.abrir(); });
     if (navEmpleados) navEmpleados.addEventListener('click', () => { hideAllViews(); viewEmpleados.classList.remove('hidden'); viewEmpleados.classList.add('flex'); setActiveNav(navEmpleados); if (window.BomiEmpleados) window.BomiEmpleados.abrir(); });
     if (navBitacora) navBitacora.addEventListener('click', () => { hideAllViews(); viewBitacora.classList.remove('hidden'); viewBitacora.classList.add('flex'); setActiveNav(navBitacora); if (window.BomiBitacora) window.BomiBitacora.abrir(); });
     if (navPartes) navPartes.addEventListener('click', () => { hideAllViews(); viewPartes.classList.remove('hidden'); viewPartes.classList.add('flex'); setActiveNav(navPartes); if (window.BomiPartes) window.BomiPartes.abrir(); });
@@ -116,6 +121,9 @@
     const btnMensajes = document.getElementById('btn-mensajes');
     if (btnMensajes) btnMensajes.addEventListener('click', () => abrirVistaCuenta(document.getElementById('view-mensajes'), () => window.BomiMensajes && window.BomiMensajes.abrir()));
     if (itemPerfil) itemPerfil.addEventListener('click', () => abrirVistaCuenta(viewPerfil, () => window.BomiCuenta && window.BomiCuenta.abrirPerfil()));
+    // Empleados: ahora en el menú de tu nombre (antes, botón de la barra de abajo)
+    const itemEmpleados = document.getElementById('menu-item-empleados');
+    if (itemEmpleados) itemEmpleados.addEventListener('click', () => { cerrarMenuPerfil(); if (navEmpleados) navEmpleados.click(); });
     if (itemEmpresa) itemEmpresa.addEventListener('click', () => abrirVistaCuenta(viewEmpresa, () => window.BomiCuenta && window.BomiCuenta.abrirEmpresa()));
     window.addEventListener('perfilActualizado', actualizarNombreHeader);
     window.addEventListener('empleadosActualizados', () => { actualizarNombreHeader(); loadOperariosList(); });
@@ -141,7 +149,9 @@
         loadTasksFromDB();
         if (window.BomiNotificaciones) window.BomiNotificaciones.arrancar();
 
-        if (navEmpleados) { navEmpleados.classList.remove('hidden'); navEmpleados.classList.add('flex'); }
+        // Empleados ya no está en la barra de abajo: se abre desde el menú de tu nombre (para todos los usuarios).
+        // Al entrar, la app empieza en «Mi día».
+        if (navMiDia && viewTaskList && !viewTaskList.classList.contains('hidden')) navMiDia.click();
         const empresaItem = document.getElementById('menu-item-empresa');
         if (empresaItem) {
             const rol = window.currentUserProfile ? (window.currentUserProfile.rol || '').trim().toLowerCase() : '';
@@ -408,7 +418,7 @@
         volverA = null;
         if (f) f(); else navHome.click();
     }
-    [navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => { if (nav) nav.addEventListener('click', () => { volverA = null; }, true); });
+    [navMiDia, navHome, navPartes, navBitacora, navMateriales, navClientes, navEmpleados].forEach(nav => { if (nav) nav.addEventListener('click', () => { volverA = null; }, true); });
     document.getElementById('btn-cancel-tarea').addEventListener('click', salirTarea);
     // Cerrar la ventana de tarea (X, tocar fuera o Escape): igual que Cancelar
     function cerrarFormTarea() {
@@ -593,7 +603,9 @@
             return;
         }
         allTareas = data || [];
+        tareasCargadas = true;
         renderTareas();
+        window.dispatchEvent(new CustomEvent('bomiTareasCambiadas'));
         window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'diario' } }));
     }
 
@@ -707,15 +719,9 @@
         renderTareas();
     }));
 
-    function renderTareas() {
-        const c = document.getElementById('tasks-container');
-        if (!c) return;
-        pintarDiaAgenda();
-        const fechaSelect = filtroFechaDiario.value;
-        const searchTxt = searchTareasInput.value.toLowerCase().trim();
-
-        const soloMias = leerSoloMias();
-        pintarInterruptorDiario();
+    // Tareas que se ven en un día: las de esa fecha y, en el día de hoy, las pendientes de días anteriores.
+    // Ordenadas: pendientes arrastradas primero, luego el resto y las hechas al final. (La usan el Diario y «Mi día».)
+    function tareasDelDia(fechaSelect, searchTxt, soloMias) {
         // Las tareas sin completar de días anteriores pasan al día de hoy (conservan su fecha original)
         // con la etiqueta "Pendiente desde el DD/MM". Si se marcan hechas hoy, siguen visibles hasta recargar.
         const hoy = getTodayLocalString();
@@ -748,6 +754,20 @@
             if (aa && ab) return desdeDe(a) < desdeDe(b) ? -1 : desdeDe(a) > desdeDe(b) ? 1 : 0;
             return 0;
         });
+        return { filtradas, esArrastrada, fechaOrden };
+    }
+
+    function renderTareas() {
+        const c = document.getElementById('tasks-container');
+        if (!c) return;
+        pintarDiaAgenda();
+        const fechaSelect = filtroFechaDiario.value;
+        const searchTxt = searchTareasInput.value.toLowerCase().trim();
+
+        const soloMias = leerSoloMias();
+        pintarInterruptorDiario();
+        const { filtradas, esArrastrada, fechaOrden } = tareasDelDia(fechaSelect, searchTxt, soloMias);
+
         c.innerHTML = '';
 
         if (filtradas.length === 0) {
@@ -793,6 +813,7 @@
         if(t) t.completada = status;
         if (status) tareasHechasHoy.add(id); else tareasHechasHoy.delete(id);
         renderTareas();
+        window.dispatchEvent(new CustomEvent('bomiTareasCambiadas'));
     };
 
     window.verDetalleTarea = function(id) {
@@ -882,6 +903,27 @@
     }
     const patronObraT = (t) => '%' + String(t ?? '').trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
     window.BomiDiario = {
+        // Datos para «Mi día»: mis tareas de hoy (con las pendientes de días anteriores) y cuántas tengo mañana.
+        miDia() {
+            const hoy = getTodayLocalString();
+            const r = tareasDelDia(hoy, '', true);
+            const tareas = r.filtradas.map((t) => {
+                const desde = String(t.pendiente_desde || r.fechaOrden(t)).slice(0, 10);
+                const arrastrada = !t.completada && (r.esArrastrada(t) || (!!t.pendiente_desde && desde < r.fechaOrden(t)));
+                return { t, arrastrada, desde, contactos: contactosDeTarea(t), mapa: (t.direccion || t.localidad) ? mapsHrefT(t.direccion, t.localidad) : '', tel: telHrefT };
+            });
+            const manana = sumarDias(hoy, 1);
+            return { hoy, cargadas: tareasCargadas, tareas, manana: allTareas.filter((t) => esMiaTarea(t) && (t.fecha || '').slice(0, 10) === manana).length };
+        },
+        ver(id, volver) { window.verDetalleTarea(id); volverA = volver || null; },
+        crearParte(id) {
+            const t = allTareas.find((x) => x.id === id);
+            if (!t || !window.BomiPartes) return;
+            navPartes.click();
+            window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: t.notas || '' });
+        },
+        irAlDia(iso) { navHome.click(); if (filtroFechaDiario) { filtroFechaDiario.value = iso; renderTareas(); } },
+        manana() { return sumarDias(getTodayLocalString(), 1); },
         // Tarea nueva con cliente, obra, dirección y localidad ya rellenos. Con datos.foto (URL local de una foto
         // de obra) se abre además la pizarra con esa foto de fondo para encuadrarla y dibujar encima.
         async nuevoConDatos(datos) {
