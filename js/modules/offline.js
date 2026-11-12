@@ -295,7 +295,14 @@
         const b = asegurarBanner();
         const uid = usuarioId();
         const lista = uid ? (await almacen.listar()).filter((j) => j.uid === uid) : [];
-        if (!lista.length) { b.className = 'hidden'; b.innerHTML = ''; refrescarPanel(lista); return; }
+        if (!lista.length) {
+            // Sin nada pendiente pero sin conexión: se avisa, para que una lista vacía no parezca que se han perdido los datos.
+            if (uid && typeof navigator !== 'undefined' && navigator.onLine === false) {
+                b.className = 'shrink-0 flex items-center gap-2 px-4 py-2 text-xs font-medium z-20 border-b bg-slate-200 text-slate-800 border-slate-300 dark:bg-zinc-800 dark:text-slate-100 dark:border-zinc-700';
+                b.innerHTML = '<span class="material-symbols-outlined text-[18px]">cloud_off</span><span class="flex-1">Sin conexión: no se pueden ver los datos guardados. Lo nuevo que crees se guarda en este móvil y se envía solo al volver la señal.</span>';
+            } else { b.className = 'hidden'; b.innerHTML = ''; }
+            refrescarPanel(lista); return;
+        }
         const fallidos = lista.filter((j) => j.error).length;
         const rojo = fallidos > 0;
         const texto = rojo
@@ -377,7 +384,8 @@
 
     // ---------- Arranque ----------
     function iniciar() {
-        window.addEventListener('online', () => sincronizar(false));
+        window.addEventListener('online', () => { pintar(); sincronizar(false); });
+        window.addEventListener('offline', () => pintar());
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { pintar(); sincronizar(false); } });
         try {
             cliente().auth.onAuthStateChange((evento, sesion) => {

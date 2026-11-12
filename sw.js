@@ -4,7 +4,30 @@
 const CACHE = 'bomi-app-v1';
 const CDNS = ['cdn.jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com'];
 
-self.addEventListener('install', () => self.skipWaiting());
+// Al instalarse guarda YA todos los archivos de la app (la lista sale del propio index.html, así no hay que mantenerla
+// a mano). Sin esto, la primera vez solo se guardaba lo que se pedía después, y la app no abría sin conexión
+// hasta haberla abierto al menos dos veces.
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+    event.waitUntil(guardarApp().catch(() => {}));
+});
+
+async function guardarApp() {
+    const cache = await caches.open(CACHE);
+    const r = await fetch('/', { cache: 'no-cache' });
+    if (!r.ok) return;
+    await cache.put('/', r.clone());
+    const html = await r.text();
+    const urls = new Set(['icons/material-symbols.woff', 'icons/icon-192.png']);
+    for (const m of html.matchAll(/<(?:script|link)\b[^>]*?\s(?:src|href)="([^"#]+)"/g)) urls.add(m[1]);
+    await Promise.allSettled([...urls].map(async (ruta) => {
+        const url = new URL(ruta, self.location.origin);
+        const propio = url.origin === self.location.origin;
+        if (propio ? url.pathname.startsWith('/api/') : !CDNS.includes(url.hostname)) return;
+        const resp = await fetch(url.href, propio ? { cache: 'no-cache' } : { mode: 'no-cors' });
+        if (resp.ok || resp.type === 'opaque') await cache.put(url.href, resp);
+    }));
+}
 self.addEventListener('activate', (event) => event.waitUntil(
     caches.keys().then((claves) => Promise.all(claves.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => clients.claim())
 ));

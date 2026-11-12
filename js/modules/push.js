@@ -92,5 +92,8 @@
         });
     }
     window.addEventListener('userLoggedIn', alIniciarSesion);
+    // El service worker se registra nada más abrir la página (también en la pantalla de entrar): es lo que deja
+    // abrir la app sin conexión. Antes solo se registraba al iniciar sesión.
+    window.addEventListener('load', () => { registrarSW(); });
     window.BomiPush = { estado, activar, desactivar };
 })();
