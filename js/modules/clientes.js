@@ -403,6 +403,14 @@
             h += `
             <section class="flex flex-col gap-3 ${modo === 'nuevo' ? 'border-t border-slate-200 dark:border-zinc-800 pt-5' : ''}">
                 <h4 class="text-sm font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">construction</span> Obra</h4>
+                <div class="flex flex-col gap-1">
+                    <label for="f-obra-maps" class="text-xs font-medium">Enlace de Google Maps (opcional)</label>
+                    <div class="flex gap-2">
+                        <input id="f-obra-maps" type="text" inputmode="url" autocomplete="off" placeholder="Pega aquí el enlace que te han enviado" class="${INPUT} min-w-0">
+                        <button type="button" data-accion="pegar-maps" class="shrink-0 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-3 rounded-full text-sm font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">content_paste</span> Pegar</button>
+                    </div>
+                    <p id="f-obra-maps-estado" class="hidden text-xs"></p>
+                </div>
                 <div class="flex flex-col gap-1"><label for="f-obra-nombre" class="text-xs font-medium">Nombre de la obra</label><input id="f-obra-nombre" type="text" required autocomplete="off" value="${esc(obra?.nombre)}" class="${INPUT}"></div>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="flex flex-col gap-1 flex-1"><label for="f-obra-direccion" class="text-xs font-medium">Dirección</label><input id="f-obra-direccion" type="text" required value="${esc(obra?.direccion)}" class="${INPUT}"></div>
@@ -431,7 +439,7 @@
         else hint.textContent = 'Cliente nuevo: se creará junto con esta obra.';
     }
 
-    function abrirFormulario(modo, { clienteId = null, obraId = null } = {}) {
+    function abrirFormulario(modo, { clienteId = null, obraId = null, textoMaps = '' } = {}) {
         const cli = clienteId ? buscarCliente(clienteId) : null;
         const obra = obraId && cli ? (cli.obras || []).find((o) => o.id === obraId) : null;
         if ((modo !== 'nuevo' && !cli) || (modo === 'editar-obra' && !obra)) {
@@ -450,7 +458,64 @@
         const modal = document.getElementById('modal-clientes');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        mapsUltimo = '';
+        if (textoMaps) {
+            const input = document.getElementById('f-obra-maps');
+            if (input) { input.value = textoMaps; leerMaps(textoMaps); }
+        }
         (document.getElementById(modo === 'editar-obra' ? 'f-obra-nombre' : 'f-cliente') || {}).focus?.();
+    }
+
+    // ---------- Enlace de Google Maps -> dirección y localidad (ver api/maps.js) ----------
+    let mapsUltimo = '';
+    let mapsTimer = null;
+    function estadoMaps(texto, tipo) {
+        const p = document.getElementById('f-obra-maps-estado');
+        if (!p) return;
+        p.textContent = texto || '';
+        p.classList.toggle('hidden', !texto);
+        p.classList.remove('text-red-600', 'dark:text-red-400', 'text-amber-600', 'dark:text-amber-400', 'text-slate-500', 'dark:text-slate-400', 'text-green-600', 'dark:text-green-400');
+        const color = { error: ['text-red-600', 'dark:text-red-400'], aviso: ['text-amber-600', 'dark:text-amber-400'], ok: ['text-green-600', 'dark:text-green-400'] }[tipo] || ['text-slate-500', 'dark:text-slate-400'];
+        p.classList.add(...color);
+    }
+    async function leerMaps(texto) {
+        texto = String(texto || '').trim();
+        if (!texto || texto === mapsUltimo) return;
+        if (!/https?:\/\//i.test(texto)) { estadoMaps('Eso no parece un enlace. Copia el enlace de Google Maps y vuelve a pegarlo.', 'error'); return; }
+        mapsUltimo = texto;
+        if (navigator.onLine === false) { estadoMaps('Sin conexión: escribe la dirección a mano o inténtalo cuando haya señal.', 'error'); mapsUltimo = ''; return; }
+        estadoMaps('Buscando la dirección...');
+        try {
+            const r = await fetch('/api/maps?texto=' + encodeURIComponent(texto));
+            const d = await r.json().catch(() => ({}));
+            if (!document.getElementById('f-obra-maps') || mapsUltimo !== texto) return; // ventana cerrada o enlace cambiado
+            if (!r.ok) throw new Error(d.error || 'No se pudo leer el enlace.');
+            if (!d.direccion && !d.localidad) throw new Error('No he podido sacar la dirección de ese enlace. Escríbela a mano.');
+            const dir = document.getElementById('f-obra-direccion');
+            const loc = document.getElementById('f-obra-localidad');
+            const nom = document.getElementById('f-obra-nombre');
+            if (d.direccion && dir) dir.value = d.direccion;
+            if (d.localidad && loc) loc.value = d.localidad;
+            if (d.nombre && nom && !nom.value.trim()) nom.value = d.nombre;
+            if (d.aproximada) estadoMaps('Dirección rellenada. Repásala: es la más cercana al punto del mapa.', 'aviso');
+            else estadoMaps('Dirección y localidad rellenadas.', 'ok');
+        } catch (ex) {
+            mapsUltimo = '';
+            estadoMaps(ex && ex.message && !/fetch|network/i.test(ex.message) ? ex.message : 'No se pudo leer el enlace. Escribe la dirección a mano.', 'error');
+        }
+    }
+    async function pegarMaps() {
+        const input = document.getElementById('f-obra-maps');
+        if (!input) return;
+        try {
+            const t = await navigator.clipboard.readText();
+            if (!t || !t.trim()) throw new Error('vacío');
+            input.value = t.trim();
+            leerMaps(input.value);
+        } catch (e) {
+            input.focus();
+            estadoMaps('No he podido leer lo copiado. Mantén pulsado en la casilla y elige «Pegar».', 'aviso');
+        }
     }
 
     function cerrarModal() {
@@ -676,8 +741,17 @@
             if (btn.dataset.accion === 'cerrar') cerrarModal();
             else if (btn.dataset.accion === 'add-contacto') document.getElementById(btn.dataset.destino).insertAdjacentHTML('beforeend', filaContacto());
             else if (btn.dataset.accion === 'quitar-contacto') btn.closest('.contacto-fila').remove();
+            else if (btn.dataset.accion === 'pegar-maps') pegarMaps();
         });
-        modal.addEventListener('input', (e) => { if (e.target.id === 'f-cliente' && modalEstado?.modo === 'nuevo') actualizarHint(); });
+        modal.addEventListener('input', (e) => {
+            if (e.target.id === 'f-cliente' && modalEstado?.modo === 'nuevo') actualizarHint();
+            if (e.target.id === 'f-obra-maps') {
+                clearTimeout(mapsTimer);
+                const v = e.target.value;
+                if (!v.trim()) { estadoMaps(''); mapsUltimo = ''; return; }
+                mapsTimer = setTimeout(() => leerMaps(v), 400);
+            }
+        });
         document.getElementById('form-clientes').addEventListener('submit', enviar);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalEstado) cerrarModal(); });
     }
@@ -688,6 +762,30 @@
         construirVista();
         enlazarEventos();
     }
+
+    // ---------- BOMI en el menú «Compartir» del móvil (Android) ----------
+    // El manifiesto (api/manifest.js) declara share_target: al compartir un enlace de Google Maps con BOMI,
+    // la app se abre en /?title=...&text=...&url=... y aquí se abre «Nueva obra» con el enlace ya puesto.
+    let compartidoPendiente = '';
+    try {
+        const qs = new URLSearchParams(location.search);
+        if (qs.has('url') || qs.has('text') || qs.has('title')) {
+            compartidoPendiente = ['url', 'text', 'title'].map((k) => qs.get(k) || '').filter(Boolean).join('\n');
+            history.replaceState(history.state, '', location.pathname);
+        }
+    } catch (e) { /* sin más */ }
+    function abrirCompartido() {
+        if (!compartidoPendiente || !window.currentUserProfile) return;
+        const texto = compartidoPendiente;
+        compartidoPendiente = '';
+        setTimeout(() => {
+            const nav = document.getElementById('nav-clientes');
+            if (nav) nav.click(); else iniciar();
+            abrirFormulario('nuevo', { textoMaps: texto });
+        }, 300);
+    }
+    window.addEventListener('userLoggedIn', abrirCompartido);
+    if (window.currentUserProfile) abrirCompartido();
 
     window.BomiClientes = {
         abrir() { iniciar(); return cargar(); },

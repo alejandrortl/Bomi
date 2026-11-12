@@ -15,6 +15,12 @@ module.exports = async (req, res) => {
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#2563eb',
+        // Android: BOMI aparece en el menú «Compartir». Un enlace de Google Maps abre «Nueva obra» (js/modules/clientes.js).
+        share_target: {
+            action: '/',
+            method: 'GET',
+            params: { title: 'title', text: 'text', url: 'url' },
+        },
         icons: [
             // "any": logo grande, lo usa la pantalla de carga · "maskable": con margen, para el icono adaptable de Android
             { src: `/api/icono?size=192&tipo=any${v}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
