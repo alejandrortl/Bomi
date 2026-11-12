@@ -875,24 +875,7 @@
         });
     });
 
-    document.getElementById('btn-export-pdf-tarea').addEventListener('click', async (e) => {
-        const btn = e.currentTarget;
-        const t = currentTareaItem;
-        if (!t || btn.disabled) return;
-        const textoOriginal = btn.innerHTML;
-        btn.disabled = true;
-        btn.textContent = 'Creando PDF...';
-        try {
-            const nombre = window.BomiPdf.nombreSeguro(['Tarea', t.cliente, t.obra || 'trabajo'], 80);
-            await window.BomiPdf.generar(itemsPdfTarea(t), nombre);
-        } catch (ex) {
-            alert('No se pudo crear el PDF: ' + (ex && ex.message ? ex.message : ex));
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = textoOriginal;
-        }
-    });
-
+    // El botón «PDF» se quitó: el PDF se saca desde «Compartir» (compartir o descargar).
     // ---------- Historial de una obra (se abre desde Clientes) ----------
     async function asegurarTarea(id) {
         const { data, error } = await supabaseClient.from('tareas').select('*').eq('id', id).limit(1);

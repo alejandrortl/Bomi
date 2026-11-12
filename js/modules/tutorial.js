@@ -94,7 +94,7 @@
                 <p class="text-xs text-slate-500">Asignada a ${esc(t.op)} · Hoy</p>
             </div>
             <div data-foco="acciones-tarea" class="flex flex-wrap gap-2 justify-end mt-3">
-                <span class="${BTN_SEC}">${icono('picture_as_pdf', 'text-[18px]')} PDF</span>
+                <span class="${BTN_SEC}">${icono('share', 'text-[18px]')} Compartir</span>
                 <span class="${BTN_SEC}">${icono('assignment', 'text-[18px]')} Crear parte</span>
                 <span class="${BTN_SEC}">${icono('menu_book', 'text-[18px]')} Crear bitácora</span>
                 <span class="${BTN_SEC}">${icono('inventory_2', 'text-[18px]')} Pedir material</span>
@@ -162,7 +162,7 @@
                     <p class="text-xs text-slate-500">${esc(miNombre())} 4 h · Luis Gómez 4 h</p>
                     <p class="text-xs text-slate-500">Cambio de bajante · 2 codos PVC 110, 1 manguito</p>
                     <p class="text-xs text-slate-500 flex items-center gap-1">${icono('draw', 'text-[14px]')} Firmado por el cliente</p>
-                    <div class="flex gap-2 justify-end"><span class="${BTN_SEC}">${icono('picture_as_pdf', 'text-[18px]')} PDF</span><span class="${BTN_SEC}">${icono('edit', 'text-[18px]')} Editar</span></div>
+                    <div class="flex gap-2 justify-end"><span class="${BTN_SEC}">${icono('share', 'text-[18px]')} Compartir</span><span class="${BTN_SEC}">${icono('edit', 'text-[18px]')} Editar</span></div>
                 </div>
                 <div data-foco="bloqueado" class="${TARJETA} p-4 flex items-center justify-between gap-2 opacity-80">
                     <span class="text-sm">Hotel Mirador · Cocina</span><span class="text-xs flex items-center gap-1 text-amber-700 dark:text-amber-300">${icono('lock', 'text-[16px]')} Cerrado</span>
@@ -342,13 +342,13 @@
         { titulo: 'Marcar una tarea como hecha', pestana: 'diario', pantalla: pantallaDiario, foco: 'tareas',
           texto: 'Toca el círculo de una tarea tuya para marcarla <b>hecha</b> (o pendiente otra vez). Las completadas bajan al final. Pruébalo.' },
         { titulo: 'Dentro de una tarea', pestana: 'diario', pantalla: pantallaDetalleTarea, foco: 'acciones-tarea',
-          texto: 'Al abrir una tarea tienes <b>Crear parte</b>, <b>Crear bitácora</b> y <b>Pedir material</b>, que ya vienen con el cliente, la obra y la dirección (el parte y la bitácora, además, con las notas de la tarea). También la puedes guardar en <b>PDF</b>.' },
+          texto: 'Al abrir una tarea tienes <b>Crear parte</b>, <b>Crear bitácora</b> y <b>Pedir material</b>, que ya vienen con el cliente, la obra y la dirección (el parte y la bitácora, además, con las notas de la tarea). Con <b>Compartir</b> la envías por WhatsApp o correo (en PDF, como texto o con sus imágenes) o la descargas en PDF.' },
         { titulo: 'Crear una tarea', pestana: 'diario', pantalla: pantallaDiario, foco: 'nueva',
           texto: 'Con el botón <b>+</b> creas una tarea nueva. Las notas se pueden escribir o dictar con el micrófono, y puedes hacer un dibujo en la pizarra.' },
         { titulo: 'Buscar cliente y obra', pestana: 'diario', pantalla: pantallaBuscador, foco: 'buscador',
           texto: 'Puedes buscar <b>directamente por la obra</b>. Si eliges antes un <b>cliente</b>, solo salen <b>las obras de ese cliente</b>. Al elegir la obra se rellenan solas la dirección y la localidad. Funciona igual en Diario, Partes, Materiales y Bitácora, y con el <b>micrófono</b> también los puedes dictar. Pruébalo.' },
         { titulo: 'Partes de trabajo', pestana: 'partes', pantalla: pantallaPartes, foco: 'parte',
-          texto: 'En el parte apuntas quién ha trabajado y cuántas horas, lo que se ha hecho (escrito o dictado), los materiales usados y la <b>firma del cliente</b>. Se descarga en <b>PDF</b>. Puedes editar los partes en los que figuras.' },
+          texto: 'En el parte apuntas quién ha trabajado y cuántas horas, lo que se ha hecho (escrito o dictado), los materiales usados y la <b>firma del cliente</b>. Con <b>Compartir</b> lo envías o lo descargas en <b>PDF</b>. Puedes editar los partes en los que figuras.' },
         { titulo: 'Varios en la misma obra y día', pestana: 'partes', pantalla: pantallaUnirParte, foco: 'unir',
           texto: 'Si ese día ya hay un parte en la misma obra, eliges <b>Añadir a ese parte</b> (lo normal) o <b>Crear parte nuevo</b>. Al añadir, quien hizo el parte recibe un aviso. Si ya figuras en ese parte, te lo dice y puedes modificarlo. Pruébalo.' },
         { titulo: 'La firma del cliente', pestana: 'partes', pantalla: pantallaUnirParte, foco: 'firma',

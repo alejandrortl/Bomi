@@ -864,7 +864,6 @@
             <p id="par-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
-                <button type="button" data-accion="pdf" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
                 <button type="button" data-accion="compartir" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                 ${esAdmin() && !p.bloqueado ? `<button type="button" data-accion="bloquear" data-id="${esc(p.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">lock</span> Bloquear</button>` : ''}
                 ${puedeEditar(p) ? `<button type="button" data-accion="eliminar-desde-ver" data-id="${esc(p.id)}" class="${BTN_SEC} text-red-600 dark:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span> Eliminar</button>` : ''}
@@ -1068,16 +1067,6 @@
         });
     }
 
-    async function descargarPdf(id) {
-        const p = partes.find((x) => x.id === id);
-        if (!p) return;
-        let imgFirma = '';
-        try { imgFirma = await cargarFirma(id); } catch (ex) { /* sin firma */ }
-        const nombre = nombrePdf(p);
-        try { await window.BomiPdf.generar(itemsPdf(p, imgFirma), nombre); }
-        catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
-    }
-
     // ---------- Montaje ----------
     function construirVista() {
         document.getElementById('view-partes').innerHTML = `
@@ -1185,7 +1174,6 @@
             else if (a === 'quitar-firma') { firma = { url: '', quitada: true, cambiada: false }; pintarFirmaForm(); }
             else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'eliminar-desde-ver') eliminar(id);
-            else if (a === 'pdf') descargarPdf(id);
             else if (a === 'compartir') compartir(id);
             else if (a === 'bloquear') bloquear(id);
             else if (a === 'guardar-nube') guardarEnNube(id);

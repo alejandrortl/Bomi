@@ -1,6 +1,6 @@
 // js/modules/compartir.js — Botón «Compartir» de Diario, Partes, Bitácora (registros y fotos) y Materiales.
 // Abre una hoja con tres opciones y usa el menú de compartir del móvil (WhatsApp, correo, Telegram…):
-//   · PDF      → el mismo PDF que el botón PDF (con logotipo y datos de la empresa).
+//   · PDF      → compartirlo o descargarlo (con logotipo y datos de la empresa). Sustituye al antiguo botón «PDF».
 //   · Texto    → un mensaje con los datos del registro, listo para pegar en un chat.
 //   · Imágenes → las fotos o el dibujo de la pizarra del registro (si los tiene).
 // Todo se prepara al abrir la hoja, para que al tocar una opción el menú del móvil salga al momento.
@@ -124,7 +124,8 @@
                     <button type="button" data-compartir="cerrar" aria-label="Cerrar" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 flex"><span class="material-symbols-outlined">close</span></button>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400 -mt-1 break-words">${esc(titulo)}</p>
-                ${boton('pdf', 'picture_as_pdf', 'PDF', 'Preparando…')}
+                ${boton('pdf', 'picture_as_pdf', 'Compartir PDF', 'Preparando…')}
+                ${boton('descargar', 'download', 'Descargar PDF', 'Preparando…')}
                 ${boton('texto', 'notes', 'Texto', 'Preparando…')}
                 ${boton('imagenes', 'photo_library', 'Imágenes', 'Preparando…')}
             </div>`;
@@ -141,6 +142,7 @@
             if (k === 'cerrar') { cerrar(); return; }
             if (x.disabled) return;
             if (k === 'pdf' && listo.pdf) await compartirArchivos([listo.pdf], titulo);
+            else if (k === 'descargar' && listo.pdf) descargar(listo.pdf, listo.pdf.name);
             else if (k === 'texto' && listo.texto) await compartirTexto(listo.texto, titulo);
             else if (k === 'imagenes' && listo.imagenes && listo.imagenes.length) await compartirArchivos(listo.imagenes, titulo);
         });
@@ -148,7 +150,7 @@
         // Preparación (los tres a la vez)
         let items;
         try { items = await (typeof o.items === 'function' ? o.items() : o.items); }
-        catch (ex) { if (hoja === el) { sub('pdf', 'No se pudieron leer los datos'); sub('texto', 'No se pudieron leer los datos'); sub('imagenes', 'No se pudieron leer los datos'); } return; }
+        catch (ex) { if (hoja === el) { sub('pdf', 'No se pudieron leer los datos'); sub('descargar', 'No se pudieron leer los datos'); sub('texto', 'No se pudieron leer los datos'); sub('imagenes', 'No se pudieron leer los datos'); } return; }
         if (hoja !== el) return;
 
         listo.texto = o.texto || texto(items);
@@ -169,9 +171,10 @@
             const bytes = await window.BomiPdf.crear(items);
             if (hoja !== el) return;
             listo.pdf = new File([bytes], nombre, { type: 'application/pdf' });
-            sub('pdf', 'Con logotipo y datos de la empresa'); b('pdf').disabled = false;
+            sub('pdf', 'Por WhatsApp, correo… con logotipo y datos de la empresa'); b('pdf').disabled = false;
+            sub('descargar', 'Guardarlo en este dispositivo'); b('descargar').disabled = false;
         } catch (ex) {
-            if (hoja === el) sub('pdf', 'No se pudo crear: ' + ((ex && ex.message) || 'error'));
+            if (hoja === el) { const m = 'No se pudo crear: ' + ((ex && ex.message) || 'error'); sub('pdf', m); sub('descargar', m); }
         }
     }
 

@@ -437,7 +437,6 @@
             <p id="m-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
             <div class="flex flex-wrap justify-end gap-2">
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cerrar</button>
-                <button type="button" data-accion="pdf" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> PDF</button>
                 <button type="button" data-accion="compartir" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
                 <button type="button" data-accion="editar-desde-ver" data-id="${esc(r.id)}" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">edit</span> Editar</button>
                 ${esRecibido(r)
@@ -599,14 +598,6 @@
             nombre: window.BomiPdf.nombreSeguro(['material', r.cliente, r.obra], 80),
             items: itemsPdf(r),
         });
-    }
-
-    async function descargarPdf(id) {
-        const r = solicitudes.find((x) => x.id === id);
-        if (!r) return;
-        const nombre = window.BomiPdf.nombreSeguro(['material', r.cliente, r.obra], 80);
-        try { await window.BomiPdf.generar(itemsPdf(r), nombre); }
-        catch (ex) { alert('No se pudo crear el PDF: ' + mensajeError(ex)); }
     }
 
     // ---------- Catálogo (solo Admin / SuperAdmin) ----------
@@ -885,7 +876,6 @@
             if (accion === 'ver') abrirVista(id);
             else if (accion === 'editar') abrirFormulario('editar', id);
             else if (accion === 'eliminar') eliminar(id);
-            else if (accion === 'pdf') descargarPdf(id);
             else if (accion === 'compartir') compartir(id);
             else if (accion === 'catalogo') abrirCatalogo();
             else if (accion === 'reintentar') cargar();
@@ -912,7 +902,6 @@
                 else l.querySelectorAll('input').forEach((i) => { i.value = ''; i.dataset.auto = ''; });
             } else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'pedido' || a === 'pendiente' || a === 'recibido' || a === 'norecibido') cambiarEstado(id, a);
-            else if (a === 'pdf') descargarPdf(id);
             else if (a === 'compartir') compartir(id);
         });
         const alCambiar = (e) => {
