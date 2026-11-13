@@ -395,6 +395,74 @@
         document.getElementById('btn-borrar-dibujo').addEventListener('click', () => setDibujo(''));
     }
 
+    // ---------- Lista de trabajos de una tarea (casillas) ----------
+    // tareas.subtareas: [{ id, texto, hecha, hecha_el, hecha_por }]. Los hechos en días anteriores, si la tarea
+    // pasó al día siguiente sin terminar, los mueve la base de datos a tareas.subtareas_hechas_antes.
+    const listaSub = (t) => (t && Array.isArray(t.subtareas) ? t.subtareas.filter((x) => x && String(x.texto || '').trim()) : []);
+    const subAntes = (t) => (t && Array.isArray(t.subtareas_hechas_antes) ? t.subtareas_hechas_antes.filter((x) => x && String(x.texto || '').trim()) : []);
+    const idSub = () => (window.BomiOffline && window.BomiOffline.uuid ? window.BomiOffline.uuid() : String(Date.now()) + Math.random().toString(16).slice(2));
+    // «Falta por completar»: tiene lista, no está terminada y ya se hizo parte (hoy o en días anteriores).
+    function estadoTarea(t) {
+        if (t.completada) return 'hecha';
+        const l = listaSub(t);
+        if (l.length && (l.some((x) => x.hecha) || subAntes(t).length)) return 'falta';
+        return 'pendiente';
+    }
+    const ESTILO_FALTA = 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-800';
+    function etiquetaFaltaHtml(t) {
+        const quedan = listaSub(t).filter((x) => !x.hecha).length;
+        return `<span class="inline-flex items-center self-start gap-1 text-xs font-semibold px-2 py-0.5 whitespace-nowrap rounded-full bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200" data-falta-completar="1"><span class="material-symbols-outlined text-[14px]">timelapse</span>Falta por completar · ${quedan === 1 ? 'queda 1' : 'quedan ' + quedan}</span>`;
+    }
+    // Casillas que se pueden tocar (Diario, Mi día y detalle).
+    function subtareasHtml(t) {
+        const l = listaSub(t);
+        if (!l.length) return '';
+        return '<ul class="flex flex-col" data-subtareas="' + escT(t.id) + '">' + l.map((x) => `
+            <li><button type="button" onclick="event.stopPropagation(); window.toggleSubtarea('${escT(t.id)}', '${escT(x.id)}')" role="checkbox" aria-checked="${x.hecha ? 'true' : 'false'}" data-sub="${escT(x.id)}"
+                class="w-full text-left flex items-start gap-2 py-1 text-sm rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 ${x.hecha ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}">
+                <span class="material-symbols-outlined text-[22px] shrink-0 ${x.hecha ? 'text-emerald-600' : 'text-slate-400'}">${x.hecha ? 'check_box' : 'check_box_outline_blank'}</span>
+                <span class="break-words pt-0.5 ${x.hecha ? 'line-through' : ''}">${escT(x.texto)}</span>
+            </button></li>`).join('') + '</ul>';
+    }
+    // Al crear el parte desde la tarea pasan solo los trabajos marcados como hechos (sin lista: las notas, como antes).
+    function detalleParteDeTarea(t) {
+        const l = listaSub(t);
+        if (!l.length) return t.notas || '';
+        return l.filter((x) => x.hecha).map((x) => '- ' + String(x.texto).trim()).join('\n');
+    }
+
+    // Editor de la lista en el formulario
+    let subEdit = [];
+    const ulSub = document.getElementById('tarea-subtareas');
+    function pintarSubEditor(foco) {
+        if (!ulSub) return;
+        ulSub.innerHTML = '';
+        subEdit.forEach((x, i) => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center gap-2';
+            li.innerHTML = `<span class="material-symbols-outlined text-[20px] shrink-0 ${x.hecha ? 'text-emerald-600' : 'text-slate-400'}" title="${x.hecha ? 'Hecho' : 'Sin hacer'}">${x.hecha ? 'check_box' : 'check_box_outline_blank'}</span>
+                <input type="text" maxlength="200" enterkeyhint="next" placeholder="Trabajo ${i + 1}" class="flex-1 min-w-0 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-2.5 text-sm">
+                <button type="button" aria-label="Quitar trabajo" class="p-1.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800 flex shrink-0"><span class="material-symbols-outlined text-[18px]">close</span></button>`;
+            const inp = li.querySelector('input');
+            inp.value = x.texto || '';
+            inp.addEventListener('input', () => { x.texto = inp.value; });
+            inp.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                subEdit.splice(i + 1, 0, { id: idSub(), texto: '', hecha: false });
+                pintarSubEditor(i + 1);
+            });
+            li.querySelector('button').addEventListener('click', () => { subEdit.splice(i, 1); pintarSubEditor(); });
+            ulSub.appendChild(li);
+        });
+        const vacio = document.getElementById('tarea-subtareas-vacio');
+        if (vacio) vacio.classList.toggle('hidden', subEdit.length > 0);
+        if (foco !== undefined) { const ins = ulSub.querySelectorAll('input'); if (ins[foco]) ins[foco].focus(); }
+    }
+    function setSubEditor(t) { subEdit = listaSub(t).map((x) => ({ ...x })); pintarSubEditor(); }
+    const btnAddSub = document.getElementById('btn-add-subtarea');
+    if (btnAddSub) btnAddSub.addEventListener('click', () => { subEdit.push({ id: idSub(), texto: '', hecha: false }); pintarSubEditor(subEdit.length - 1); });
+
     if (fabNewTask) {
         fabNewTask.addEventListener('click', () => {
             document.getElementById('form-tarea-title').textContent = "Nueva Tarea";
@@ -404,6 +472,7 @@
             // Por defecto "Sin asignar": quien la crea suele asignarla a otro más tarde (puede elegirse a sí mismo).
             poblarSelectOperarios('');
             setDibujo('');
+            setSubEditor(null);
             sincronizarTarea('inicio');
             // Se abre como ventana encima de la pantalla actual (igual que Partes, Bitácora y Materiales)
             viewFormTarea.classList.remove('hidden');
@@ -443,7 +512,7 @@
     document.getElementById('btn-tarea-crear-parte').addEventListener('click', () => {
         const t = currentTareaItem; if (!t || !window.BomiPartes) return;
         navPartes.click();
-        window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: t.notas || '' });
+        window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: detalleParteDeTarea(t) });
     });
     document.getElementById('btn-tarea-crear-bitacora').addEventListener('click', () => {
         const t = currentTareaItem; if (!t || !window.BomiBitacora) return;
@@ -509,6 +578,13 @@
             notas,
             dibujo_url: dibujoUrl
         };
+        // Lista de trabajos (solo se envía si hay o había lista: así las tareas sin lista no dependen de la columna nueva).
+        const subtareas = subEdit.map((x) => ({ ...x, texto: String(x.texto || '').trim() })).filter((x) => x.texto);
+        if (subtareas.length || listaSub(itemOriginal).length) {
+            tareaData.subtareas = subtareas;
+            // Al editar: si se añade un trabajo a una tarea hecha, vuelve a quedar sin terminar (y al revés).
+            if (editId && subtareas.length) tareaData.completada = subtareas.every((x) => x.hecha);
+        }
         const pendDibujo = dibujoPend;
         // PDF con lo que hay escrito (por si no se puede guardar).
         const pdfTarea = () => ({
@@ -735,7 +811,7 @@
             if (searchTxt === '') {
                 if (tFecha !== fechaSelect && !esArrastrada(t)) return false;
             } else {
-                const fullText = `${t.cliente || ''} ${t.obra || ''} ${t.direccion || ''} ${t.localidad || ''} ${t.operario_asignado || ''} ${t.fecha || ''} ${t.notas || ''} ${t.created_by || ''}`.toLowerCase();
+                const fullText = `${t.cliente || ''} ${t.obra || ''} ${t.direccion || ''} ${t.localidad || ''} ${t.operario_asignado || ''} ${t.fecha || ''} ${t.notas || ''} ${t.created_by || ''} ${listaSub(t).map((x) => x.texto).join(' ')}`.toLowerCase();
                 if (!fullText.includes(searchTxt)) return false;
             }
             return true;
@@ -777,7 +853,8 @@
 
         filtradas.forEach(t => {
             const isComp = t.completada;
-            const cardBg = isComp ? 'bg-slate-100 dark:bg-zinc-800 opacity-75' : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
+            const falta = estadoTarea(t) === 'falta';
+            const cardBg = isComp ? 'bg-slate-100 dark:bg-zinc-800 opacity-75' : falta ? ESTILO_FALTA : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800';
             const div = document.createElement('div');
             div.className = `${cardBg} p-4 rounded-2xl shadow-sm flex flex-col gap-2`;
             // Etiqueta "Pendiente desde": al pasar a hoy, o si un administrador la reasignó a otro día.
@@ -786,7 +863,7 @@
             const [, mm, dd] = desde.split('-');
             const etiquetaPendiente = arrastrada ? `<span class="inline-flex items-center self-start gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" data-pendiente-desde="${escT(desde)}"><span class="material-symbols-outlined text-[14px]">schedule</span>Pendiente desde el ${escT(dd)}/${escT(mm)}</span>` : '';
             div.innerHTML = `
-                ${etiquetaPendiente}
+                ${etiquetaPendiente || falta ? `<div class="flex flex-wrap gap-1.5">${etiquetaPendiente}${falta ? etiquetaFaltaHtml(t) : ''}</div>` : ''}
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">${escT(t.cliente || 'Sin cliente')} - ${escT(t.obra || 'Sin obra')}</span>
                     <div class="flex items-center gap-2 shrink-0 ml-2">
@@ -799,20 +876,59 @@
                     ${!t.operario_asignado && t.operario_original ? `<p class="text-xs text-slate-500">Estaba asignada a ${escT(t.operario_original)}</p>` : ''}
                     <p class="mt-1 text-sm">${direccionLinkHtml(t, true) || '<span class="text-slate-500">Sin dirección</span>'}</p>
                     ${contactosHtmlT(t)}
-                    <p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${escT(t.notas || 'Sin notas...')}</p>
+                    ${listaSub(t).length ? (t.notas ? `<p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${escT(t.notas)}</p>` : '') : `<p class="mt-2 text-slate-700 dark:text-slate-300 line-clamp-2">${escT(t.notas || 'Sin notas...')}</p>`}
                 </div>
+                ${subtareasHtml(t)}
             `;
             c.appendChild(div);
         });
     }
 
     window.toggleTareaCompletada = async function(id, status) {
-        const { error } = await supabaseClient.from('tareas').update({ completada: status }).eq('id', id);
-        if (error) { alert('No se pudo actualizar la tarea: ' + error.message); return; }
         const t = allTareas.find(x => x.id === id);
-        if(t) t.completada = status;
+        const cambios = { completada: status };
+        // Con lista: «hecha» marca todos los trabajos; «pendiente» desmarca los que se marcaron hoy.
+        const l = listaSub(t);
+        if (l.length) {
+            const hoy = getTodayLocalString();
+            const yo = window.currentUserProfile ? nombreOperario(window.currentUserProfile) : '';
+            cambios.subtareas = l.map((x) => status
+                ? (x.hecha ? x : { ...x, hecha: true, hecha_el: hoy, hecha_por: yo })
+                : (x.hecha && x.hecha_el === hoy ? { id: x.id, texto: x.texto, hecha: false } : x));
+        }
+        const { error } = await supabaseClient.from('tareas').update(cambios).eq('id', id);
+        if (error) { alert('No se pudo actualizar la tarea: ' + error.message); return; }
+        if (t) Object.assign(t, cambios);
+        if (t && currentTareaItem === t && viewDetalleTarea && !viewDetalleTarea.classList.contains('hidden')) window.verDetalleTarea(id);
         if (status) tareasHechasHoy.add(id); else tareasHechasHoy.delete(id);
         renderTareas();
+        window.dispatchEvent(new CustomEvent('bomiTareasCambiadas'));
+    };
+
+    // Marcar o desmarcar un trabajo de la lista (requiere conexión, como editar). Si quedan todos hechos, la tarea queda hecha.
+    const subGuardando = new Set();
+    window.toggleSubtarea = async function(id, subId) {
+        const t = allTareas.find((x) => x.id === id);
+        if (!t || subGuardando.has(id)) return;
+        const hoy = getTodayLocalString();
+        const yo = window.currentUserProfile ? nombreOperario(window.currentUserProfile) : '';
+        const nueva = listaSub(t).map((x) => x.id !== subId ? x : (x.hecha ? { id: x.id, texto: x.texto, hecha: false } : { ...x, hecha: true, hecha_el: hoy, hecha_por: yo }));
+        const cambios = { subtareas: nueva };
+        const todas = nueva.length > 0 && nueva.every((x) => x.hecha);
+        if (todas !== !!t.completada) cambios.completada = todas;
+        subGuardando.add(id);
+        try {
+            const { error } = await supabaseClient.from('tareas').update(cambios).eq('id', id);
+            if (error) throw error;
+        } catch (ex) {
+            const sinRed = window.BomiOffline && window.BomiOffline.esRed ? window.BomiOffline.esRed(ex) : !navigator.onLine;
+            alert(sinRed ? 'Sin conexión: para marcar trabajos hace falta conexión. Vuelve a intentarlo cuando tengas señal.' : 'No se pudo marcar el trabajo: ' + (ex.message || ex));
+            return;
+        } finally { subGuardando.delete(id); }
+        Object.assign(t, cambios);
+        if (cambios.completada === true) tareasHechasHoy.add(id);
+        renderTareas();
+        if (currentTareaItem === t && viewDetalleTarea && !viewDetalleTarea.classList.contains('hidden')) window.verDetalleTarea(id);
         window.dispatchEvent(new CustomEvent('bomiTareasCambiadas'));
     };
 
@@ -837,6 +953,8 @@
             <div><span class="text-xs text-slate-500">Ubicación y Fecha:</span><div class="flex items-center justify-between mt-1 gap-2"><p class="font-medium">${direccionLinkHtml(item, false) || '<span class="text-slate-500">Sin dirección</span>'} (${escT(item.fecha || '')})</p><a href="${escT(mapsHrefT(item.direccion, item.localidad))}" target="_blank" rel="noopener noreferrer" aria-label="Abrir en Google Maps" class="text-blue-600 bg-blue-50 dark:bg-blue-950 p-1.5 rounded-full flex items-center shrink-0"><span class="material-symbols-outlined text-[18px]">map</span></a></div></div>
             ${contactos ? `<div><span class="text-xs text-slate-500">Contacto:</span>${contactos}</div>` : ''}
             <div><span class="text-xs text-slate-500">Asignada a:</span><p class="font-medium">${escT(item.operario_asignado || 'Sin asignar')}</p>${!item.operario_asignado && item.operario_original ? `<p class="text-xs text-slate-500">Estaba asignada a ${escT(item.operario_original)}</p>` : ''}</div>
+            ${listaSub(item).length ? `<div><span class="text-xs text-slate-500 flex items-center justify-between gap-2">Trabajos: <span>${listaSub(item).filter((x) => x.hecha).length} de ${listaSub(item).length} hechos</span></span>${estadoTarea(item) === 'falta' ? `<div class="mt-1">${etiquetaFaltaHtml(item)}</div>` : ''}<div class="mt-1">${subtareasHtml(item)}</div></div>` : ''}
+            ${subAntes(item).length ? `<div><span class="text-xs text-slate-500">Hecho en días anteriores:</span><ul class="mt-1 flex flex-col gap-0.5">${subAntes(item).map((x) => `<li class="flex items-start gap-2 text-sm text-slate-500"><span class="material-symbols-outlined text-[18px] text-emerald-600 shrink-0">check</span><span class="break-words">${escT(x.texto)}${x.hecha_el ? ` <span class="text-xs">(${escT(fechaES(x.hecha_el))}${x.hecha_por ? ', ' + escT(x.hecha_por) : ''})</span>` : ''}</span></li>`).join('')}</ul></div>` : ''}
             <div><span class="text-xs text-slate-500">Notas:</span><p class="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl mt-1 whitespace-pre-wrap break-words">${escT(item.notas || 'N/A')}</p></div>
             ${item.dibujo_url ? `<div><span class="text-xs text-slate-500 flex items-center justify-between gap-2">Dibujo: <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[14px]">zoom_in</span>Toca para ampliar</span></span>${window.BomiPizarraNube ? window.BomiPizarraNube.img(item.dibujo_url, 'mt-2 rounded-xl max-h-48 bg-white border border-slate-200', 'Dibujo', true) : `<img src="${escT(item.dibujo_url)}" data-ampliar="1" class="mt-2 rounded-xl max-h-48 bg-white border border-slate-200 cursor-zoom-in">`}</div>` : ''}
             <div class="text-xs text-slate-500 pt-4 border-t border-slate-200 dark:border-zinc-800 mt-4">
@@ -858,6 +976,15 @@
         ];
         if (contactos) it.push({ t: 'kv', label: 'Contacto', value: contactos });
         it.push({ t: 'kv', label: 'Asignada a', value: t.operario_asignado || 'Sin asignar' });
+        const l = listaSub(t);
+        if (l.length) {
+            it.push({ t: 'h', text: 'Trabajos' });
+            it.push({ t: 'p', text: l.map((x) => (x.hecha ? '[X] ' : '[  ] ') + x.texto).join('\n') });
+        }
+        if (subAntes(t).length) {
+            it.push({ t: 'h', text: 'Hecho en días anteriores' });
+            it.push({ t: 'p', text: subAntes(t).map((x) => '[X] ' + x.texto + (x.hecha_el ? ' (' + fechaES(x.hecha_el) + ')' : '')).join('\n') });
+        }
         it.push({ t: 'h', text: 'Notas' });
         it.push({ t: 'p', text: t.notas || 'N/A' });
         if (t.dibujo_url) { it.push({ t: 'h', text: 'Dibujo' }); it.push({ t: 'img', src: t.dibujo_url, maxW: 420, maxH: 260 }); }
@@ -893,7 +1020,7 @@
             const tareas = r.filtradas.map((t) => {
                 const desde = String(t.pendiente_desde || r.fechaOrden(t)).slice(0, 10);
                 const arrastrada = !t.completada && (r.esArrastrada(t) || (!!t.pendiente_desde && desde < r.fechaOrden(t)));
-                return { t, arrastrada, desde, contactos: contactosDeTarea(t), mapa: (t.direccion || t.localidad) ? mapsHrefT(t.direccion, t.localidad) : '', tel: telHrefT };
+                return { t, arrastrada, desde, falta: estadoTarea(t) === 'falta', subtareasHtml: subtareasHtml(t), etiquetaFalta: estadoTarea(t) === 'falta' ? etiquetaFaltaHtml(t) : '', contactos: contactosDeTarea(t), mapa: (t.direccion || t.localidad) ? mapsHrefT(t.direccion, t.localidad) : '', tel: telHrefT };
             });
             const manana = sumarDias(hoy, 1);
             return { hoy, cargadas: tareasCargadas, tareas, manana: allTareas.filter((t) => esMiaTarea(t) && (t.fecha || '').slice(0, 10) === manana).length };
@@ -903,7 +1030,7 @@
             const t = allTareas.find((x) => x.id === id);
             if (!t || !window.BomiPartes) return;
             navPartes.click();
-            window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: t.notas || '' });
+            window.BomiPartes.nuevoConDatos({ ...datosDeTarea(t), detalle: detalleParteDeTarea(t) });
         },
         irAlDia(iso) { navHome.click(); if (filtroFechaDiario) { filtroFechaDiario.value = iso; renderTareas(); } },
         manana() { return sumarDias(getTodayLocalString(), 1); },
@@ -931,7 +1058,7 @@
                     orden: (t.fecha || '') + '|' + (t.created_at || ''),
                     titulo: t.operario_asignado || 'Sin asignar',
                     detalle: t.notas || '',
-                    etiquetas: [t.completada ? { texto: 'Hecha', tono: 'verde', icono: 'check' } : { texto: 'Pendiente', tono: 'ambar' }],
+                    etiquetas: [t.completada ? { texto: 'Hecha', tono: 'verde', icono: 'check' } : estadoTarea(t) === 'falta' ? { texto: 'Falta por completar', tono: 'violeta' } : { texto: 'Pendiente', tono: 'ambar' }],
                     puedeEditar: puedeGestionarTarea(t),
                     puedeEliminar: puedeGestionarTarea(t),
                 }));
@@ -961,6 +1088,7 @@
         document.getElementById('tarea-fecha').value = item.fecha ? item.fecha.split('T')[0] : getTodayLocalString();
         document.getElementById('tarea-notas').value = item.notas || '';
         setDibujo(item.dibujo_url || '');
+        setSubEditor(item);
         tareaObraAutorrellena = false;
         sincronizarTarea('inicio');
         viewFormTarea.classList.remove('hidden');

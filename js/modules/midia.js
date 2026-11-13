@@ -116,18 +116,20 @@
         const hecha = !!t.completada;
         const sinParte = hecha && !tieneParte(t);
         const tel = (x.contactos || []).find((k) => k.telefono);
-        const borde = x.arrastrada ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30' : hecha ? 'border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50' : 'border-slate-200 dark:border-zinc-800';
+        const borde = x.falta ? 'border-violet-300 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30' : x.arrastrada ? 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30' : hecha ? 'border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50' : 'border-slate-200 dark:border-zinc-800';
         return `
             <div class="border ${borde} rounded-2xl p-3 flex gap-3">
                 <button type="button" data-md="hecha" data-id="${esc(t.id)}" data-valor="${!hecha}" aria-label="${hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}"
                     class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center ${hecha ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 dark:border-zinc-600 text-transparent hover:text-slate-300'}"><span class="material-symbols-outlined text-[20px]">check</span></button>
                 <div class="flex-1 min-w-0 flex flex-col gap-1">
                     ${x.arrastrada ? `<span class="inline-flex self-start items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"><span class="material-symbols-outlined text-[14px]">schedule</span>Pendiente desde el ${esc(ddmm(x.desde))}</span>` : ''}
+                    ${x.etiquetaFalta || ''}
                     <button type="button" data-md="ver" data-id="${esc(t.id)}" class="text-left flex flex-col gap-1 min-w-0">
                         <span class="font-semibold text-sm break-words ${hecha ? 'line-through text-slate-500' : ''}">${esc(t.cliente || 'Sin cliente')} · ${esc(t.obra || 'Sin obra')}</span>
                         ${!hecha && (t.direccion || t.localidad) ? `<span class="text-xs text-slate-500 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span><span class="truncate">${esc([t.direccion, t.localidad].filter(Boolean).join(', '))}</span></span>` : ''}
                         ${!hecha && t.notas ? `<span class="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 break-words">${esc(t.notas)}</span>` : ''}
                     </button>
+                    ${!hecha ? (x.subtareasHtml || '') : ''}
                     ${sinParte ? `<span class="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">warning</span>Hecha, pero aún sin parte de trabajo</span>
                         <button type="button" data-md="parte" data-id="${esc(t.id)}" class="self-start text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full inline-flex items-center gap-1 font-medium"><span class="material-symbols-outlined text-[16px]">assignment</span>Hacer el parte</button>` : ''}
                     ${!hecha && (x.mapa || tel) ? `<div class="flex flex-wrap gap-2 pt-1">

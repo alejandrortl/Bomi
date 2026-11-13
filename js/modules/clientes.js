@@ -147,6 +147,7 @@
         verde: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
         ambar: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
         gris: 'bg-slate-200 text-slate-700 dark:bg-zinc-700 dark:text-slate-200',
+        violeta: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
     };
     const etiquetaHtml = (e) => `<span class="inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${TONOS[e.tono] || TONOS.gris}">${e.icono ? `<span class="material-symbols-outlined text-[14px]">${esc(e.icono)}</span>` : ''}${esc(e.texto)}</span>`;
     const btnReg = (accion, tipo, id, icono, etiqueta, clase = BTN_ICON) =>
