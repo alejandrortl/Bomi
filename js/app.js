@@ -312,6 +312,76 @@
         el.addEventListener('change', () => sincronizarTarea(origen));
     });
 
+    // ENLACE DE GOOGLE MAPS en la tarea -> dirección y localidad (mismo servicio que el formulario de obra: api/maps.js)
+    let mapsTareaUltimo = '';
+    let mapsTareaTimer = null;
+    function estadoMapsTarea(texto, tipo) {
+        const p = document.getElementById('tarea-maps-estado');
+        if (!p) return;
+        p.textContent = texto || '';
+        p.classList.toggle('hidden', !texto);
+        p.classList.remove('text-red-600', 'dark:text-red-400', 'text-amber-600', 'dark:text-amber-400', 'text-slate-500', 'dark:text-slate-400', 'text-green-600', 'dark:text-green-400');
+        const color = { error: ['text-red-600', 'dark:text-red-400'], aviso: ['text-amber-600', 'dark:text-amber-400'], ok: ['text-green-600', 'dark:text-green-400'] }[tipo] || ['text-slate-500', 'dark:text-slate-400'];
+        p.classList.add(...color);
+    }
+    function limpiarMapsTarea() {
+        clearTimeout(mapsTareaTimer);
+        mapsTareaUltimo = '';
+        const i = document.getElementById('tarea-maps');
+        if (i) i.value = '';
+        estadoMapsTarea('');
+    }
+    async function leerMapsTarea(texto) {
+        texto = String(texto || '').trim();
+        if (!texto || texto === mapsTareaUltimo) return;
+        if (!/https?:\/\//i.test(texto)) { estadoMapsTarea('Eso no parece un enlace. Copia el enlace de Google Maps y vuelve a pegarlo.', 'error'); return; }
+        const inDir = document.getElementById('tarea-direccion');
+        const inLoc = document.getElementById('tarea-localidad');
+        if (inDir.readOnly) { estadoMapsTarea('La obra elegida ya tiene su dirección. Si es otro sitio, escribe una obra nueva y vuelve a pegar el enlace.', 'aviso'); return; }
+        mapsTareaUltimo = texto;
+        if (navigator.onLine === false) { estadoMapsTarea('Sin conexión: escribe la dirección a mano o inténtalo cuando haya señal.', 'error'); mapsTareaUltimo = ''; return; }
+        estadoMapsTarea('Buscando la dirección...');
+        try {
+            const r = await fetch('/api/maps?texto=' + encodeURIComponent(texto));
+            const d = await r.json().catch(() => ({}));
+            if (viewFormTarea.classList.contains('hidden') || mapsTareaUltimo !== texto) return; // ventana cerrada o enlace cambiado
+            if (!r.ok) throw new Error(d.error || 'No se pudo leer el enlace.');
+            if (!d.direccion && !d.localidad) throw new Error('No he podido sacar la dirección de ese enlace. Escríbela a mano.');
+            // Si el enlace es de un negocio y la obra está vacía, se propone su nombre como obra.
+            const inObra = document.getElementById('tarea-obra');
+            if (d.nombre && inObra && !inObra.value.trim()) { inObra.value = d.nombre; sincronizarTarea('obra'); }
+            if (inDir.readOnly) { estadoMapsTarea('Esa obra ya existe: se usan su dirección y localidad.', 'ok'); return; }
+            if (d.direccion) inDir.value = d.direccion;
+            if (d.localidad) inLoc.value = d.localidad;
+            if (d.aproximada) estadoMapsTarea('Dirección rellenada. Repásala: es la más cercana al punto del mapa.', 'aviso');
+            else estadoMapsTarea('Dirección y localidad rellenadas.', 'ok');
+        } catch (ex) {
+            mapsTareaUltimo = '';
+            estadoMapsTarea(ex && ex.message && !/fetch|network/i.test(ex.message) ? ex.message : 'No se pudo leer el enlace. Escribe la dirección a mano.', 'error');
+        }
+    }
+    const inMapsTarea = document.getElementById('tarea-maps');
+    if (inMapsTarea) {
+        inMapsTarea.addEventListener('input', () => {
+            clearTimeout(mapsTareaTimer);
+            const v = inMapsTarea.value;
+            if (!v.trim()) { mapsTareaUltimo = ''; estadoMapsTarea(''); return; }
+            mapsTareaTimer = setTimeout(() => leerMapsTarea(v), 400);
+        });
+    }
+    const btnPegarMapsTarea = document.getElementById('btn-pegar-maps-tarea');
+    if (btnPegarMapsTarea) btnPegarMapsTarea.addEventListener('click', async () => {
+        try {
+            const t = await navigator.clipboard.readText();
+            if (!t || !t.trim()) throw new Error('vacío');
+            inMapsTarea.value = t.trim();
+            leerMapsTarea(inMapsTarea.value);
+        } catch (e) {
+            inMapsTarea.focus();
+            estadoMapsTarea('No he podido leer lo copiado. Mantén pulsado en la casilla y elige «Pegar».', 'aviso');
+        }
+    });
+
     // WEB SPEECH API
     const btnDictarVoz = document.getElementById('btn-dictar-voz');
     const tareaNotas = document.getElementById('tarea-notas');
@@ -474,6 +544,7 @@
             // Por defecto "Sin asignar": quien la crea suele asignarla a otro más tarde (puede elegirse a sí mismo).
             poblarSelectOperarios('');
             setDibujo('');
+            limpiarMapsTarea();
             setSubEditor(null);
             sincronizarTarea('inicio');
             // Se abre como ventana encima de la pantalla actual (igual que Partes, Bitácora y Materiales)
@@ -1090,6 +1161,7 @@
         document.getElementById('tarea-fecha').value = item.fecha ? item.fecha.split('T')[0] : getTodayLocalString();
         document.getElementById('tarea-notas').value = item.notas || '';
         setDibujo(item.dibujo_url || '');
+        limpiarMapsTarea();
         setSubEditor(item);
         tareaObraAutorrellena = false;
         sincronizarTarea('inicio');

@@ -162,6 +162,15 @@
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-cliente" class="text-xs font-medium">Cliente</label><input type="text" id="tarea-cliente" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-obra" class="text-xs font-medium">Obra</label><input type="text" id="tarea-obra" autocomplete="off" required class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                 </div>
+                <!-- Enlace de Google Maps: al pegarlo se rellenan dirección y localidad (igual que en el formulario de obra, ver api/maps.js) -->
+                <div class="flex flex-col gap-1">
+                    <label for="tarea-maps" class="text-xs font-medium">Enlace de Google Maps (opcional)</label>
+                    <div class="flex gap-2">
+                        <input id="tarea-maps" type="text" inputmode="url" autocomplete="off" placeholder="Pega aquí el enlace que te han enviado" class="min-w-0 flex-1 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm">
+                        <button type="button" id="btn-pegar-maps-tarea" class="shrink-0 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-3 rounded-full text-sm font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">content_paste</span> Pegar</button>
+                    </div>
+                    <p id="tarea-maps-estado" class="hidden text-xs"></p>
+                </div>
                 <div class="flex gap-4 flex-col sm:flex-row">
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-direccion" class="text-xs font-medium">Dirección</label><input type="text" id="tarea-direccion" required autocomplete="off" placeholder="Busca la obra por dirección" class="read-only:opacity-70 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
                     <div class="flex flex-col gap-1 flex-1"><label for="tarea-localidad" class="text-xs font-medium">Localidad</label><input type="text" id="tarea-localidad" required class="read-only:opacity-70 bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl p-3 text-sm"></div>
