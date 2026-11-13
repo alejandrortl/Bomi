@@ -428,7 +428,9 @@
     function detalleParteDeTarea(t) {
         const l = listaSub(t);
         if (!l.length) return t.notas || '';
-        return l.filter((x) => x.hecha).map((x) => '- ' + String(x.texto).trim()).join('\n');
+        // Solo lo hecho hoy: lo de días anteriores ya fue en otro parte (aunque la base de datos aún no lo haya apartado).
+        const hoy = getTodayLocalString();
+        return l.filter((x) => x.hecha && (!x.hecha_el || x.hecha_el >= hoy)).map((x) => '- ' + String(x.texto).trim()).join('\n');
     }
 
     // Editor de la lista en el formulario
