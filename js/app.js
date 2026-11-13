@@ -382,30 +382,6 @@
         }
     });
 
-    // WEB SPEECH API
-    const btnDictarVoz = document.getElementById('btn-dictar-voz');
-    const tareaNotas = document.getElementById('tarea-notas');
-    if (btnDictarVoz) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
-            recognition.continuous = false;
-            btnDictarVoz.addEventListener('click', (e) => {
-                e.preventDefault();
-                btnDictarVoz.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-pulse">mic</span> Escuchando...';
-                recognition.start();
-            });
-            recognition.onresult = (event) => {
-                tareaNotas.value = (tareaNotas.value + ' ' + event.results[0][0].transcript).trim();
-                resetMic();
-            };
-            recognition.onerror = resetMic;
-            recognition.onend = resetMic;
-            function resetMic() { btnDictarVoz.innerHTML = '<span class="material-symbols-outlined text-[16px]">mic</span> Dictar'; }
-        } else { btnDictarVoz.style.display = 'none'; }
-    }
-
     // PIZARRA (la misma que usa la Bitácora: js/modules/pizarra.js)
     // El contenedor lleva "hidden" e "inline-block" a la vez; se alterna con style para que no compitan.
     // El dibujo se guarda en R2 (con copia en Drive) al guardar la tarea, también si se guarda sin conexión.
@@ -531,9 +507,133 @@
         if (vacio) vacio.classList.toggle('hidden', subEdit.length > 0);
         if (foco !== undefined) { const ins = ulSub.querySelectorAll('input'); if (ins[foco]) ins[foco].focus(); }
     }
-    function setSubEditor(t) { subEdit = listaSub(t).map((x) => ({ ...x })); pintarSubEditor(); }
+    function setSubEditor(t) {
+        pararDictadoT(); Object.values(dictadosT).forEach((c) => avisoDictadoT(c, ''));
+        subEdit = listaSub(t).map((x) => ({ ...x })); pintarSubEditor();
+    }
     const btnAddSub = document.getElementById('btn-add-subtarea');
     if (btnAddSub) btnAddSub.addEventListener('click', () => { subEdit.push({ id: idSub(), texto: '', hecha: false }); pintarSubEditor(subEdit.length - 1); });
+
+    // ---------- Dictado por voz en el formulario de tarea ----------
+    // Dos botones "Dictar": uno en "Trabajos a hacer" (cada frase, al hacer una pausa, es un trabajo nuevo de la lista)
+    // y otro en las notas (el texto se añade al final, como en Partes y Bitácora). Pulsar otra vez para.
+    // Si el navegador no sabe dictar (Brave, la app instalada en iPhone...) se explica cómo usar el micrófono del teclado.
+    const SRTarea = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const tactilT = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const AVISO_TECLADO_T = tactilT()
+        ? 'Este navegador no deja dictar desde la app. Usa el micrófono del teclado del móvil (Gboard): pulsa en la casilla y luego en el micrófono del teclado.'
+        : 'Este navegador no permite dictar por voz. Prueba con Chrome, Edge o Safari.';
+    let dictadoT = null;   // { rec, cfg, parado }
+    const dictadosT = {
+        trabajos: { btn: 'btn-dictar-trabajos', aviso: 'tarea-dictado-trabajos-aviso', continuo: false,
+            ayuda: 'Escuchando. Di un trabajo y haz una pausa: cada frase va en una línea. Pulsa «Parar» al terminar.' },
+        notas: { btn: 'btn-dictar-voz', aviso: 'tarea-dictado-notas-aviso', continuo: true, ayuda: '' },
+    };
+    function pintarDictadoT(cfg, escuchando) {
+        const b = document.getElementById(cfg.btn);
+        if (!b) return;
+        b.classList.toggle('animate-pulse', escuchando);
+        b.setAttribute('aria-pressed', escuchando ? 'true' : 'false');
+        const ic = b.querySelector('.material-symbols-outlined');
+        if (ic) ic.textContent = escuchando ? 'stop_circle' : 'mic';
+        const t = b.querySelector('[data-txt]');
+        if (t) t.textContent = escuchando ? 'Parar' : 'Dictar';
+    }
+    function avisoDictadoT(cfg, txt) {
+        const p = document.getElementById(cfg.aviso);
+        if (!p) return;
+        p.textContent = txt || '';
+        p.classList.toggle('hidden', !txt);
+    }
+    function pararDictadoT() {
+        if (!dictadoT) return;
+        const d = dictadoT; dictadoT = null; d.parado = true;
+        try { d.rec.stop(); } catch (e) { /* ya parado */ }
+        pintarDictadoT(d.cfg, false);
+        if (d.cfg.ayuda) avisoDictadoT(d.cfg, '');
+    }
+    // Una frase dictada → uno o varios trabajos. También se separa si se dice "punto" o "siguiente trabajo".
+    function trabajosDeFrase(frase) {
+        return String(frase || '')
+            .split(/[.;\n]+|\b(?:punto(?: y aparte| y seguido)?|siguiente trabajo|otro trabajo)\b/i)
+            .map((x) => (x || '').replace(/^[\s,]+|[\s,]+$/g, ''))
+            .filter(Boolean)
+            .map((x) => x.charAt(0).toLocaleUpperCase('es') + x.slice(1));
+    }
+    function añadirTrabajosDictados(frase) {
+        const nuevos = trabajosDeFrase(frase);
+        if (!nuevos.length) return;
+        // Si la última línea está vacía (se pulsó "Añadir trabajo"), se rellena esa en vez de dejarla en blanco.
+        const ult = subEdit[subEdit.length - 1];
+        if (ult && !String(ult.texto || '').trim()) ult.texto = nuevos.shift();
+        nuevos.forEach((texto) => subEdit.push({ id: idSub(), texto, hecha: false }));
+        pintarSubEditor();
+    }
+    function añadirNotasDictadas(frase) {
+        const area = document.getElementById('tarea-notas');
+        const t = String(frase || '').trim();
+        if (!area || !t) return;
+        const antes = area.value.trimEnd();
+        // Tras un punto (o con la casilla vacía) se empieza en mayúscula.
+        const txt = (!antes || /[.!?]$/.test(antes)) ? t.charAt(0).toLocaleUpperCase('es') + t.slice(1) : t;
+        area.value = (antes ? antes + ' ' : '') + txt;
+    }
+    function arrancarDictadoT(cfg, alTexto) {
+        const rec = new SRTarea();
+        rec.lang = 'es-ES'; rec.continuous = cfg.continuo; rec.interimResults = false; rec.maxAlternatives = 1;
+        const d = { rec, cfg, parado: false, oido: false, alguno: false };
+        dictadoT = d;
+        rec.onresult = (ev) => {
+            let nuevo = '';
+            for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) nuevo += ev.results[i][0].transcript + ' ';
+            if (dictadoT !== d || (viewFormTarea && viewFormTarea.classList.contains('hidden'))) { pararDictadoT(); return; }
+            if (nuevo.trim()) { d.oido = true; d.alguno = true; alTexto(nuevo.trim()); }
+        };
+        rec.onerror = (ev) => {
+            if (ev.error === 'aborted') return;
+            if (ev.error === 'no-speech' && d.alguno) { pararDictadoT(); return; }   // pausa larga tras dictar: se para sin más
+            pararDictadoT();
+            if (ev.error === 'not-allowed') avisoDictadoT(cfg, 'No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.');
+            else if (ev.error === 'no-speech') avisoDictadoT(cfg, 'No se oyó nada. Pulsa «Dictar» y vuelve a hablar.');
+            else if (ev.error === 'network' || ev.error === 'service-not-allowed' || ev.error === 'language-not-supported') avisoDictadoT(cfg, navigator.onLine === false ? 'El dictado necesita conexión a internet.' : AVISO_TECLADO_T);
+            else avisoDictadoT(cfg, 'No se pudo dictar (' + ev.error + ').');
+        };
+        rec.onend = () => {
+            if (dictadoT !== d) return;
+            // En la lista se escucha frase a frase: tras cada frase oída se vuelve a escuchar hasta que se pulse "Parar".
+            if (!cfg.continuo && d.oido && !d.parado) {
+                d.oido = false;
+                try { rec.start(); return; } catch (e) { /* se para abajo */ }
+            }
+            pararDictadoT();
+        };
+        pintarDictadoT(cfg, true);
+        if (cfg.ayuda) avisoDictadoT(cfg, cfg.ayuda); else avisoDictadoT(cfg, '');
+        try { rec.start(); } catch (e) { pararDictadoT(); avisoDictadoT(cfg, 'No se pudo iniciar el micrófono.'); }
+    }
+    function alternarDictadoT(clave) {
+        const cfg = dictadosT[clave];
+        const eraEste = dictadoT && dictadoT.cfg === cfg;
+        pararDictadoT();
+        if (eraEste) return;
+        Object.values(dictadosT).forEach((c) => avisoDictadoT(c, ''));
+        if (!SRTarea) {
+            // Sin dictado en el navegador: se abre el teclado en la casilla para usar su micrófono.
+            if (clave === 'trabajos') {
+                const ult = subEdit[subEdit.length - 1];
+                if (!ult || String(ult.texto || '').trim()) subEdit.push({ id: idSub(), texto: '', hecha: false });
+                pintarSubEditor(subEdit.length - 1);
+            } else { const a = document.getElementById('tarea-notas'); if (a) a.focus(); }
+            avisoDictadoT(cfg, AVISO_TECLADO_T);
+            return;
+        }
+        arrancarDictadoT(cfg, clave === 'trabajos' ? añadirTrabajosDictados : añadirNotasDictadas);
+    }
+    ['trabajos', 'notas'].forEach((clave) => {
+        const b = document.getElementById(dictadosT[clave].btn);
+        if (b) b.addEventListener('click', (e) => { e.preventDefault(); alternarDictadoT(clave); });
+    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pararDictadoT(); });
 
     if (fabNewTask) {
         fabNewTask.addEventListener('click', () => {
@@ -556,6 +656,7 @@
     // Al abrir una tarea desde otra pantalla (p. ej. el historial de una obra en Clientes), al terminar se vuelve allí.
     let volverA = null;
     function salirTarea() {
+        pararDictadoT();
         const f = volverA;
         volverA = null;
         if (f) f(); else navHome.click();
@@ -565,6 +666,7 @@
     // Cerrar la ventana de tarea (X, tocar fuera o Escape): igual que Cancelar
     function cerrarFormTarea() {
         if (!viewFormTarea || viewFormTarea.classList.contains('hidden')) return;
+        pararDictadoT();
         viewFormTarea.classList.add('hidden'); viewFormTarea.classList.remove('flex');
         // Si debajo no queda ninguna pantalla (se abrió desde otro sitio), se vuelve como con Cancelar
         const debajo = [viewTaskList, viewDetalleTarea, viewPartes, viewBitacora, viewMateriales, viewClientes, viewEmpleados, viewPerfil, viewEmpresa, document.getElementById('view-mensajes')].some((v) => v && !v.classList.contains('hidden'));
