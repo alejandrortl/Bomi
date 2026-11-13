@@ -968,7 +968,7 @@
         return `<ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl">${ms.map((m) => `<li class="flex gap-3 p-3 text-sm"><strong class="shrink-0 min-w-[3rem]">${esc(cant(m.unidades))}</strong><span class="min-w-0 break-words">${esc(m.material)}${m.referencia ? `<span class="block text-xs text-slate-500">Ref.: ${esc(m.referencia)}</span>` : ''}${varios && aportadoDe(p, m) ? `<span class="block text-xs text-slate-500">Añadido por ${esc(aportadoDe(p, m))}</span>` : ''}</span></li>`).join('')}</ul>`;
     }
     function autoriaHtml(p) {
-        const l = [`Creado por <strong>${esc(p.created_by || 'desconocido')}</strong> · ${esc(fechaHora(p.created_at))}`];
+        const l = [`Creado por <strong>${esc(p.created_by || 'desconocido')}</strong>`];
         if (modificado(p)) l.push(`Modificado por <strong>${esc(p.updated_by || 'desconocido')}</strong> · ${esc(fechaHora(p.updated_at))}`);
         if (p.bloqueado) l.push(`Bloqueado por <strong>${esc(p.bloqueado_por || 'un administrador')}</strong>${p.bloqueado_at ? ' · ' + esc(fechaHora(p.bloqueado_at)) : ''}`);
         return l.map((x) => `<p class="text-xs text-slate-500">${x}</p>`).join('');
@@ -1184,7 +1184,7 @@
             else it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: mats(p).map((m) => [cant(m.unidades), m.material, m.referencia || '']) });
         }
         if (imgFirma) { it.push({ t: 'h', text: 'Firma del cliente' }); it.push({ t: 'img', src: imgFirma, maxW: 240, maxH: 110 }); }
-        it.push({ t: 'note', text: 'Creado por ' + (p.created_by || 'desconocido') + ' · ' + fechaHora(p.created_at)
+        it.push({ t: 'note', text: 'Creado por ' + (p.created_by || 'desconocido')
             + (modificado(p) ? '\nModificado por ' + (p.updated_by || 'desconocido') + ' · ' + fechaHora(p.updated_at) : '')
             + (p.bloqueado ? '\nBloqueado por ' + (p.bloqueado_por || 'un administrador') : '') });
         return it;
