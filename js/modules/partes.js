@@ -252,6 +252,7 @@
             cargarCatalogo().catch(() => {}),
             cargarNube().catch(() => {}),
             cargarHoras().catch(() => { horasFilas = null; }),
+            Promise.resolve().then(() => horasAnio.clear()),   // las horas del año se vuelven a pedir al abrir la ventana
         ]);
         if (res.error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los partes: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
@@ -266,9 +267,13 @@
 
     // ---------- Horas de las 4 últimas semanas (semana ISO, de lunes a domingo; la actual incluida) ----------
     // Cada operario ve las suyas; Admin y SuperAdmin pueden elegir cualquier operario.
+    // Debajo de las semanas salen las horas de cada día de la semana elegida (al principio, la actual),
+    // y «Ver todo el año» abre una ventana con todas las semanas del año, de la última a la S1.
     const SEMANAS_HORAS = 4;
+    const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
     let horasFilas = null;       // [{ fecha, partes_operarios: [...] }] de las últimas semanas (consulta propia)
     let horasDe = '';            // clave del operario elegido (vacío = yo)
+    let semanaElegida = 0;       // 0 = la semana actual, 1 = la anterior...
     // "8", "8,5", "8.5", "8h", "8 h", "8 horas", "7:30", "7h30", "7h 30m" -> número de horas (null si no se entiende)
     function numHoras(v) {
         const t = String(v ?? '').toLowerCase().replace(/\s+/g, '').replace(/horas?|hrs?/g, 'h');
@@ -280,16 +285,23 @@
     }
     const fmtHoras = (n) => Number(n).toLocaleString('es-ES', { maximumFractionDigits: 2 }) + ' h';
     const isoLocal = (d) => d.toLocaleDateString('sv-SE');
+    const hoyIso = () => isoLocal(new Date());
+    const masDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return isoLocal(d); };
+    const diaMes = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+    const semana = (lunesIso) => ({ desde: lunesIso, hasta: masDias(lunesIso, 6), num: semanaIso(lunesIso), horas: 0, sinNumero: 0 });
+    function lunesDe(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - ((d.getDay() || 7) - 1)); return isoLocal(d); }
     // Las 4 semanas: la actual y las 3 anteriores, de la más reciente a la más antigua.
     function semanasHoras() {
-        const lunes = new Date(); lunes.setHours(12, 0, 0, 0);
-        lunes.setDate(lunes.getDate() - ((lunes.getDay() || 7) - 1));
-        const out = [];
-        for (let i = 0; i < SEMANAS_HORAS; i++) {
-            const ini = new Date(lunes); ini.setDate(lunes.getDate() - 7 * i);
-            const fin = new Date(ini); fin.setDate(ini.getDate() + 6);
-            out.push({ desde: isoLocal(ini), hasta: isoLocal(fin), num: semanaIso(isoLocal(ini)), horas: 0, sinNumero: 0 });
-        }
+        const lunes = lunesDe(hoyIso());
+        return Array.from({ length: SEMANAS_HORAS }, (_, i) => semana(masDias(lunes, -7 * i)));
+    }
+    // Año ISO (el de la semana; p. ej. el 31/12/2024 es la S1 de 2025) y lunes de la S1 de un año ISO.
+    const anioIso = (iso) => Number(masDias(lunesDe(iso), 3).slice(0, 4));
+    const lunesS1 = (anio) => lunesDe(`${anio}-01-04`);
+    // Todas las semanas del año ISO hasta la actual, de la más reciente a la S1.
+    function semanasAnio(anio) {
+        const hoy = hoyIso(), out = [];
+        for (let l = lunesS1(anio); anioIso(l) === anio && l <= hoy; l = masDias(l, 7)) out.unshift(semana(l));
         return out;
     }
     // Clave de un operario dentro de un parte: el empleado (por id o nombre) o, si no es empleado, su nombre.
@@ -297,13 +309,51 @@
         const emp = (o.operario_id && empleados.find((e) => e.id === o.operario_id)) || empleados.find((e) => norm(e.nombre) === norm(o.operario_nombre));
         return norm(emp ? emp.nombre : o.operario_nombre);
     }
+    const consultaHoras = (desde, hasta) => db().from('partes_trabajo').select('id, fecha, partes_operarios ( operario_nombre, operario_id, horas )')
+        .gte('fecha', desde).lte('fecha', hasta).limit(5000);
     async function cargarHoras() {
         const s = semanasHoras();
-        const desde = s[s.length - 1].desde;
-        const { data, error } = await db().from('partes_trabajo').select('id, fecha, partes_operarios ( operario_nombre, operario_id, horas )')
-            .gte('fecha', desde).lte('fecha', s[0].hasta).limit(5000);
+        const { data, error } = await consultaHoras(s[s.length - 1].desde, s[0].hasta);
         if (error) throw error;
         horasFilas = data || [];
+    }
+    const yoClave = () => norm(miNombre());
+    const claveHoras = () => (esAdmin() && horasDe ? horasDe : yoClave());
+    const esYo = (o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === yoClave();
+    // Reparte las horas del operario por día y por semana. Devuelve { dias: Map(fecha -> horas), nombres }.
+    function sumarHoras(filas, semanas, clave) {
+        const dias = new Map(), nombres = new Map();
+        const yc = yoClave();
+        for (const p of filas) {
+            const f = p.fecha && p.fecha.slice(0, 10);
+            if (!f) continue;
+            const sem = semanas.find((x) => f >= x.desde && f <= x.hasta);
+            for (const o of (p.partes_operarios || [])) {
+                const k = esYo(o) ? yc : claveOperario(o);
+                if (!nombres.has(k)) nombres.set(k, o.operario_nombre);
+                if (k !== clave || !sem) continue;
+                const n = numHoras(o.horas);
+                if (n == null) { if (String(o.horas ?? '').trim()) sem.sinNumero++; continue; }
+                sem.horas += n;
+                dias.set(f, (dias.get(f) || 0) + n);
+            }
+        }
+        return { dias, nombres };
+    }
+    // Fila de los días de una semana (L a S; el domingo solo sale si ese domingo hay horas, porque no se trabaja).
+    // Hoy va marcado; los días que aún no han llegado salen en gris.
+    function htmlDias(sem, dias) {
+        const hoy = hoyIso();
+        const conDomingo = (dias.get(masDias(sem.desde, 6)) || 0) > 0;
+        const cuantos = conDomingo ? 7 : 6;
+        return `<div class="grid ${conDomingo ? 'grid-cols-7' : 'grid-cols-6'} gap-1" data-horas-dias="S${sem.num}">${DIAS_CORTOS.slice(0, cuantos).map((d, i) => {
+            const f = masDias(sem.desde, i), h = dias.get(f) || 0, futuro = f > hoy, esHoy = f === hoy;
+            const caja = esHoy ? 'ring-2 ring-blue-500 bg-white dark:bg-zinc-900' : (futuro ? 'opacity-40' : '');
+            return `<div class="rounded-lg px-0.5 py-1 text-center ${caja}" title="${esc(fechaES(f))}${esHoy ? ' (hoy)' : ''}">
+                <p class="text-[11px] leading-tight text-slate-500 dark:text-slate-400"><span class="font-bold">${d}</span> ${Number(f.slice(8))}</p>
+                <p class="text-xs font-semibold ${h ? '' : 'text-slate-400 dark:text-zinc-500'}" data-horas-dia="${f}">${h ? esc(fmtHoras(h).replace(' h', '')) : '–'}</p>
+            </div>`;
+        }).join('')}</div>`;
     }
     function pintarHoras() {
         const cont = document.getElementById('partes-horas');
@@ -312,41 +362,124 @@
         const desde = semanas[semanas.length - 1].desde, hasta = semanas[0].hasta;
         // Sin conexión (o si falló la consulta) se usan los partes ya cargados en la lista.
         const filas = (horasFilas || partes).filter((p) => p.fecha && p.fecha.slice(0, 10) >= desde && p.fecha.slice(0, 10) <= hasta);
-        const yoClave = norm(miNombre());
-        const clave = esAdmin() && horasDe ? horasDe : yoClave;
-        const esYo = (o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === yoClave;
-        const nombres = new Map();
-        for (const p of filas) {
-            const f = p.fecha.slice(0, 10);
-            const sem = semanas.find((x) => f >= x.desde && f <= x.hasta);
-            for (const o of (p.partes_operarios || [])) {
-                const k = esYo(o) ? yoClave : claveOperario(o);
-                if (!nombres.has(k)) nombres.set(k, o.operario_nombre);
-                if (k !== clave || !sem) continue;
-                const n = numHoras(o.horas);
-                if (n == null) { if (String(o.horas ?? '').trim()) sem.sinNumero++; } else sem.horas += n;
-            }
-        }
+        const yc = yoClave(), clave = claveHoras();
+        const { dias, nombres } = sumarHoras(filas, semanas, clave);
         const sinNumero = semanas.reduce((a, x) => a + x.sinNumero, 0);
+        if (semanaElegida >= semanas.length) semanaElegida = 0;
+        const elegida = semanas[semanaElegida];
         let selector = '';
         if (esAdmin()) {
             empleados.forEach((e) => { const k = norm(e.nombre); if (!nombres.has(k)) nombres.set(k, e.nombre); });
-            nombres.set(yoClave, miNombre());
+            nombres.set(yc, miNombre());
             const opciones = [...nombres.entries()].filter(([k]) => k)
                 .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es', { sensitivity: 'base' }));
-            selector = `<select id="partes-horas-operario" aria-label="Operario" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1 text-sm max-w-[60%]">${opciones.map(([k, n]) => `<option value="${esc(k)}"${k === clave ? ' selected' : ''}>${esc(k === yoClave ? n + ' (yo)' : n)}</option>`).join('')}</select>`;
+            selector = `<select id="partes-horas-operario" aria-label="Operario" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1 text-sm max-w-[60%]">${opciones.map(([k, n]) => `<option value="${esc(k)}"${k === clave ? ' selected' : ''}>${esc(k === yc ? n + ' (yo)' : n)}</option>`).join('')}</select>`;
         }
-        const titulo = clave === yoClave ? 'Mis horas' : 'Horas';
+        const titulo = clave === yc ? 'Mis horas' : 'Horas';
         cont.innerHTML = `
             <div class="flex justify-between items-center gap-2 flex-wrap">
                 <p class="text-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">schedule</span>${titulo} · últimas ${SEMANAS_HORAS} semanas</p>
                 ${selector}
             </div>
             <div class="grid grid-cols-4 gap-1.5" data-horas-semanas>
-                ${semanas.map((x) => `<div class="bg-slate-100 dark:bg-zinc-800 rounded-xl px-2 py-1.5 text-center" title="Del ${esc(fechaES(x.desde))} al ${esc(fechaES(x.hasta))}"><p class="text-xs font-bold text-blue-800 dark:text-blue-200">S${x.num}</p><p class="text-sm font-semibold" data-horas="S${x.num}">${esc(fmtHoras(x.horas))}</p></div>`).join('')}
+                ${semanas.map((x, i) => {
+                    const sel = i === semanaElegida;
+                    return `<button type="button" data-horas-semana="${i}" aria-pressed="${sel}" class="rounded-xl px-2 py-1.5 text-center ${sel ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-zinc-800'}" title="Del ${esc(fechaES(x.desde))} al ${esc(fechaES(x.hasta))}"><p class="text-xs font-bold ${sel ? '' : 'text-blue-800 dark:text-blue-200'}">S${x.num}</p><p class="text-sm font-semibold" data-horas="S${x.num}">${esc(fmtHoras(x.horas))}</p></button>`;
+                }).join('')}
             </div>
+            <div class="bg-slate-50 dark:bg-zinc-800/60 rounded-xl p-1.5 flex flex-col gap-1">
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 px-1">Semana ${elegida.num} · del ${esc(diaMes(elegida.desde))} al ${esc(diaMes(elegida.hasta))}</p>
+                ${htmlDias(elegida, dias)}
+            </div>
+            <button type="button" data-abrir-anio class="self-center text-sm font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1 px-3 py-1 rounded-full hover:bg-blue-50 dark:hover:bg-zinc-800"><span class="material-symbols-outlined text-[18px]">calendar_month</span> Ver todo el año</button>
             ${sinNumero ? `<p class="text-xs text-amber-700 dark:text-amber-300">${sinNumero === 1 ? 'Hay 1 parte' : `Hay ${sinNumero} partes`} con horas que no son un número y no se han sumado.</p>` : ''}`;
         cont.classList.remove('hidden');
+    }
+
+    // ---------- Ventana «Horas del año»: todas las semanas, de la última a la S1 ----------
+    let anioVisto = null;            // año ISO que se está viendo
+    const horasAnio = new Map();     // año -> filas de partes (para no volver a pedirlas al cambiar de año)
+    let semanaAbierta = null;        // semana desplegada (número) para ver sus días
+    function abrirAnio() {
+        anioVisto = anioIso(hoyIso()); semanaAbierta = null;
+        let m = document.getElementById('modal-horas-anio');
+        if (!m) {
+            document.body.insertAdjacentHTML('beforeend', `
+                <div id="modal-horas-anio" class="hidden fixed inset-0 z-50 justify-center items-end sm:items-center sm:p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="horas-anio-titulo">
+                    <div class="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92dvh]">
+                        <div class="flex justify-between items-center px-6 pt-5 pb-3 border-b border-slate-200 dark:border-zinc-800 shrink-0">
+                            <h3 id="horas-anio-titulo" class="font-semibold text-lg">Horas del año</h3>
+                            <button type="button" data-anio="cerrar" aria-label="Cerrar" class="${BTN_ICON}"><span class="material-symbols-outlined">close</span></button>
+                        </div>
+                        <div id="horas-anio-cuerpo" class="flex flex-col gap-3 p-4 overflow-y-auto"></div>
+                    </div>
+                </div>`);
+            m = document.getElementById('modal-horas-anio');
+            m.addEventListener('click', (e) => {
+                if (e.target === m) { cerrarAnio(); return; }
+                const b = e.target.closest('[data-anio]');
+                if (!b) return;
+                const a = b.dataset.anio;
+                if (a === 'cerrar') cerrarAnio();
+                else if (a === 'antes') { anioVisto--; semanaAbierta = null; pintarAnio(); }
+                else if (a === 'despues') { anioVisto++; semanaAbierta = null; pintarAnio(); }
+                else if (a === 'semana') { const n = Number(b.dataset.num); semanaAbierta = semanaAbierta === n ? null : n; pintarAnio(); }
+            });
+        }
+        m.classList.remove('hidden'); m.classList.add('flex');
+        pintarAnio();
+    }
+    function cerrarAnio() { const m = document.getElementById('modal-horas-anio'); if (m) { m.classList.add('hidden'); m.classList.remove('flex'); } }
+    const anioAbierto = () => { const m = document.getElementById('modal-horas-anio'); return !!m && m.classList.contains('flex'); };
+    async function pintarAnio() {
+        const cuerpo = document.getElementById('horas-anio-cuerpo');
+        if (!cuerpo) return;
+        const anio = anioVisto, actual = anioIso(hoyIso());
+        if (!horasAnio.has(anio)) {
+            cuerpo.innerHTML = spinner;
+            const fin = masDias(lunesS1(anio + 1), -1);
+            const { data, error } = await consultaHoras(lunesS1(anio), fin < hoyIso() ? fin : hoyIso()).then((r) => r, (ex) => ({ error: ex }));
+            if (anio !== anioVisto || !anioAbierto()) return;
+            if (error) { cuerpo.innerHTML = `<p class="text-sm text-red-600 dark:text-red-400 text-center py-6">No se pudieron cargar las horas del año: ${esc(mensajeError(error))}</p>`; return; }
+            horasAnio.set(anio, data || []);
+        }
+        const semanas = semanasAnio(anio);
+        const clave = claveHoras(), yc = yoClave();
+        const { dias, nombres } = sumarHoras(horasAnio.get(anio), semanas, clave);
+        const nombre = clave === yc ? 'Mis horas' : (nombres.get(clave) || (empleados.find((e) => norm(e.nombre) === clave) || {}).nombre || 'Horas');
+        const total = semanas.reduce((a, x) => a + x.horas, 0);
+        const conHoras = semanas.filter((x) => x.horas > 0).length;
+        const maximo = Math.max(1, ...semanas.map((x) => x.horas));
+        const sinNumero = semanas.reduce((a, x) => a + x.sinNumero, 0);
+        const flecha = (accion, icono, activo, txt) => `<button type="button" data-anio="${accion}" aria-label="${txt}" ${activo ? '' : 'disabled'} class="${BTN_ICON} ${activo ? '' : 'opacity-30 pointer-events-none'}"><span class="material-symbols-outlined">${icono}</span></button>`;
+        cuerpo.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+                ${flecha('antes', 'chevron_left', anio > 2020, 'Año anterior')}
+                <div class="text-center">
+                    <p class="text-sm font-semibold">${esc(nombre)} · ${anio}</p>
+                    <p class="text-2xl font-bold text-blue-700 dark:text-blue-300" data-horas-total-anio>${esc(fmtHoras(total))}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">${conHoras ? `Media ${esc(fmtHoras(total / conHoras))} en las ${conHoras} semanas con horas` : 'Sin horas apuntadas este año'}</p>
+                </div>
+                ${flecha('despues', 'chevron_right', anio < actual, 'Año siguiente')}
+            </div>
+            ${sinNumero ? `<p class="text-xs text-amber-700 dark:text-amber-300">${sinNumero === 1 ? 'Hay 1 parte' : `Hay ${sinNumero} partes`} con horas que no son un número y no se han sumado.</p>` : ''}
+            <ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl" data-horas-anio-lista>
+                ${semanas.map((x) => {
+                    const abierta = semanaAbierta === x.num, esActual = x.desde === lunesDe(hoyIso());
+                    return `<li>
+                        <button type="button" data-anio="semana" data-num="${x.num}" aria-expanded="${abierta}" class="w-full flex items-center gap-2 px-3 py-2 text-left">
+                            <span class="w-10 shrink-0 text-xs font-bold text-blue-800 dark:text-blue-200">S${x.num}</span>
+                            <span class="flex-1 min-w-0 flex flex-col gap-1">
+                                <span class="text-xs text-slate-500 dark:text-slate-400">${esc(diaMes(x.desde))} – ${esc(diaMes(x.hasta))}${esActual ? ' · <strong class="text-blue-700 dark:text-blue-300">esta semana</strong>' : ''}</span>
+                                <span class="h-1.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden"><span class="block h-full rounded-full bg-blue-500" style="width:${Math.round(x.horas / maximo * 100)}%"></span></span>
+                            </span>
+                            <span class="w-14 shrink-0 text-right text-sm font-semibold ${x.horas ? '' : 'text-slate-400 dark:text-zinc-500'}" data-horas-anio="S${x.num}">${esc(fmtHoras(x.horas))}</span>
+                            <span class="material-symbols-outlined text-[18px] text-slate-400 transition-transform ${abierta ? 'rotate-90' : ''}">chevron_right</span>
+                        </button>
+                        ${abierta ? `<div class="px-2 pb-2">${htmlDias(x, dias)}</div>` : ''}
+                    </li>`;
+                }).join('')}
+            </ul>`;
     }
 
     // ---------- Copia en la nube ----------
@@ -1122,6 +1255,9 @@
     function enlazarEventos() {
         const vista = document.getElementById('view-partes');
         vista.addEventListener('click', (e) => {
+            const hs = e.target.closest('[data-horas-semana]');
+            if (hs) { semanaElegida = Number(hs.dataset.horasSemana); pintarHoras(); return; }
+            if (e.target.closest('[data-abrir-anio]')) { abrirAnio(); return; }
             const fl = e.target.closest('[data-filtro]');
             if (fl) {
                 const nuevo = fl.dataset.filtro === 'mios';
@@ -1192,6 +1328,7 @@
         enlazarFirma();
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
+            if (anioAbierto()) { cerrarAnio(); return; }
             if (document.getElementById('modal-firma').classList.contains('flex')) cerrarFirma();
             else if (modo) cerrarModal();
         });
