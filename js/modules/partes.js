@@ -1398,8 +1398,180 @@
         async eliminar(id) { iniciar(); if (await asegurar(id)) eliminar(id); },
     };
 
+    // ---------- Resumen de la obra (solo Admin y SuperAdmin) ----------
+    // Sale de los partes de la obra: horas de cada operario por día con el trabajo realizado, totales por operario
+    // y de la obra, y todo el material apuntado en los partes sumado (sin dividir por días).
+    // El material se junta por referencia; si no tiene, por nombre (sin distinguir mayúsculas ni acentos).
+    const DIA_SEMANA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+    const diaLargo = (f) => { const d = new Date(String(f).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? fechaES(f) : DIA_SEMANA[d.getDay()] + ' ' + fechaES(f); };
+    let resumen = null;   // { cliente, obra, cargando, error, datos }
+
+    function calcularResumen(filas) {
+        const claveOp = (o) => o.operario_id || 'n:' + norm(o.operario_nombre);
+        const dias = new Map();       // fecha -> { fecha, ops: Map(clave -> { nombre, horas, sinNumero }), trabajos: [] }
+        const totales = new Map();    // clave -> { nombre, horas, dias: Set }
+        const material = new Map();   // clave -> { material, referencia, unidades, partes: Set }
+        let sinNumero = 0;
+        filas.slice().sort((a, b) => String(a.fecha || '').localeCompare(String(b.fecha || '')) || String(a.created_at || '').localeCompare(String(b.created_at || ''))).forEach((p) => {
+            const f = String(p.fecha || '').slice(0, 10);
+            if (!dias.has(f)) dias.set(f, { fecha: f, ops: new Map(), trabajos: [] });
+            const d = dias.get(f);
+            const txt = String(p.detalle_trabajo || '').trim();
+            if (txt && !d.trabajos.includes(txt)) d.trabajos.push(txt);
+            ops(p).forEach((o) => {
+                if (!String(o.operario_nombre || '').trim()) return;
+                const k = claveOp(o);
+                const n = numHoras(o.horas);
+                if (n == null && String(o.horas ?? '').trim()) sinNumero++;
+                const od = d.ops.get(k) || { nombre: o.operario_nombre, horas: 0, sinNumero: false };
+                od.horas += n || 0;
+                if (n == null && String(o.horas ?? '').trim()) od.sinNumero = true;
+                d.ops.set(k, od);
+                const t = totales.get(k) || { nombre: o.operario_nombre, horas: 0, dias: new Set() };
+                t.nombre = o.operario_nombre;   // el nombre más reciente
+                t.horas += n || 0;
+                t.dias.add(f);
+                totales.set(k, t);
+            });
+            mats(p).forEach((m) => {
+                const ref = String(m.referencia || '').trim();
+                const k = ref ? 'r:' + norm(ref) : 'm:' + norm(m.material);
+                if (k === 'm:') return;
+                const x = material.get(k) || { material: String(m.material || '').trim(), referencia: ref, unidades: 0, partes: new Set() };
+                if (!x.material && m.material) x.material = String(m.material).trim();
+                x.unidades += Number(m.unidades) || 0;
+                x.partes.add(p.id);
+                material.set(k, x);
+            });
+        });
+        const listaDias = [...dias.values()].map((d) => ({ ...d, ops: [...d.ops.values()], horas: [...d.ops.values()].reduce((a, o) => a + o.horas, 0) }));
+        const listaTotales = [...totales.values()].sort((a, b) => b.horas - a.horas || a.nombre.localeCompare(b.nombre, 'es'));
+        const listaMat = [...material.values()].sort((a, b) => a.material.localeCompare(b.material, 'es', { sensitivity: 'base' }));
+        return { dias: listaDias, totales: listaTotales, total: listaTotales.reduce((a, t) => a + t.horas, 0), material: listaMat, partes: filas.length, sinNumero };
+    }
+
+    function htmlResumen() {
+        if (!resumen || resumen.cargando) return spinner;
+        if (resumen.error) return `<p class="text-sm text-red-600 dark:text-red-400 text-center py-6">No se pudo cargar el resumen: ${esc(resumen.error)}</p>`;
+        const r = resumen.datos;
+        if (!r.partes) return '<p class="text-sm text-slate-500 text-center py-6">Esta obra todavía no tiene partes.</p>';
+        const tarjeta = 'bg-slate-50 dark:bg-zinc-800 rounded-2xl p-3';
+        const titulo = (icono, t) => `<h4 class="text-sm font-semibold flex items-center gap-1.5 mt-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">${icono}</span>${t}</h4>`;
+        return `
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="${tarjeta}"><p class="text-lg font-bold text-blue-700 dark:text-blue-300" data-resumen-total>${esc(fmtHoras(r.total))}</p><p class="text-[11px] text-slate-500 dark:text-slate-400">horas en total</p></div>
+                <div class="${tarjeta}"><p class="text-lg font-bold">${r.dias.length}</p><p class="text-[11px] text-slate-500 dark:text-slate-400">${r.dias.length === 1 ? 'día' : 'días'}</p></div>
+                <div class="${tarjeta}"><p class="text-lg font-bold">${r.partes}</p><p class="text-[11px] text-slate-500 dark:text-slate-400">${r.partes === 1 ? 'parte' : 'partes'}</p></div>
+            </div>
+            ${r.sinNumero ? `<p class="text-xs text-amber-700 dark:text-amber-300">${r.sinNumero === 1 ? 'Hay 1 apunte' : `Hay ${r.sinNumero} apuntes`} de horas que no son un número y no se han sumado.</p>` : ''}
+            ${titulo('calendar_month', 'Horas por día')}
+            <ul class="flex flex-col gap-2" data-resumen-dias>
+                ${r.dias.map((d) => `
+                <li class="${tarjeta} flex flex-col gap-1.5" data-resumen-dia="${esc(d.fecha)}">
+                    <div class="flex justify-between items-center gap-2">
+                        <span class="text-xs font-semibold text-blue-700 dark:text-blue-300 capitalize">${esc(diaLargo(d.fecha))}</span>
+                        <span class="text-xs font-semibold">${esc(fmtHoras(d.horas))}</span>
+                    </div>
+                    ${d.ops.length ? `<ul class="flex flex-wrap gap-1.5">${d.ops.map((o) => `<li class="text-xs bg-white dark:bg-zinc-900 rounded-full px-2.5 py-1">${esc(o.nombre)} · <strong>${esc(fmtHoras(o.horas))}</strong>${o.sinNumero ? ' <span class="text-amber-700 dark:text-amber-300">(+?)</span>' : ''}</li>`).join('')}</ul>` : '<p class="text-xs text-slate-500">Sin operarios apuntados.</p>'}
+                    <p class="text-sm whitespace-pre-line break-words">${d.trabajos.length ? esc(d.trabajos.join('\n\n')) : '<span class="text-slate-500">Sin descripción del trabajo.</span>'}</p>
+                </li>`).join('')}
+            </ul>
+            ${titulo('schedule', 'Total de horas por operario')}
+            <ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl" data-resumen-operarios>
+                ${r.totales.map((t) => `<li class="flex justify-between gap-3 px-3 py-2 text-sm"><span class="min-w-0 break-words">${esc(t.nombre)} <span class="text-xs text-slate-500">· ${t.dias.size} ${t.dias.size === 1 ? 'día' : 'días'}</span></span><strong class="shrink-0">${esc(fmtHoras(t.horas))}</strong></li>`).join('')}
+                <li class="flex justify-between gap-3 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-950 rounded-b-xl"><span class="font-semibold">Total de la obra</span><strong class="shrink-0 text-blue-700 dark:text-blue-300">${esc(fmtHoras(r.total))}</strong></li>
+            </ul>
+            ${titulo('inventory_2', 'Material gastado')}
+            ${r.material.length ? `<ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl" data-resumen-material>
+                ${r.material.map((m) => `<li class="flex gap-3 px-3 py-2 text-sm"><strong class="shrink-0 min-w-[3rem] text-right">${esc(cant(m.unidades))}</strong><span class="min-w-0 break-words">${esc(m.material || '(sin nombre)')}${m.referencia ? `<span class="block text-xs text-slate-500">Ref.: ${esc(m.referencia)}</span>` : ''}${m.partes.size > 1 ? `<span class="block text-xs text-slate-500">Sumado de ${m.partes.size} partes</span>` : ''}</span></li>`).join('')}
+            </ul>` : '<p class="text-sm text-slate-500">No se ha apuntado material en los partes de esta obra.</p>'}
+            <div class="flex justify-end pt-1">
+                <button type="button" data-resumen="compartir" class="${BTN_SEC}"><span class="material-symbols-outlined text-[18px]">share</span> Compartir</button>
+            </div>`;
+    }
+
+    function itemsResumen() {
+        const r = resumen.datos;
+        const it = [
+            { t: 'title', text: 'Resumen de la obra', sub: 'Del ' + fechaES(r.dias[0].fecha) + ' al ' + fechaES(r.dias[r.dias.length - 1].fecha) + ' · ' + r.partes + (r.partes === 1 ? ' parte' : ' partes') },
+            { t: 'kv', label: 'Cliente', value: resumen.cliente },
+            { t: 'kv', label: 'Obra', value: resumen.obra },
+            { t: 'kv', label: 'Total de horas', value: fmtHoras(r.total) },
+            { t: 'h', text: 'Horas por día' },
+            { t: 'table', cols: [{ title: 'Día', w: 1.4 }, { title: 'Operarios y horas', w: 2.6 }, { title: 'Trabajo realizado', w: 5 }],
+                rows: r.dias.map((d) => [diaLargo(d.fecha), d.ops.map((o) => o.nombre + ': ' + fmtHoras(o.horas)).join('\n') || '—', d.trabajos.join('\n') || '—']) },
+            { t: 'h', text: 'Total de horas por operario' },
+            { t: 'table', cols: [{ title: 'Operario', w: 4 }, { title: 'Días', w: 1, align: 'right' }, { title: 'Horas', w: 1.2, align: 'right' }],
+                rows: r.totales.map((t) => [t.nombre, String(t.dias.size), fmtHoras(t.horas)]).concat([['TOTAL DE LA OBRA', '', fmtHoras(r.total)]]) },
+            { t: 'h', text: 'Material gastado' },
+        ];
+        if (r.material.length) it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: r.material.map((m) => [cant(m.unidades), m.material, m.referencia || '']) });
+        else it.push({ t: 'p', text: 'Sin material apuntado en los partes.' });
+        if (r.sinNumero) it.push({ t: 'note', text: (r.sinNumero === 1 ? 'Hay 1 apunte' : `Hay ${r.sinNumero} apuntes`) + ' de horas que no son un número y no se han sumado.' });
+        return it;
+    }
+
+    function pintarResumen() { const c = document.getElementById('resumen-obra-cuerpo'); if (c) c.innerHTML = htmlResumen(); }
+    function cerrarResumen() { const m = document.getElementById('modal-resumen-obra'); if (m) { m.classList.add('hidden'); m.classList.remove('flex'); } resumen = null; }
+    const resumenAbierto = () => { const m = document.getElementById('modal-resumen-obra'); return !!m && m.classList.contains('flex'); };
+
+    async function abrirResumen(o) {
+        if (!esAdmin()) return;
+        let m = document.getElementById('modal-resumen-obra');
+        if (!m) {
+            document.body.insertAdjacentHTML('beforeend', `
+                <div id="modal-resumen-obra" class="hidden fixed inset-0 z-50 justify-center items-end sm:items-center sm:p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="resumen-obra-titulo">
+                    <div class="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92dvh]">
+                        <div class="flex justify-between items-start gap-2 px-6 pt-5 pb-3 border-b border-slate-200 dark:border-zinc-800 shrink-0">
+                            <div class="min-w-0"><h3 id="resumen-obra-titulo" class="font-semibold text-lg">Resumen de horas y material</h3><p id="resumen-obra-sub" class="text-xs text-slate-500 dark:text-slate-400 break-words"></p></div>
+                            <button type="button" data-resumen="cerrar" aria-label="Cerrar" class="${BTN_ICON}"><span class="material-symbols-outlined">close</span></button>
+                        </div>
+                        <div id="resumen-obra-cuerpo" class="flex flex-col gap-3 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] overflow-y-auto"></div>
+                    </div>
+                </div>`);
+            m = document.getElementById('modal-resumen-obra');
+            m.addEventListener('click', (e) => {
+                if (e.target === m) { cerrarResumen(); return; }
+                const b = e.target.closest('[data-resumen]');
+                if (!b) return;
+                if (b.dataset.resumen === 'cerrar') cerrarResumen();
+                else if (b.dataset.resumen === 'compartir' && resumen && resumen.datos && window.BomiCompartir) {
+                    window.BomiCompartir.abrir({ titulo: 'Resumen de la obra · ' + resumen.cliente + ' · ' + resumen.obra, nombre: 'Resumen-' + limpioArchivo(resumen.cliente) + '-' + limpioArchivo(resumen.obra) + '.pdf', items: itemsResumen() });
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                // La hoja de Compartir, si está encima, se queda con el Escape antes (fase de captura).
+                if (e.key === 'Escape' && resumenAbierto()) cerrarResumen();
+            });
+        }
+        resumen = { cliente: o.cliente, obra: o.obra, cargando: true };
+        document.getElementById('resumen-obra-sub').textContent = [o.cliente, o.obra].filter(Boolean).join(' · ');
+        m.classList.remove('hidden'); m.classList.add('flex');
+        pintarResumen();
+        const actual = resumen;
+        try {
+            const filas = [];
+            for (let desde = 0; ; desde += 1000) {
+                const { data, error } = await consultar((c) => db().from('partes_trabajo').select(c).ilike('obra', patronObra(o.obra)).order('fecha', { ascending: true }).range(desde, desde + 999));
+                if (error) throw error;
+                filas.push(...(data || []));
+                if (!data || data.length < 1000) break;
+            }
+            if (resumen !== actual) return;
+            actual.datos = calcularResumen(filas.filter((p) => norm(p.obra) === norm(o.obra) && norm(p.cliente) === norm(o.cliente)));
+        } catch (ex) {
+            if (resumen !== actual) return;
+            actual.error = mensajeError(ex);
+        }
+        actual.cargando = false;
+        pintarResumen();
+    }
+
     window.BomiPartes = {
         historial,
+        // Resumen de horas y material de una obra ({ cliente, obra }). Solo Admin y SuperAdmin.
+        resumenObra: (o) => abrirResumen(o),
+        calcularResumen,
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre "Nuevo parte" con cliente, obra, dirección y localidad ya rellenos.

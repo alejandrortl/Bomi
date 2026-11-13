@@ -136,7 +136,10 @@
                 </div>
             </div>
             ${contactosHtml(contactosObra(o))}
+            <div class="flex flex-wrap gap-2">
             <button type="button" data-accion="historial" data-id="${esc(o.id)}" ${extra} aria-expanded="${abierta}" class="self-start text-xs ${abierta ? 'bg-blue-600 text-white' : 'bg-white dark:bg-zinc-900 text-blue-700 dark:text-blue-300 border border-slate-200 dark:border-zinc-700'} px-3 py-1.5 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">history</span> ${abierta ? 'Ocultar registros' : 'Ver registros de la obra'}</button>
+            ${admin ? `<button type="button" data-accion="resumen-obra" data-id="${esc(o.id)}" ${extra} class="self-start text-xs bg-white dark:bg-zinc-900 text-blue-700 dark:text-blue-300 border border-slate-200 dark:border-zinc-700 px-3 py-1.5 rounded-full font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">summarize</span> Horas y material</button>` : ''}
+            </div>
             ${abierta ? `<div id="historial-obra" class="flex flex-col gap-2">${htmlHistorial()}</div>` : ''}
         </div>`;
     }
@@ -255,6 +258,14 @@
         }
         pintarLista();
         if (hist) cargarHistorial();
+    }
+
+    // Resumen de horas y material de la obra (solo Admin y SuperAdmin; lo dibuja Partes).
+    function abrirResumen(clienteId, obraId) {
+        const c = buscarCliente(clienteId);
+        const o = c && (c.obras || []).find((x) => x.id === obraId);
+        if (!o || !esAdmin() || !window.BomiPartes || !window.BomiPartes.resumenObra) return;
+        window.BomiPartes.resumenObra({ clienteId: c.id, obraId: o.id, cliente: nombreCliente(c), obra: o.nombre });
     }
 
     // Vuelta a Clientes tras ver o editar una tarea del Diario (que se abre en su propia pantalla).
@@ -721,6 +732,7 @@
             else if (accion === 'eliminar-obra') eliminarObra(cliente, id);
             else if (accion === 'reintentar') cargar();
             else if (accion === 'historial') alternarHistorial(cliente, id);
+            else if (accion === 'resumen-obra') abrirResumen(cliente, id);
             else if (accion === 'reg-ver' || accion === 'reg-editar' || accion === 'reg-eliminar') accionRegistro(accion, btn.dataset.tipo, id);
             else if (accion === 'reg-mas') { histCompletos.add(btn.dataset.tipo); pintarHistorial(); }
             else if (accion === 'reg-foto' && window.BomiFotos && hist && Array.isArray(hist.grupos.fotos)) window.BomiFotos.historial.ver(hist.grupos.fotos, id);
