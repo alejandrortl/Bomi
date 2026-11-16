@@ -1504,7 +1504,9 @@
         const enFuera = resumen.vista === 'fuera';
         const pestana = (v, txt, d) => {
             const activa = resumen.vista === v;
-            const color = activa ? (v === 'fuera' ? 'bg-orange-500 text-white shadow' : 'bg-white dark:bg-zinc-900 text-blue-700 dark:text-blue-300 shadow') : 'text-slate-600 dark:text-slate-300';
+            // Sin seleccionar, la de fuera de presupuesto lleva un naranja muy claro para que se vea (sin parecer elegida).
+            const color = activa ? (v === 'fuera' ? 'bg-orange-500 text-white shadow' : 'bg-white dark:bg-zinc-900 text-blue-700 dark:text-blue-300 shadow')
+                : (v === 'fuera' ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-200' : 'text-slate-600 dark:text-slate-300');
             return `<button type="button" data-resumen="vista" data-vista="${v}" aria-pressed="${activa}" class="flex-1 min-w-0 py-2 px-2 rounded-full text-sm font-medium leading-tight ${color}">${txt}<span class="block text-[11px] font-normal opacity-80">${esc(fmtHoras(d.total))} · ${d.partes} ${d.partes === 1 ? 'parte' : 'partes'}</span></button>`;
         };
         const pestanas = g.fuera.partes ? `
