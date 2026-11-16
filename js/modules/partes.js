@@ -630,7 +630,7 @@
                 <input id="par-fuera" type="checkbox" ${fuera(p) ? 'checked' : ''} ${conFuera ? '' : 'disabled'} class="mt-0.5 w-5 h-5 shrink-0 accent-orange-500">
                 <span class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-orange-600 dark:text-orange-400">warning</span>Trabajo fuera de presupuesto</span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400">Márcalo si este trabajo no entra en el presupuesto de la obra. El parte quedará marcado en naranja y se contará aparte en el resumen de la obra.</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Márcalo si este trabajo no entra en el presupuesto de la obra.</span>
                     ${conFuera ? '' : '<span class="text-xs font-medium text-amber-700 dark:text-amber-300">Todavía no disponible: falta activar esta opción en la base de datos.</span>'}
                 </span>
             </label>
