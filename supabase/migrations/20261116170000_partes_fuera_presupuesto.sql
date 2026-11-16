@@ -2,8 +2,9 @@
 -- Al crear o editar un parte se puede marcar que el trabajo no entra en el presupuesto de la obra.
 -- La app lo señala en naranja (lista, al abrirlo y en el PDF) y el resumen «Horas y material» de la obra
 -- lo cuenta aparte: una contabilidad normal y otra de fuera de presupuesto.
--- crear_parte() se vuelve a crear igual que antes, con dos cambios: guarda la marca y solo une un parte con otro
--- del mismo día y obra si los dos son normales o los dos son de fuera de presupuesto.
+-- crear_parte() se vuelve a crear igual que antes, con tres cambios: guarda la marca, solo une un parte con otro
+-- del mismo día y obra si los dos son normales o los dos son de fuera de presupuesto, y al unir, si un operario
+-- ya figuraba en el parte, sus horas se SUMAN (antes se quedaban las primeras y las nuevas se perdían).
 -- Se puede ejecutar más de una vez sin problema.
 
 alter table public.partes_trabajo add column if not exists fuera_presupuesto boolean not null default false;
@@ -20,6 +21,11 @@ declare
   v_detalle text := nullif(btrim(coalesce(p_parte->>'detalle_trabajo', '')), '');
   v_firma text := nullif(p_parte->>'firma_digital', '');
   v_motivo text;
+  v_op_id public.partes_operarios.id%type;
+  v_vieja text;
+  v_nueva text;
+  v_suma numeric;
+  v_sumadas jsonb := '[]'::jsonb;
   v_fuera boolean := coalesce((p_parte->>'fuera_presupuesto')::boolean, false);
   o jsonb;
 begin
@@ -89,17 +95,36 @@ begin
     updated_at = now()
   where id = v_existente.id;
 
-  -- Operarios: solo los que aún no figuran; si ya figuraba sin horas, se le ponen las nuevas.
+  -- Operarios: los que aún no figuran se añaden. Si ya figuraba, sus horas se SUMAN a las que tenía
+  -- (si no tenía, se le ponen las nuevas). Si las que tenía no son un número, se apunta otra línea para no perder nada.
   for o in select * from jsonb_array_elements(coalesce(p_operarios, '[]'::jsonb)) loop
-    if exists (select 1 from public.partes_operarios x where x.parte_id = v_existente.id
-               and ((o->>'operario_id') is not null and x.operario_id = (o->>'operario_id')::uuid
-                    or public.norm_txt(x.operario_nombre) = public.norm_txt(o->>'operario_nombre'))) then
-      update public.partes_operarios x set horas = (jsonb_populate_record(null::public.partes_operarios, o)).horas
-      where x.parte_id = v_existente.id
-        and nullif(btrim(coalesce(x.horas::text, '')), '') is null
-        and nullif(btrim(coalesce(o->>'horas', '')), '') is not null
-        and ((o->>'operario_id') is not null and x.operario_id = (o->>'operario_id')::uuid
-             or public.norm_txt(x.operario_nombre) = public.norm_txt(o->>'operario_nombre'));
+    v_nueva := nullif(btrim(coalesce(o->>'horas', '')), '');
+    v_op_id := null; v_vieja := null;
+    select x.id, nullif(btrim(coalesce(x.horas::text, '')), '') into v_op_id, v_vieja
+    from public.partes_operarios x
+    where x.parte_id = v_existente.id
+      and ((o->>'operario_id') is not null and x.operario_id = (o->>'operario_id')::uuid
+           or public.norm_txt(x.operario_nombre) = public.norm_txt(o->>'operario_nombre'))
+    limit 1;
+    if v_op_id is null then
+      insert into public.partes_operarios (parte_id, operario_nombre, operario_id, horas)
+      select v_existente.id, r.operario_nombre, r.operario_id, r.horas
+      from jsonb_populate_record(null::public.partes_operarios, o) r;
+    elsif v_nueva is null then
+      null;   -- ya figura y no trae horas: no cambia nada
+    elsif v_vieja is null then
+      update public.partes_operarios x set horas = (jsonb_populate_record(null::public.partes_operarios, o)).horas where x.id = v_op_id;
+    elsif v_vieja ~ '^\d{1,2}([.,]\d{1,2})?$' and v_nueva ~ '^\d{1,2}([.,]\d{1,2})?$' then
+      v_suma := replace(v_vieja, ',', '.')::numeric + replace(v_nueva, ',', '.')::numeric;
+      if v_suma > 24 then
+        raise exception 'Las horas de % ese día en esta obra sumarían % (más de 24). Revisa las horas antes de guardar.',
+          coalesce(o->>'operario_nombre', 'un operario'), replace(trim_scale(v_suma)::text, '.', ',') using errcode = '22023';
+      end if;
+      update public.partes_operarios x
+      set horas = (jsonb_populate_record(null::public.partes_operarios, jsonb_build_object('horas', replace(trim_scale(v_suma)::text, '.', ',')))).horas
+      where x.id = v_op_id;
+      v_sumadas := v_sumadas || jsonb_build_array(jsonb_build_object('nombre', o->>'operario_nombre', 'antes', v_vieja,
+        'nuevas', v_nueva, 'total', replace(trim_scale(v_suma)::text, '.', ',')));
     else
       insert into public.partes_operarios (parte_id, operario_nombre, operario_id, horas)
       select v_existente.id, r.operario_nombre, r.operario_id, r.horas
@@ -125,7 +150,7 @@ begin
   where p.id = v_existente.created_by_id and p.id <> auth.uid() and p.activo is true
     and coalesce(p.preferencias_notificaciones ->> 'generales', 'true') <> 'false';
 
-  return jsonb_build_object('parte_id', v_existente.id, 'unido', true, 'autor', v_existente.created_by);
+  return jsonb_build_object('parte_id', v_existente.id, 'unido', true, 'autor', v_existente.created_by, 'sumadas', v_sumadas);
 end $$;
 
 revoke all on function public.crear_parte(jsonb, jsonb, jsonb, boolean) from public, anon;

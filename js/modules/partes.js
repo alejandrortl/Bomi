@@ -775,10 +775,26 @@
             html = `<p>Ya hay un parte del ${esc(fechaES(u.fecha))} en esta obra (${esc(u.quienes)}). ¿Qué quieres hacer?</p>
                 <div class="flex flex-wrap gap-2">${opcion('union-unir', 'Añadir a ese parte', u.eleccion === 'unir')}${opcion('union-nuevo', 'Crear parte nuevo', u.eleccion === 'nuevo')}</div>
                 <p class="text-xs">${u.eleccion === 'unir' ? 'Lo que escribas se añadirá a ese parte con tu nombre, y figurarás como operario.' : 'Se creará un parte nuevo, aparte del que ya hay.'}</p>
+                ${u.eleccion === 'unir' ? htmlSumaHoras(u) : ''}
                 ${u.eleccion === 'unir' && u.firma ? '<p class="text-xs font-semibold">Ese parte ya tiene la firma del cliente: si añades una firma, se creará un parte nuevo.</p>' : ''}`;
         }
         el.innerHTML = html ? `<span class="material-symbols-outlined text-[20px] shrink-0">group</span><div class="flex flex-col gap-2 min-w-0">${html}</div>` : '';
         el.classList.toggle('hidden', !html);
+    }
+    // Al añadir a un parte que ya existe, el operario que ya figura en él no se repite: sus horas se suman.
+    function htmlSumaHoras(u) {
+        const p = partes.find((x) => x.id === u.id);
+        if (!p) return '';
+        const lineas = [];
+        for (const o of leerOperarios()) {
+            const nueva = numHoras(o.horas);
+            const ya = ops(p).find((x) => norm(x.operario_nombre) === norm(o.nombre));
+            const vieja = ya ? numHoras(ya.horas) : null;
+            if (!ya || nueva == null || vieja == null) continue;
+            lineas.push(`<strong>${esc(o.nombre)}</strong> ya tiene ${esc(fmtHoras(vieja))} en ese parte: se sumarán (${esc(fmtHoras(vieja))} + ${esc(fmtHoras(nueva))} = <strong>${esc(fmtHoras(vieja + nueva))}</strong>).`
+                + (vieja + nueva > 24 ? ' <span class="text-red-700 dark:text-red-300 font-semibold">Pasa de 24 horas: revisa las horas.</span>' : ''));
+        }
+        return lineas.length ? `<p class="text-xs bg-white/70 dark:bg-zinc-900/60 rounded-lg p-2 flex flex-col gap-1" data-suma-horas>${lineas.map((l) => `<span>${l}</span>`).join('')}</p>` : '';
     }
     function elegirUnion(accion) {
         if (!union || union.bloqueado) return;
@@ -1138,7 +1154,9 @@
                 cerrarModal();
                 if (r.estado === 'enviado') {
                     const res = pasoParte.resultado;
-                    if (res && res.unido) O.toast(`Añadido al parte de ${res.autor || 'otro operario'}: ya había un parte ese día en esta obra.`, 'ok');
+                    const sumadas = res && Array.isArray(res.sumadas) ? res.sumadas : [];
+                    if (res && res.unido) O.toast(`Añadido al parte de ${res.autor || 'otro operario'}: ya había un parte ese día en esta obra.`
+                        + (sumadas.length ? ' Horas sumadas: ' + sumadas.map((x) => `${x.nombre} ${x.antes} + ${x.nuevas} = ${x.total} h`).join('; ') + '.' : ''), 'ok');
                     else if (res && res.motivo === 'firma') O.toast('Se ha creado un parte nuevo: el que ya había ese día en esta obra tiene la firma del cliente.', 'ok');
                     await cargar();
                     if (creados) { clientesViejos = true; window.dispatchEvent(new CustomEvent('clientesActualizados')); }
@@ -1344,6 +1362,7 @@
             if (t.id === 'par-cliente') sincronizar('cliente');
             else if (t.id === 'par-obra') sincronizar('obra');
             else if (t.id === 'par-fecha' || t.id === 'par-fuera') avisarUnion();
+            else if (t.dataset && (t.dataset.campo === 'nombre' || t.dataset.campo === 'horas')) { if (union && union.eleccion === 'unir') pintarUnion(); }
             else if (t.dataset && t.dataset.campo === 'material') materialCambiado(t);
             else if (t.dataset && t.dataset.campo === 'referencia') referenciaCambiada(t);
         };
