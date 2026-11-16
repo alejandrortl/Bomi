@@ -25,6 +25,8 @@
             if (it.t === 'title') {
                 l.push('*' + limpio(it.text) + '*' + (it.badge ? ' (' + limpio(it.badge) + ')' : ''));
                 if (it.sub) l.push(limpio(it.sub));
+            } else if (it.t === 'banner') {
+                if (limpio(it.text)) l.push('', '🟠 *' + limpio(it.text) + '*', '');
             } else if (it.t === 'kv') {
                 const v = limpio(it.value);
                 if (!vacio(v)) push(limpio(it.label) + ': ' + (v.includes('\n') ? '\n' + v : v));

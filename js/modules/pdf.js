@@ -6,7 +6,7 @@
     'use strict';
     const A4 = [595.28, 841.89];
     const MARGEN = 42;
-    const GRIS = [0.28, 0.33, 0.41], NEGRO = [0.06, 0.09, 0.16], LINEA = [0.8, 0.84, 0.88], CABECERA = [0.89, 0.91, 0.94], VERDE = [0.02, 0.59, 0.41];
+    const GRIS = [0.28, 0.33, 0.41], NEGRO = [0.06, 0.09, 0.16], LINEA = [0.8, 0.84, 0.88], CABECERA = [0.89, 0.91, 0.94], VERDE = [0.02, 0.59, 0.41], NARANJA = [0.98, 0.45, 0.09], BLANCO = [1, 1, 1];
     let cacheEmpresa = null;
 
     // ---------- Empresa (logotipo y datos) ----------
@@ -174,6 +174,13 @@
             } else if (it.t === 'note') {
                 lineas(it.text, fN, 8.5, ANCHO).forEach((l) => { hay(12); y -= 11; texto(l, MARGEN, y, fN, 8.5, GRIS); });
                 y -= 4;
+            } else if (it.t === 'banner') {
+                // Franja de color con texto blanco (p. ej. «FUERA DE PRESUPUESTO»)
+                const tam = 12, alto = 24;
+                hay(alto + 10);
+                page.drawRectangle({ x: MARGEN, y: y - alto, width: ANCHO, height: alto, color: col(it.color || NARANJA) });
+                texto(limpio(it.text), MARGEN + 10, y - alto + (alto - tam) / 2 + 3, fB, tam, BLANCO);
+                y -= alto + 10;
             } else if (it.t === 'space') {
                 y -= it.h || 8;
             } else if (it.t === 'img') {

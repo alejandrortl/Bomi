@@ -11,8 +11,6 @@
     const BTN_SEC = 'text-sm bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 px-4 py-2 rounded-full font-medium flex items-center gap-1.5';
     const LIMITE = 500;
     const COLS = 'id, cliente, obra, direccion, localidad, fecha, detalle_trabajo, bloqueado, bloqueado_por, bloqueado_at, created_by, created_by_id, updated_by, updated_at, created_at';
-    const SELECT_SIN_APORTADO = COLS + ', partes_operarios ( id, operario_nombre, operario_id, horas ), partes_materiales ( id, unidades, material, referencia )';
-    const SELECT_CON_APORTADO = COLS + ', partes_operarios ( id, operario_nombre, operario_id, horas ), partes_materiales ( id, unidades, material, referencia, aportado_por )';
     const CLAVE_LOCAL = 'bomi_partes_solo_mios';
 
     let partes = [];
@@ -28,12 +26,22 @@
     let union = null;            // parte nuevo: el parte del mismo día y obra y lo que eligió el operario (ver avisarUnion)
     // Mientras no se ejecute en Supabase la migración de «unir partes», no existe la columna aportado_por del material.
     let conAportado = true;
-    const sel = () => (conAportado ? SELECT_CON_APORTADO : SELECT_SIN_APORTADO);
-    const faltaAportado = (ex) => !!ex && /aportado_por/.test([ex.message, ex.details, ex.hint].filter(Boolean).join(' '));
-    // Lanza la consulta de partes; si falla porque falta la columna aportado_por, se repite sin ella.
+    // Mientras no se ejecute la migración de «fuera de presupuesto», no existe la columna fuera_presupuesto.
+    let conFuera = true;
+    const sel = () => COLS + (conFuera ? ', fuera_presupuesto' : '')
+        + ', partes_operarios ( id, operario_nombre, operario_id, horas ), partes_materiales ( id, unidades, material, referencia' + (conAportado ? ', aportado_por' : '') + ' )';
+    const textoError = (ex) => [ex.message, ex.details, ex.hint].filter(Boolean).join(' ');
+    const faltaAportado = (ex) => !!ex && /aportado_por/.test(textoError(ex));
+    const faltaFuera = (ex) => !!ex && /fuera_presupuesto/.test(textoError(ex));
+    // Lanza la consulta de partes; si falla porque falta una columna nueva (aportado_por o fuera_presupuesto), se repite sin ella.
     async function consultar(hacer) {
-        const res = await hacer(sel());
-        if (res.error && conAportado && faltaAportado(res.error)) { conAportado = false; return hacer(sel()); }
+        let res = await hacer(sel());
+        for (let i = 0; i < 2 && res.error; i++) {
+            if (conAportado && faltaAportado(res.error)) conAportado = false;
+            else if (conFuera && faltaFuera(res.error)) conFuera = false;
+            else break;
+            res = await hacer(sel());
+        }
         return res;
     }
     let modo = null;             // 'nuevo' | 'editar' | 'ver'
@@ -74,6 +82,9 @@
     const aportadoDe = (p, m) => m.aportado_por || p.created_by || '';
     const variosAportan = (p) => new Set(mats(p).map((m) => norm(aportadoDe(p, m)))).size > 1;
     const fallo = (el, txt) => { el.textContent = txt; el.classList.remove('hidden'); };
+    // Parte de trabajo fuera de presupuesto: se señala en naranja en la lista, al abrirlo, en el PDF y en el resumen de la obra.
+    const fuera = (p) => !!p && p.fuera_presupuesto === true;
+    const chipFuera = () => '<span class="inline-flex items-center gap-1 self-start bg-orange-500 text-white text-[11px] font-bold uppercase tracking-wide rounded-full px-2.5 py-0.5" data-fuera-presupuesto><span class="material-symbols-outlined text-[14px]">warning</span>Fuera de presupuesto</span>';
     const imagenSegura = (u) => /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(u || '') || /^https:\/\//.test(u || '') ? u : '';
 
     function mensajeError(ex) {
@@ -149,7 +160,7 @@
     const primerOperario = (p) => limpioArchivo(ops(p)[0] && ops(p)[0].operario_nombre).slice(0, 80) || 'Sin operario';
     const chipSemana = (p) => { const s = semanaDe(p); return s ? `<span class="ml-1 text-xs font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 rounded-full px-2 py-0.5" title="Semana ${s} del año">S${s}</span>` : ''; };
 
-    const texto = (p) => [p.cliente, p.obra, p.direccion, p.localidad].concat(ops(p).map((o) => o.operario_nombre)).join(' ');
+    const texto = (p) => [p.cliente, p.obra, p.direccion, p.localidad, fuera(p) ? 'fuera de presupuesto' : ''].concat(ops(p).map((o) => o.operario_nombre)).join(' ');
     function filtrar() {
         // "S25" o "semana 25" buscan exactamente la semana 25; el resto de palabras buscan en el texto del parte.
         const tokens = norm(busqueda).replace(/\bsemana\s*(\d{1,2})\b/g, 's$1').split(' ').filter(Boolean);
@@ -168,9 +179,10 @@
         const os = ops(p);
         const chips = os.map((o) => `<span class="text-xs bg-slate-100 dark:bg-zinc-800 rounded-full px-2.5 py-1 break-words">${esc(o.operario_nombre)}${o.horas ? ` · ${esc(o.horas)}` : ''}</span>`).join('');
         return `
-        <article class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+        <article class="bg-white dark:bg-zinc-900 border ${fuera(p) ? 'border-orange-400 dark:border-orange-700 border-l-8 border-l-orange-500' : 'border-slate-200 dark:border-zinc-800'} rounded-2xl shadow-sm p-4 flex flex-col gap-3">
             <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0 flex flex-col gap-1">
+                    ${fuera(p) ? chipFuera() : ''}
                     <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(fechaES(p.fecha))}${chipSemana(p)}${p.bloqueado ? ' <span class="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300 ml-1"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueado</span>' : ''}</p>
                     <h3 class="font-bold text-base break-words">${esc(p.cliente || 'Sin cliente')}</h3>
                     <p class="text-sm font-semibold flex items-center gap-1 text-slate-700 dark:text-slate-200"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(p.obra || 'Sin obra')}</span></p>
@@ -614,6 +626,14 @@
                 <label for="par-fecha" class="text-xs font-medium">Fecha</label>
                 <input id="par-fecha" type="date" required value="${esc(p?.fecha || hoy())}" class="${INPUT}">
             </div>
+            <label class="flex items-start gap-3 rounded-xl border-2 border-slate-300 dark:border-zinc-700 p-3 ${conFuera ? 'cursor-pointer' : 'opacity-70'} has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50 dark:has-[:checked]:bg-orange-950">
+                <input id="par-fuera" type="checkbox" ${fuera(p) ? 'checked' : ''} ${conFuera ? '' : 'disabled'} class="mt-0.5 w-5 h-5 shrink-0 accent-orange-500">
+                <span class="flex flex-col gap-0.5 min-w-0">
+                    <span class="text-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-orange-600 dark:text-orange-400">warning</span>Trabajo fuera de presupuesto</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400">Márcalo si este trabajo no entra en el presupuesto de la obra. El parte quedará marcado en naranja y se contará aparte en el resumen de la obra.</span>
+                    ${conFuera ? '' : '<span class="text-xs font-medium text-amber-700 dark:text-amber-300">Todavía no disponible: falta activar esta opción en la base de datos.</span>'}
+                </span>
+            </label>
             <p id="par-union" class="hidden text-sm text-blue-900 dark:text-blue-100 bg-blue-50 dark:bg-blue-950 rounded-xl p-3 flex gap-2" role="status"></p>
             <div class="flex flex-col gap-2">
                 <div class="grid grid-cols-[1fr_5.5rem_auto] gap-2 text-xs font-medium"><span>Operario</span><span>Horas</span><span class="w-9"></span></div>
@@ -712,9 +732,11 @@
     // Se mira con los partes de la lista; al guardar decide el servidor (crear_parte), que también une los guardados sin conexión.
     function avisarUnion() {
         const fecha = val('par-fecha'), obra = norm(val('par-obra')), cli = norm(val('par-cliente'));
+        const fueraForm = !!document.getElementById('par-fuera')?.checked;
         let abierto = null, bloqueado = false;
         if (modo === 'nuevo' && fecha && obra) {
-            const mismos = partes.filter((p) => p.fecha === fecha && norm(p.obra) === obra && norm(p.cliente) === cli);
+            // Un parte fuera de presupuesto solo se une con otro fuera de presupuesto, y uno normal solo con otro normal.
+            const mismos = partes.filter((p) => p.fecha === fecha && norm(p.obra) === obra && norm(p.cliente) === cli && fuera(p) === fueraForm);
             abierto = mismos.filter((p) => !p.bloqueado).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0] || null;
             bloqueado = !abierto && mismos.length > 0;
         }
@@ -983,6 +1005,7 @@
         try { imgFirma = await cargarFirma(id); } catch (ex) { /* se muestra sin firma */ }
         if (modo !== 'ver' || actual !== p) return;
         document.getElementById('form-parte').innerHTML = `
+            ${fuera(p) ? '<div class="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-3 py-2.5 font-bold tracking-wide" data-fuera-presupuesto><span class="material-symbols-outlined">warning</span>FUERA DE PRESUPUESTO</div>' : ''}
             <div class="flex flex-col gap-1">
                 <p class="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">event</span>${esc(fechaES(p.fecha))}${chipSemana(p)}${p.bloqueado ? ' <span class="inline-flex items-center gap-0.5 text-amber-700 dark:text-amber-300 ml-1"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueado</span>' : ''}</p>
                 <h3 class="font-bold text-lg break-words">${esc(p.cliente || 'Sin cliente')}</h3>
@@ -1051,7 +1074,7 @@
         if (guardando || (modo !== 'nuevo' && modo !== 'editar')) return;
         const err = document.getElementById('par-error');
         const btn = document.getElementById('par-guardar');
-        const f = { cliente: val('par-cliente'), obra: val('par-obra'), direccion: val('par-direccion'), localidad: val('par-localidad'), fecha: val('par-fecha'), detalle: val('par-detalle') };
+        const f = { cliente: val('par-cliente'), obra: val('par-obra'), direccion: val('par-direccion'), localidad: val('par-localidad'), fecha: val('par-fecha'), detalle: val('par-detalle'), fuera: !!document.getElementById('par-fuera')?.checked };
         err.classList.add('hidden');
         const operarios = leerOperarios();
         const materiales = leerMateriales();
@@ -1081,7 +1104,7 @@
         const quien = miNombre();
         // PDF con lo que hay escrito (por si no se puede guardar).
         const pdfActual = () => ({
-            items: itemsPdf({ fecha: f.fecha, cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, detalle_trabajo: f.detalle,
+            items: itemsPdf({ fecha: f.fecha, cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, detalle_trabajo: f.detalle, fuera_presupuesto: f.fuera,
                 created_by: quien, created_at: new Date().toISOString(),
                 partes_operarios: operarios.map((o) => ({ operario_nombre: o.nombre, horas: o.horas })),
                 partes_materiales: items.map((it) => ({ unidades: it.unidades, material: it.material, referencia: it.referencia })) },
@@ -1093,6 +1116,7 @@
             const datos = igual ? { cliente: actual.cliente, obra: actual.obra, direccion: actual.direccion, localidad: actual.localidad, creados: false, pasos: [] } : resolverObra(f);
             const creados = datos.creados;
             const fila = { cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad, fecha: f.fecha, detalle_trabajo: f.detalle || null };
+            if (conFuera) fila.fuera_presupuesto = f.fuera;
             if (firma.quitada) fila.firma_digital = null; else if (firma.cambiada && firma.url) fila.firma_digital = firma.url;   // sin tocar, se conserva la guardada
             const filasOp = (parteId) => operarios.map((o) => { const emp = empleados.find((x) => norm(x.nombre) === norm(o.nombre)); return { id: O.uuid(), parte_id: parteId, operario_nombre: emp ? emp.nombre : o.nombre, operario_id: emp ? emp.id : null, horas: o.horas }; });
 
@@ -1178,6 +1202,7 @@
             { t: 'h', text: 'Trabajo realizado' },
             { t: 'p', text: p.detalle_trabajo || '—' },
         ];
+        if (fuera(p)) it.splice(1, 0, { t: 'banner', text: 'FUERA DE PRESUPUESTO' });
         if (mats(p).length) {
             it.push({ t: 'h', text: 'Material utilizado' });
             if (variosAportan(p)) it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 4.5 }, { title: 'Referencia', w: 2 }, { title: 'Añadido por', w: 2.5 }], rows: mats(p).map((m) => [cant(m.unidades), m.material, m.referencia || '', aportadoDe(p, m)]) });
@@ -1318,7 +1343,7 @@
             const t = e.target;
             if (t.id === 'par-cliente') sincronizar('cliente');
             else if (t.id === 'par-obra') sincronizar('obra');
-            else if (t.id === 'par-fecha') avisarUnion();
+            else if (t.id === 'par-fecha' || t.id === 'par-fuera') avisarUnion();
             else if (t.dataset && t.dataset.campo === 'material') materialCambiado(t);
             else if (t.dataset && t.dataset.campo === 'referencia') referenciaCambiada(t);
         };
@@ -1388,7 +1413,7 @@
                 orden: (p.fecha || '') + '|' + (p.created_at || ''),
                 titulo: ops(p).map((x) => x.operario_nombre).filter(Boolean).join(', ') || 'Sin operarios',
                 detalle: p.detalle_trabajo || '',
-                etiquetas: [semanaDe(p) ? { texto: 'S' + semanaDe(p), tono: 'azul' } : null, p.bloqueado ? { texto: 'Bloqueado', tono: 'ambar', icono: 'lock' } : null].filter(Boolean),
+                etiquetas: [semanaDe(p) ? { texto: 'S' + semanaDe(p), tono: 'azul' } : null, fuera(p) ? { texto: 'Fuera de presupuesto', tono: 'naranja', icono: 'warning' } : null, p.bloqueado ? { texto: 'Bloqueado', tono: 'ambar', icono: 'lock' } : null].filter(Boolean),
                 puedeEditar: puedeEditar(p),
                 puedeEliminar: puedeEditar(p),
             }));
@@ -1404,7 +1429,8 @@
     // El material se junta por referencia; si no tiene, por nombre (sin distinguir mayúsculas ni acentos).
     const DIA_SEMANA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
     const diaLargo = (f) => { const d = new Date(String(f).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? fechaES(f) : DIA_SEMANA[d.getDay()] + ' ' + fechaES(f); };
-    let resumen = null;   // { cliente, obra, cargando, error, datos }
+    // Dos contabilidades separadas: la normal y la de fuera de presupuesto (esta solo si hay partes marcados así).
+    let resumen = null;   // { cliente, obra, cargando, error, grupos: { normal, fuera }, vista: 'normal' | 'fuera', datos: grupos[vista] }
 
     function calcularResumen(filas) {
         const claveOp = (o) => o.operario_id || 'n:' + norm(o.operario_nombre);
@@ -1453,11 +1479,24 @@
     function htmlResumen() {
         if (!resumen || resumen.cargando) return spinner;
         if (resumen.error) return `<p class="text-sm text-red-600 dark:text-red-400 text-center py-6">No se pudo cargar el resumen: ${esc(resumen.error)}</p>`;
+        const g = resumen.grupos;
+        if (!g.normal.partes && !g.fuera.partes) return '<p class="text-sm text-slate-500 text-center py-6">Esta obra todavía no tiene partes.</p>';
         const r = resumen.datos;
-        if (!r.partes) return '<p class="text-sm text-slate-500 text-center py-6">Esta obra todavía no tiene partes.</p>';
+        const enFuera = resumen.vista === 'fuera';
+        const pestana = (v, txt, d) => {
+            const activa = resumen.vista === v;
+            const color = activa ? (v === 'fuera' ? 'bg-orange-500 text-white shadow' : 'bg-white dark:bg-zinc-900 text-blue-700 dark:text-blue-300 shadow') : 'text-slate-600 dark:text-slate-300';
+            return `<button type="button" data-resumen="vista" data-vista="${v}" aria-pressed="${activa}" class="flex-1 min-w-0 py-2 px-2 rounded-full text-sm font-medium leading-tight ${color}">${txt}<span class="block text-[11px] font-normal opacity-80">${esc(fmtHoras(d.total))} · ${d.partes} ${d.partes === 1 ? 'parte' : 'partes'}</span></button>`;
+        };
+        const pestanas = g.fuera.partes ? `
+            <div class="flex gap-1 bg-slate-100 dark:bg-zinc-800 rounded-full p-1" role="group" aria-label="Qué contabilidad ver" data-resumen-pestanas>
+                ${pestana('normal', 'Normal', g.normal)}${pestana('fuera', 'Fuera de presupuesto', g.fuera)}
+            </div>
+            ${enFuera ? '<div class="flex items-center gap-2 bg-orange-500 text-white rounded-xl px-3 py-2 text-sm font-bold" data-fuera-presupuesto><span class="material-symbols-outlined text-[18px]">warning</span>Solo trabajos FUERA DE PRESUPUESTO</div>' : '<p class="text-xs text-slate-500 dark:text-slate-400">Solo los partes normales. Los de fuera de presupuesto se cuentan aparte, en su pestaña.</p>'}` : '';
+        if (!r.partes) return pestanas + '<p class="text-sm text-slate-500 text-center py-6">Esta obra no tiene partes normales: todos son de fuera de presupuesto.</p>';
         const tarjeta = 'bg-slate-50 dark:bg-zinc-800 rounded-2xl p-3';
         const titulo = (icono, t) => `<h4 class="text-sm font-semibold flex items-center gap-1.5 mt-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">${icono}</span>${t}</h4>`;
-        return `
+        return pestanas + `
             <div class="grid grid-cols-3 gap-2 text-center">
                 <div class="${tarjeta}"><p class="text-lg font-bold text-blue-700 dark:text-blue-300" data-resumen-total>${esc(fmtHoras(r.total))}</p><p class="text-[11px] text-slate-500 dark:text-slate-400">horas en total</p></div>
                 <div class="${tarjeta}"><p class="text-lg font-bold">${r.dias.length}</p><p class="text-[11px] text-slate-500 dark:text-slate-400">${r.dias.length === 1 ? 'día' : 'días'}</p></div>
@@ -1479,7 +1518,7 @@
             ${titulo('schedule', 'Total de horas por operario')}
             <ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl" data-resumen-operarios>
                 ${r.totales.map((t) => `<li class="flex justify-between gap-3 px-3 py-2 text-sm"><span class="min-w-0 break-words">${esc(t.nombre)} <span class="text-xs text-slate-500">· ${t.dias.size} ${t.dias.size === 1 ? 'día' : 'días'}</span></span><strong class="shrink-0">${esc(fmtHoras(t.horas))}</strong></li>`).join('')}
-                <li class="flex justify-between gap-3 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-950 rounded-b-xl"><span class="font-semibold">Total de la obra</span><strong class="shrink-0 text-blue-700 dark:text-blue-300">${esc(fmtHoras(r.total))}</strong></li>
+                <li class="flex justify-between gap-3 px-3 py-2 text-sm bg-blue-50 dark:bg-blue-950 rounded-b-xl"><span class="font-semibold">${enFuera ? 'Total fuera de presupuesto' : 'Total de la obra'}</span><strong class="shrink-0 text-blue-700 dark:text-blue-300">${esc(fmtHoras(r.total))}</strong></li>
             </ul>
             ${titulo('inventory_2', 'Material gastado')}
             ${r.material.length ? `<ul class="flex flex-col divide-y divide-slate-200 dark:divide-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl" data-resumen-material>
@@ -1492,6 +1531,7 @@
 
     function itemsResumen() {
         const r = resumen.datos;
+        const enFuera = resumen.vista === 'fuera';
         const it = [
             { t: 'title', text: 'Resumen de la obra', sub: 'Del ' + fechaES(r.dias[0].fecha) + ' al ' + fechaES(r.dias[r.dias.length - 1].fecha) + ' · ' + r.partes + (r.partes === 1 ? ' parte' : ' partes') },
             { t: 'kv', label: 'Cliente', value: resumen.cliente },
@@ -1502,12 +1542,14 @@
                 rows: r.dias.map((d) => [diaLargo(d.fecha), d.ops.map((o) => o.nombre + ': ' + fmtHoras(o.horas)).join('\n') || '—', d.trabajos.join('\n') || '—']) },
             { t: 'h', text: 'Total de horas por operario' },
             { t: 'table', cols: [{ title: 'Operario', w: 4 }, { title: 'Días', w: 1, align: 'right' }, { title: 'Horas', w: 1.2, align: 'right' }],
-                rows: r.totales.map((t) => [t.nombre, String(t.dias.size), fmtHoras(t.horas)]).concat([['TOTAL DE LA OBRA', '', fmtHoras(r.total)]]) },
+                rows: r.totales.map((t) => [t.nombre, String(t.dias.size), fmtHoras(t.horas)]).concat([[enFuera ? 'TOTAL FUERA DE PRESUPUESTO' : 'TOTAL DE LA OBRA', '', fmtHoras(r.total)]]) },
             { t: 'h', text: 'Material gastado' },
         ];
         if (r.material.length) it.push({ t: 'table', cols: [{ title: 'Cant.', w: 1, align: 'right' }, { title: 'Material', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: r.material.map((m) => [cant(m.unidades), m.material, m.referencia || '']) });
         else it.push({ t: 'p', text: 'Sin material apuntado en los partes.' });
         if (r.sinNumero) it.push({ t: 'note', text: (r.sinNumero === 1 ? 'Hay 1 apunte' : `Hay ${r.sinNumero} apuntes`) + ' de horas que no son un número y no se han sumado.' });
+        if (enFuera) it.splice(1, 0, { t: 'banner', text: 'FUERA DE PRESUPUESTO' });
+        else if (resumen.grupos.fuera.partes) it.push({ t: 'note', text: 'Solo trabajos normales (dentro de presupuesto). Los de fuera de presupuesto van en su propio resumen.' });
         return it;
     }
 
@@ -1535,8 +1577,13 @@
                 const b = e.target.closest('[data-resumen]');
                 if (!b) return;
                 if (b.dataset.resumen === 'cerrar') cerrarResumen();
-                else if (b.dataset.resumen === 'compartir' && resumen && resumen.datos && window.BomiCompartir) {
-                    window.BomiCompartir.abrir({ titulo: 'Resumen de la obra · ' + resumen.cliente + ' · ' + resumen.obra, nombre: 'Resumen-' + limpioArchivo(resumen.cliente) + '-' + limpioArchivo(resumen.obra) + '.pdf', items: itemsResumen() });
+                else if (b.dataset.resumen === 'vista' && resumen && resumen.grupos) {
+                    resumen.vista = b.dataset.vista === 'fuera' ? 'fuera' : 'normal';
+                    resumen.datos = resumen.grupos[resumen.vista];
+                    pintarResumen();
+                } else if (b.dataset.resumen === 'compartir' && resumen && resumen.datos && window.BomiCompartir) {
+                    const fp = resumen.vista === 'fuera';
+                    window.BomiCompartir.abrir({ titulo: 'Resumen de la obra' + (fp ? ' (fuera de presupuesto)' : '') + ' · ' + resumen.cliente + ' · ' + resumen.obra, nombre: 'Resumen-' + (fp ? 'Fuera-de-presupuesto-' : '') + limpioArchivo(resumen.cliente) + '-' + limpioArchivo(resumen.obra) + '.pdf', items: itemsResumen() });
                 }
             });
             document.addEventListener('keydown', (e) => {
@@ -1558,7 +1605,10 @@
                 if (!data || data.length < 1000) break;
             }
             if (resumen !== actual) return;
-            actual.datos = calcularResumen(filas.filter((p) => norm(p.obra) === norm(o.obra) && norm(p.cliente) === norm(o.cliente)));
+            const deLaObra = filas.filter((p) => norm(p.obra) === norm(o.obra) && norm(p.cliente) === norm(o.cliente));
+            actual.grupos = { normal: calcularResumen(deLaObra.filter((p) => !fuera(p))), fuera: calcularResumen(deLaObra.filter(fuera)) };
+            actual.vista = actual.grupos.normal.partes || !actual.grupos.fuera.partes ? 'normal' : 'fuera';
+            actual.datos = actual.grupos[actual.vista];
         } catch (ex) {
             if (resumen !== actual) return;
             actual.error = mensajeError(ex);
