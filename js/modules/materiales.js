@@ -26,6 +26,8 @@
     let actual = null;
     let catEditando = null;     // id del material del catálogo en edición
     let claveCat = new Map();   // clave del datalist -> entrada del catálogo
+    // true cuando la BD ya tiene la columna «entrega» (migración 20261119160000). Se recuerda en el móvil para usarlo sin conexión.
+    let conEntrega = (() => { try { return localStorage.getItem('bomi_mat_entrega') === '1'; } catch (e) { return false; } })();
 
     // ---------- Utilidades ----------
     const db = () => supabaseClient;
@@ -52,6 +54,18 @@
     const pedidoEn = (r) => r.pedido_at || (esPedido(r) ? r.updated_at : '') || '';
     const lineasDe = (r) => (r.materiales_solicitud_items || []).slice().sort((a, b) => 0);
     const fallo = (el, txt) => { el.textContent = txt; el.classList.remove('hidden'); };
+    // Entrega del material: 'obra' (en la dirección de la obra) o 'nave' (en el almacén de la empresa).
+    const ENTREGAS = {
+        obra: { icono: 'construction', corto: 'A obra', largo: 'Entregar en la obra', sub: 'En la dirección de la obra',
+            chip: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+            on: 'bg-blue-600 border-blue-600 text-white shadow-md', banda: 'bg-blue-50 border-blue-300 text-blue-900 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-100' },
+        nave: { icono: 'warehouse', corto: 'A nave', largo: 'Entregar en la nave', sub: 'En el almacén de la empresa',
+            chip: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200',
+            on: 'bg-violet-600 border-violet-600 text-white shadow-md', banda: 'bg-violet-50 border-violet-300 text-violet-900 dark:bg-violet-950 dark:border-violet-800 dark:text-violet-100' },
+    };
+    const entregaDe = (r) => ENTREGAS[norm(r && r.entrega)] ? norm(r.entrega) : '';
+    const entregaTexto = (r) => entregaDe(r) === 'nave' ? 'En la nave' : entregaDe(r) === 'obra' ? 'En la obra' : '';
+    const entregaChip = (r) => { const e = ENTREGAS[entregaDe(r)]; return e ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${e.chip}"><span class="material-symbols-outlined text-[14px]">${e.icono}</span>${e.corto}</span>` : ''; };
 
     function mensajeError(ex) {
         if (window.BomiOffline && window.BomiOffline.esRed(ex)) return window.BomiOffline.mensaje(ex);
@@ -92,7 +106,7 @@
     async function avisoSolicitudNueva(d) {
         const todos = await perfilesActivos();
         const filas = todos.filter((p) => p.id !== d.yoId).filter(quiereAviso)
-            .map((p) => ({ user_id: p.id, titulo: 'Nueva solicitud de material', mensaje: `${d.quien} ha pedido material para ${d.cliente} · ${d.obra}.` }));
+            .map((p) => ({ user_id: p.id, titulo: 'Nueva solicitud de material', mensaje: `${d.quien} ha pedido material para ${d.cliente} · ${d.obra}${d.entrega === 'nave' ? ' (entregar en la nave)' : d.entrega === 'obra' ? ' (entregar en la obra)' : ''}.` }));
         if (!filas.length) return;
         const { error } = await db().from('notificaciones').insert(filas);
         if (error) throw error;
@@ -110,11 +124,11 @@
             return await avisar(dest, titulo, mensaje);
         } catch (ex) { return false; }
     }
-    const avisarPedido = (r, quien) => avisarCreador(r, 'Material pedido', `${quien} ha marcado como pedido el material de ${r.cliente} · ${r.obra}.`);
+    const avisarPedido = (r, quien) => avisarCreador(r, 'Material pedido', `${quien} ha marcado como pedido el material de ${r.cliente} · ${r.obra}${entregaDe(r) ? ' (' + entregaTexto(r).toLowerCase() + ')' : ''}.`);
     const avisarRecibido = (r, quien) => avisarCreador(r, 'Material recibido', `${quien} ha marcado como recibido el material de ${r.cliente} · ${r.obra}.`);
 
     // ---------- Búsqueda ----------
-    const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r)]
+    const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r), entregaDe(r) && ENTREGAS[entregaDe(r)].corto]
         .concat(lineasDe(r).flatMap((l) => [l.material, l.referencia])).join(' ');
     // ---------- Preferencia: todas / las pedidas por mí (se guarda en el usuario; por defecto, las mías) ----------
     const CLAVE_LOCAL = 'bomi_materiales_solo_mias';
@@ -180,7 +194,7 @@
         <article class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm p-4 flex flex-col gap-3">
             <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0 flex flex-col gap-1">
-                    <div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold text-base break-words">${esc(r.cliente || 'Sin cliente')}</h3>${estadoHtml(r)}</div>
+                    <div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold text-base break-words">${esc(r.cliente || 'Sin cliente')}</h3>${estadoHtml(r)}${entregaChip(r)}</div>
                     <p class="text-sm font-semibold flex items-center gap-1 text-slate-700 dark:text-slate-200"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(r.obra || 'Sin obra')}</span></p>
                     ${direccionHtml(r.direccion, r.localidad)}
                 </div>
@@ -214,10 +228,12 @@
         if (cont && !solicitudes.length) cont.innerHTML = spinner;
         const btnCat = document.getElementById('btn-mat-catalogo');
         if (btnCat) btnCat.style.display = esAdmin() ? '' : 'none';
-        const [res] = await Promise.all([
+        const [res, sonda] = await Promise.all([
             db().from('materiales_solicitudes').select(SELECT).order('created_at', { ascending: false }).limit(LIMITE),
+            db().from('materiales_solicitudes').select('id, entrega').limit(1),
             cargarCatalogo().catch(() => {}),
         ]);
+        anotarSonda(sonda);
         if (res.error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los materiales: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
             return;
@@ -225,6 +241,20 @@
         solicitudes = await conFijados(res.data || []);
         pintarLista();
         window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'materiales' } }));
+    }
+
+    // ¿Existe ya la columna «entrega»? Si la consulta falla por red se deja lo que se supiera.
+    let entregaComprobada = false;
+    function anotarSonda(sonda) {
+        if (!sonda) return;
+        if (!sonda.error) { conEntrega = true; entregaComprobada = true; }
+        else if (!(window.BomiOffline && window.BomiOffline.esRed(sonda.error))) { conEntrega = false; entregaComprobada = true; }
+        else return;
+        try { localStorage.setItem('bomi_mat_entrega', conEntrega ? '1' : '0'); } catch (e) { /* sin almacenamiento */ }
+    }
+    async function comprobarEntrega() {
+        if (entregaComprobada) return;
+        try { anotarSonda(await db().from('materiales_solicitudes').select('id, entrega').limit(1)); } catch (e) { /* sin conexión */ }
     }
 
     // Supabase devuelve como máximo 1000 filas por consulta: se lee por páginas para traer el catálogo completo.
@@ -290,6 +320,7 @@
                 <div class="flex flex-col gap-1 flex-1 min-w-0"><label for="m-localidad" class="text-xs font-medium">Localidad</label><input id="m-localidad" type="text" autocomplete="off" value="${esc(r?.localidad)}" class="${INPUT} read-only:opacity-70"></div>
             </div>
             <p id="m-hint" class="hidden text-xs text-slate-500 bg-slate-100 dark:bg-zinc-800 rounded-xl p-3"></p>
+            ${conEntrega ? htmlSelectorEntrega(entregaDe(r)) : ''}
             <div class="flex flex-col gap-2">
                 <span class="text-xs font-medium">Material solicitado</span>
                 <div id="m-lineas" class="flex flex-col gap-3">${(ls.length ? ls : [null]).map(htmlLinea).join('')}</div>
@@ -300,6 +331,35 @@
                 <button type="button" data-accion="cerrar" class="px-4 py-2 rounded-full font-medium text-slate-600 dark:text-slate-300">Cancelar</button>
                 <button type="submit" id="m-guardar" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-6 py-2 rounded-full font-medium">Guardar</button>
             </div>`;
+    }
+
+    // Selector grande de dónde se entrega: dos botones tipo pestaña. Obligatorio, sin opción marcada de entrada.
+    function htmlBotonEntrega(k, activo) {
+        const e = ENTREGAS[k];
+        const cls = activo ? e.on : 'bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-slate-200';
+        return `<button type="button" data-accion="entrega" data-entrega="${k}" role="radio" aria-checked="${activo ? 'true' : 'false'}"
+            class="flex flex-col items-center justify-center gap-1 min-h-[5.5rem] rounded-2xl border-2 px-2 py-3 transition-colors ${cls}">
+            <span class="material-symbols-outlined text-[32px] shrink-0">${e.icono}</span>
+            <span class="text-base font-bold leading-tight">${k === 'obra' ? 'Obra' : 'Nave'}</span>
+            <span class="text-[11px] leading-tight ${activo ? 'opacity-90' : 'text-slate-500 dark:text-slate-400'}">${e.sub}</span>
+        </button>`;
+    }
+    function htmlSelectorEntrega(actualEnt) {
+        return `<div class="flex flex-col gap-2" id="m-entrega-box">
+            <span class="text-sm font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[20px] text-blue-600 dark:text-blue-400 shrink-0">local_shipping</span>¿Dónde se entrega el material?</span>
+            <input type="hidden" id="m-entrega" value="${esc(actualEnt || '')}">
+            <div role="radiogroup" aria-label="Dónde se entrega el material" class="grid grid-cols-2 gap-3" id="m-entrega-botones">${['obra', 'nave'].map((k) => htmlBotonEntrega(k, actualEnt === k)).join('')}</div>
+        </div>`;
+    }
+    function elegirEntrega(k) {
+        const inp = document.getElementById('m-entrega');
+        const cont = document.getElementById('m-entrega-botones');
+        if (!inp || !cont || !ENTREGAS[k]) return;
+        inp.value = k;
+        cont.innerHTML = ['obra', 'nave'].map((x) => htmlBotonEntrega(x, x === k)).join('');
+        cont.classList.remove('ring-2', 'ring-red-500', 'rounded-2xl', 'ring-offset-2');
+        const err = document.getElementById('m-error');
+        if (err && err.dataset.entrega === '1') { err.classList.add('hidden'); err.dataset.entrega = ''; }
     }
 
     function actualizarDatalists() {
@@ -395,6 +455,7 @@
         const r = id ? solicitudes.find((x) => x.id === id) : null;
         if (m === 'editar' && !r) return;
         try { if (clientesViejos) await cargarClientes(); } catch (ex) { alert('No se pudieron cargar los clientes: ' + mensajeError(ex)); return; }
+        await comprobarEntrega();
         modo = m; actual = r; obraAutorrellena = false;
         document.getElementById('form-materiales').innerHTML = htmlFormulario(r);
         mostrar('modal-materiales', m === 'nuevo' ? 'Pedir material' : 'Editar solicitud');
@@ -422,6 +483,16 @@
             <li class="flex gap-3 p-3 text-sm"><strong class="shrink-0 min-w-[3rem]">${esc(cant(l.cantidad))}</strong><span class="min-w-0 break-words">${esc(l.material)}${l.referencia ? `<span class="block text-xs text-slate-500">Ref.: ${esc(l.referencia)}</span>` : ''}</span></li>`).join('')}</ul>`;
     }
 
+    function bandaEntrega(r) {
+        const k = entregaDe(r);
+        if (!k) return conEntrega ? '<p class="text-sm text-slate-500 bg-slate-100 dark:bg-zinc-800 rounded-xl p-3 flex items-center gap-2"><span class="material-symbols-outlined text-[20px]">local_shipping</span>Entrega sin indicar</p>' : '';
+        const e = ENTREGAS[k];
+        return `<div class="flex items-center gap-3 rounded-2xl border-2 p-3 ${e.banda}">
+            <span class="material-symbols-outlined text-[32px] shrink-0">${e.icono}</span>
+            <div class="min-w-0"><p class="font-bold text-base">${e.largo}</p><p class="text-xs opacity-80">${k === 'obra' ? esc([r.direccion, r.localidad].filter(Boolean).join(', ') || e.sub) : e.sub}</p></div>
+        </div>`;
+    }
+
     function abrirVista(id) {
         const r = solicitudes.find((x) => x.id === id);
         if (!r) return;
@@ -432,6 +503,7 @@
                 <p class="font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[18px] text-blue-600 dark:text-blue-400">construction</span><span class="break-words">${esc(r.obra || 'Sin obra')}</span></p>
                 ${direccionHtml(r.direccion, r.localidad)}
             </div>
+            ${bandaEntrega(r)}
             <div class="flex flex-col gap-1"><span class="text-xs font-medium">Material</span>${tablaLineas(r)}</div>
             <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(r)}</div>
             <p id="m-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
@@ -476,6 +548,13 @@
         err.classList.add('hidden');
         if (!f.cliente) return fallo(err, 'Indica el cliente.');
         if (!f.obra) return fallo(err, 'Indica la obra.');
+        const entrega = conEntrega && document.getElementById('m-entrega') ? val('m-entrega') : null;
+        if (conEntrega && document.getElementById('m-entrega') && !ENTREGAS[entrega]) {
+            const cont = document.getElementById('m-entrega-botones');
+            if (cont) { cont.classList.add('ring-2', 'ring-red-500', 'rounded-2xl', 'ring-offset-2'); cont.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+            err.dataset.entrega = '1';
+            return fallo(err, 'Elige dónde se entrega el material: Obra o Nave.');
+        }
         const lineas = leerLineas();
         if (!lineas.length) return fallo(err, 'Añade al menos un producto.');
         const items = [];
@@ -490,7 +569,7 @@
         const quien = nombreUsuario();
         // PDF con lo que hay escrito (por si no se puede guardar).
         const pdfActual = () => ({
-            items: itemsPdf({ cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, estado: 'Pendiente', created_by: quien, created_at: new Date().toISOString(),
+            items: itemsPdf({ cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, entrega, estado: 'Pendiente', created_by: quien, created_at: new Date().toISOString(),
                 materiales_solicitud_items: items.map((it) => ({ cantidad: it.cantidad, material: it.material, referencia: it.referencia })) }),
             nombre: window.BomiPdf.nombreSeguro(['material', f.cliente, f.obra], 80),
         });
@@ -499,6 +578,7 @@
             const datos = igual ? { cliente: actual.cliente, obra: actual.obra, direccion: actual.direccion, localidad: actual.localidad, creados: false, pasos: [] } : resolverObra(f);
             const creados = datos.creados;
             const fila = { cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad };
+            if (entrega) fila.entrega = entrega;
 
             if (modo === 'nuevo') {
                 // Una solicitud nueva se puede guardar sin conexión: queda en el móvil y se envía sola.
@@ -506,7 +586,7 @@
                 const pasos = [...datos.pasos,
                     { k: 'insert', tabla: 'materiales_solicitudes', deshacer: true, filas: [{ id: solId, ...fila, estado: 'Pendiente', created_by: quien, updated_by: quien }] },
                     { k: 'insert', tabla: 'materiales_solicitud_items', deshacer: true, filas: items.map((it) => ({ id: O.uuid(), ...it, solicitud_id: solId })) },
-                    { k: 'gancho', nombre: 'material-aviso', datos: { cliente: datos.cliente, obra: datos.obra, quien, yoId: (window.currentUserProfile && window.currentUserProfile.id) || null } }];
+                    { k: 'gancho', nombre: 'material-aviso', datos: { cliente: datos.cliente, obra: datos.obra, entrega, quien, yoId: (window.currentUserProfile && window.currentUserProfile.id) || null } }];
                 const r = await O.guardar({ tipo: 'material', etiqueta: `Material · ${datos.cliente} · ${datos.obra}`, pasos, clientes: creados, pdf: pdfActual() });
                 cerrarModal();
                 if (r.estado === 'enviado') {
@@ -583,6 +663,7 @@
             { t: 'kv', label: 'Obra', value: r.obra },
             { t: 'kv', label: 'Dirección', value: r.direccion || '—' },
             { t: 'kv', label: 'Localidad', value: r.localidad || '—' },
+            ...(entregaDe(r) ? [{ t: 'kv', label: 'Entrega', value: entregaDe(r) === 'nave' ? 'EN LA NAVE (almacén de la empresa)' : 'EN LA OBRA (' + ([r.direccion, r.localidad].filter(Boolean).join(', ') || 'dirección de la obra') + ')' }] : []),
             { t: 'space', h: 8 },
             { t: 'table', cols: [{ title: 'Uds.', w: 1, align: 'right' }, { title: 'Producto', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: lineasDe(r).map((l) => [cant(l.cantidad), l.material, l.referencia || '']) },
             { t: 'note', text: 'Solicitado por ' + (r.created_by || 'desconocido') + ' · ' + fechaHora(r.created_at)
@@ -594,7 +675,7 @@
         const r = solicitudes.find((x) => x.id === id);
         if (!r || !window.BomiCompartir) return;
         window.BomiCompartir.abrir({
-            titulo: 'Pedido de material · ' + (r.cliente || 'sin cliente') + (r.obra ? ' · ' + r.obra : ''),
+            titulo: 'Pedido de material · ' + (r.cliente || 'sin cliente') + (r.obra ? ' · ' + r.obra : '') + (entregaDe(r) ? ' · ' + ENTREGAS[entregaDe(r)].corto : ''),
             nombre: window.BomiPdf.nombreSeguro(['material', r.cliente, r.obra], 80),
             items: itemsPdf(r),
         });
@@ -901,6 +982,7 @@
                 if (ls.length > 1) l.remove();
                 else l.querySelectorAll('input').forEach((i) => { i.value = ''; i.dataset.auto = ''; });
             } else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
+            else if (a === 'entrega') elegirEntrega(btn.dataset.entrega);
             else if (a === 'pedido' || a === 'pendiente' || a === 'recibido' || a === 'norecibido') cambiarEstado(id, a);
             else if (a === 'compartir') compartir(id);
         });
@@ -993,7 +1075,8 @@
                     orden: r.created_at || '',
                     titulo: 'Solicitado por ' + (r.created_by || 'desconocido'),
                     detalle: ls.map((l) => `${cant(l.cantidad)} × ${l.material}`).join(' · '),
-                    etiquetas: [esRecibido(r) ? { texto: 'Recibido', tono: 'azul' } : esPedido(r) ? { texto: 'Pedido', tono: 'verde' } : { texto: 'Pendiente', tono: 'ambar' }],
+                    etiquetas: [esRecibido(r) ? { texto: 'Recibido', tono: 'azul' } : esPedido(r) ? { texto: 'Pedido', tono: 'verde' } : { texto: 'Pendiente', tono: 'ambar' }]
+                        .concat(entregaDe(r) ? [{ texto: ENTREGAS[entregaDe(r)].corto, tono: entregaDe(r) === 'nave' ? 'gris' : 'azul', icono: ENTREGAS[entregaDe(r)].icono }] : []),
                     puedeEditar: true,
                     puedeEliminar: true,
                 };
