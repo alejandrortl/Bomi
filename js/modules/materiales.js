@@ -28,6 +28,10 @@
     let claveCat = new Map();   // clave del datalist -> entrada del catálogo
     // true cuando la BD ya tiene la columna «entrega» (migración 20261119160000). Se recuerda en el móvil para usarlo sin conexión.
     let conEntrega = (() => { try { return localStorage.getItem('bomi_mat_entrega') === '1'; } catch (e) { return false; } })();
+    // Lo mismo para la columna «notas» (misma migración).
+    let conNotas = (() => { try { return localStorage.getItem('bomi_mat_notas') === '1'; } catch (e) { return false; } })();
+    let escuchando = false;
+    let reconocimiento = null;
 
     // ---------- Utilidades ----------
     const db = () => supabaseClient;
@@ -65,6 +69,7 @@
     };
     const entregaDe = (r) => ENTREGAS[norm(r && r.entrega)] ? norm(r.entrega) : '';
     const entregaTexto = (r) => entregaDe(r) === 'nave' ? 'En la nave' : entregaDe(r) === 'obra' ? 'En la obra' : '';
+    const notasTxt = (r) => String((r && r.notas) || '').trim();
     const entregaChip = (r) => { const e = ENTREGAS[entregaDe(r)]; return e ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${e.chip}"><span class="material-symbols-outlined text-[14px]">${e.icono}</span>${e.corto}</span>` : ''; };
 
     function mensajeError(ex) {
@@ -128,7 +133,7 @@
     const avisarRecibido = (r, quien) => avisarCreador(r, 'Material recibido', `${quien} ha marcado como recibido el material de ${r.cliente} · ${r.obra}.`);
 
     // ---------- Búsqueda ----------
-    const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r), entregaDe(r) && ENTREGAS[entregaDe(r)].corto]
+    const texto = (r) => [r.created_by, r.cliente, r.obra, r.direccion, r.localidad, r.estado, pedidoPor(r), entregaDe(r) && ENTREGAS[entregaDe(r)].corto, r.notas]
         .concat(lineasDe(r).flatMap((l) => [l.material, l.referencia])).join(' ');
     // ---------- Preferencia: todas / las pedidas por mí (se guarda en el usuario; por defecto, las mías) ----------
     const CLAVE_LOCAL = 'bomi_materiales_solo_mias';
@@ -204,6 +209,7 @@
                     ${btnAccion('eliminar', r.id, 'delete', 'Eliminar solicitud', BTN_DANGER)}
                 </div>
             </div>
+            ${notasTxt(r) ? `<p class="text-sm text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl px-3 py-2 flex gap-2"><span class="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400 shrink-0">sticky_note_2</span><span class="min-w-0 break-words line-clamp-2">${esc(notasTxt(r))}</span></p>` : ''}
             ${ls.length ? `<ul class="text-sm list-disc pl-5 flex flex-col gap-0.5">${muestra}${ls.length > 3 ? `<li class="list-none -ml-5 text-xs text-slate-500">y ${ls.length - 3} más...</li>` : ''}</ul>` : '<p class="text-sm text-slate-500">Sin líneas.</p>'}
             <div class="flex flex-col">${autoriaHtml(r)}</div>
         </article>`;
@@ -228,12 +234,14 @@
         if (cont && !solicitudes.length) cont.innerHTML = spinner;
         const btnCat = document.getElementById('btn-mat-catalogo');
         if (btnCat) btnCat.style.display = esAdmin() ? '' : 'none';
-        const [res, sonda] = await Promise.all([
+        const [res, sonda, sondaNotas] = await Promise.all([
             db().from('materiales_solicitudes').select(SELECT).order('created_at', { ascending: false }).limit(LIMITE),
             db().from('materiales_solicitudes').select('id, entrega').limit(1),
+            db().from('materiales_solicitudes').select('id, notas').limit(1),
             cargarCatalogo().catch(() => {}),
         ]);
         anotarSonda(sonda);
+        anotarSondaNotas(sondaNotas);
         if (res.error) {
             if (cont) cont.innerHTML = `<div class="text-center mt-6 flex flex-col items-center gap-3"><p class="text-red-500">Error al cargar los materiales: ${esc(res.error.message)}</p><button type="button" data-accion="reintentar" class="text-sm bg-slate-200 dark:bg-zinc-800 px-4 py-2 rounded-full font-medium">Reintentar</button></div>`;
             return;
@@ -252,9 +260,17 @@
         else return;
         try { localStorage.setItem('bomi_mat_entrega', conEntrega ? '1' : '0'); } catch (e) { /* sin almacenamiento */ }
     }
+    let notasComprobadas = false;
+    function anotarSondaNotas(sonda) {
+        if (!sonda) return;
+        if (!sonda.error) { conNotas = true; notasComprobadas = true; }
+        else if (!(window.BomiOffline && window.BomiOffline.esRed(sonda.error))) { conNotas = false; notasComprobadas = true; }
+        else return;
+        try { localStorage.setItem('bomi_mat_notas', conNotas ? '1' : '0'); } catch (e) { /* sin almacenamiento */ }
+    }
     async function comprobarEntrega() {
-        if (entregaComprobada) return;
-        try { anotarSonda(await db().from('materiales_solicitudes').select('id, entrega').limit(1)); } catch (e) { /* sin conexión */ }
+        if (!entregaComprobada) { try { anotarSonda(await db().from('materiales_solicitudes').select('id, entrega').limit(1)); } catch (e) { /* sin conexión */ } }
+        if (!notasComprobadas) { try { anotarSondaNotas(await db().from('materiales_solicitudes').select('id, notas').limit(1)); } catch (e) { /* sin conexión */ } }
     }
 
     // Supabase devuelve como máximo 1000 filas por consulta: se lee por páginas para traer el catálogo completo.
@@ -321,6 +337,14 @@
             </div>
             <p id="m-hint" class="hidden text-xs text-slate-500 bg-slate-100 dark:bg-zinc-800 rounded-xl p-3"></p>
             ${conEntrega ? htmlSelectorEntrega(entregaDe(r)) : ''}
+            ${conNotas ? `<div class="flex flex-col gap-1">
+                <div class="flex justify-between items-center gap-2">
+                    <label for="m-notas" class="text-xs font-medium">Notas <span class="text-slate-500 font-normal">(opcional)</span></label>
+                    <button type="button" id="m-dictar" data-accion="dictar" class="${BTN_SEC} !py-1 !px-3 text-xs"><span class="material-symbols-outlined text-[16px]">mic</span> <span id="m-dictar-txt">Dictar</span></button>
+                </div>
+                <textarea id="m-notas" rows="3" class="${INPUT}" placeholder="Información extra para quien pide o entrega el material (escribe o dicta)...">${esc(r?.notas)}</textarea>
+                <p id="m-dictado-aviso" class="hidden text-xs text-slate-500"></p>
+            </div>` : ''}
             <div class="flex flex-col gap-2">
                 <span class="text-xs font-medium">Material solicitado</span>
                 <div id="m-lineas" class="flex flex-col gap-3">${(ls.length ? ls : [null]).map(htmlLinea).join('')}</div>
@@ -449,7 +473,58 @@
         m.classList.add('hidden');
         m.classList.remove('flex');
     }
-    function cerrarModal() { ocultar('modal-materiales'); modo = null; actual = null; obraAutorrellena = false; }
+    function cerrarModal() { pararDictado(); ocultar('modal-materiales'); modo = null; actual = null; obraAutorrellena = false; }
+
+    // ---------- Dictado de las notas (igual que en Partes) ----------
+    function soporteDictado() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
+    function pintarDictado() {
+        const t = document.getElementById('m-dictar-txt');
+        const b = document.getElementById('m-dictar');
+        if (!t || !b) return;
+        t.textContent = escuchando ? 'Parar' : 'Dictar';
+        b.classList.toggle('animate-pulse', escuchando);
+        const ic = b.querySelector('.material-symbols-outlined');
+        if (ic) ic.textContent = escuchando ? 'stop_circle' : 'mic';
+    }
+    function pararDictado() {
+        if (reconocimiento) { try { reconocimiento.onend = null; reconocimiento.stop(); } catch (e) { /* ya parado */ } }
+        reconocimiento = null; escuchando = false; pintarDictado();
+    }
+    function avisoDictado(txt) {
+        const p = document.getElementById('m-dictado-aviso');
+        if (!p) return;
+        p.textContent = txt || '';
+        p.classList.toggle('hidden', !txt);
+    }
+    function alternarDictado() {
+        const SR = soporteDictado();
+        if (!SR) { avisoDictado('Tu navegador no permite dictar por voz. Usa el micrófono del teclado del móvil.'); return; }
+        if (escuchando) { pararDictado(); return; }
+        avisoDictado('');
+        const rec = new SR();
+        rec.lang = 'es-ES'; rec.continuous = true; rec.interimResults = false;
+        rec.onresult = (ev) => {
+            const area = document.getElementById('m-notas');
+            if (!area) return;
+            let nuevo = '';
+            for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) nuevo += ev.results[i][0].transcript + ' ';
+            nuevo = nuevo.trim();
+            if (!nuevo) return;
+            const previo = area.value.trimEnd();
+            if (!previo || /[.!?]$/.test(previo)) nuevo = nuevo.charAt(0).toUpperCase() + nuevo.slice(1);
+            area.value = (previo ? previo + ' ' : '') + nuevo;
+        };
+        rec.onerror = (ev) => {
+            if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') avisoDictado('No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.');
+            else if (ev.error === 'no-speech') avisoDictado('No se oyó nada. Inténtalo de nuevo.');
+            else if (ev.error === 'network') avisoDictado('El dictado necesita conexión. Puedes usar el micrófono del teclado del móvil.');
+            else if (ev.error !== 'aborted') avisoDictado('No se pudo dictar (' + ev.error + ').');
+            pararDictado();
+        };
+        rec.onend = () => { reconocimiento = null; escuchando = false; pintarDictado(); };
+        reconocimiento = rec;
+        try { rec.start(); escuchando = true; pintarDictado(); } catch (e) { avisoDictado('No se pudo iniciar el micrófono.'); reconocimiento = null; }
+    }
 
     async function abrirFormulario(m, id, datos) {
         const r = id ? solicitudes.find((x) => x.id === id) : null;
@@ -473,6 +548,8 @@
             if (obra) { document.getElementById('m-direccion').readOnly = true; document.getElementById('m-localidad').readOnly = true; obraAutorrellena = true; }
         }
         sincronizar('inicio');
+        const bDictar = document.getElementById('m-dictar');
+        if (bDictar) bDictar.style.display = soporteDictado() ? '' : 'none';
         document.getElementById(r ? 'm-guardar' : 'm-cliente').focus();
     }
 
@@ -504,6 +581,7 @@
                 ${direccionHtml(r.direccion, r.localidad)}
             </div>
             ${bandaEntrega(r)}
+            ${notasTxt(r) ? `<div class="flex flex-col gap-1"><span class="text-xs font-medium">Notas</span><p class="text-sm whitespace-pre-wrap break-words bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl p-3">${esc(notasTxt(r))}</p></div>` : ''}
             <div class="flex flex-col gap-1"><span class="text-xs font-medium">Material</span>${tablaLineas(r)}</div>
             <div class="flex flex-col gap-0.5 border-t border-slate-200 dark:border-zinc-800 pt-3">${autoriaHtml(r)}</div>
             <p id="m-error" class="hidden text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 rounded-xl p-3" role="alert"></p>
@@ -555,6 +633,8 @@
             err.dataset.entrega = '1';
             return fallo(err, 'Elige dónde se entrega el material: Obra o Nave.');
         }
+        const notas = conNotas && document.getElementById('m-notas') ? val('m-notas') : null;
+        pararDictado();
         const lineas = leerLineas();
         if (!lineas.length) return fallo(err, 'Añade al menos un producto.');
         const items = [];
@@ -569,7 +649,7 @@
         const quien = nombreUsuario();
         // PDF con lo que hay escrito (por si no se puede guardar).
         const pdfActual = () => ({
-            items: itemsPdf({ cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, entrega, estado: 'Pendiente', created_by: quien, created_at: new Date().toISOString(),
+            items: itemsPdf({ cliente: f.cliente, obra: f.obra, direccion: f.direccion, localidad: f.localidad, entrega, notas, estado: 'Pendiente', created_by: quien, created_at: new Date().toISOString(),
                 materiales_solicitud_items: items.map((it) => ({ cantidad: it.cantidad, material: it.material, referencia: it.referencia })) }),
             nombre: window.BomiPdf.nombreSeguro(['material', f.cliente, f.obra], 80),
         });
@@ -579,6 +659,7 @@
             const creados = datos.creados;
             const fila = { cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad };
             if (entrega) fila.entrega = entrega;
+            if (notas !== null) fila.notas = notas || null;
 
             if (modo === 'nuevo') {
                 // Una solicitud nueva se puede guardar sin conexión: queda en el móvil y se envía sola.
@@ -664,6 +745,7 @@
             { t: 'kv', label: 'Dirección', value: r.direccion || '—' },
             { t: 'kv', label: 'Localidad', value: r.localidad || '—' },
             ...(entregaDe(r) ? [{ t: 'kv', label: 'Entrega', value: entregaDe(r) === 'nave' ? 'EN LA NAVE (almacén de la empresa)' : 'EN LA OBRA (' + ([r.direccion, r.localidad].filter(Boolean).join(', ') || 'dirección de la obra') + ')' }] : []),
+            ...(notasTxt(r) ? [{ t: 'kv', label: 'Notas', value: notasTxt(r) }] : []),
             { t: 'space', h: 8 },
             { t: 'table', cols: [{ title: 'Uds.', w: 1, align: 'right' }, { title: 'Producto', w: 5 }, { title: 'Referencia', w: 2.5 }], rows: lineasDe(r).map((l) => [cant(l.cantidad), l.material, l.referencia || '']) },
             { t: 'note', text: 'Solicitado por ' + (r.created_by || 'desconocido') + ' · ' + fechaHora(r.created_at)
@@ -983,6 +1065,7 @@
                 else l.querySelectorAll('input').forEach((i) => { i.value = ''; i.dataset.auto = ''; });
             } else if (a === 'editar-desde-ver') { cerrarModal(); abrirFormulario('editar', id); }
             else if (a === 'entrega') elegirEntrega(btn.dataset.entrega);
+            else if (a === 'dictar') alternarDictado();
             else if (a === 'pedido' || a === 'pendiente' || a === 'recibido' || a === 'norecibido') cambiarEstado(id, a);
             else if (a === 'compartir') compartir(id);
         });
