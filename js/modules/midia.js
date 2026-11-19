@@ -161,7 +161,7 @@
     function htmlMaterial() {
         if (datos.material === null) return '';
         if (!datos.material.length) return '';
-        const tono = (e) => norm(e) === 'pedido' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+        const tono = (e) => ['pedido', 'recibido', 'parcialmente recibido'].includes(norm(e)) ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
         return `
             <section class="${TARJETA}">
                 <h2 class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600 dark:text-blue-400">inventory_2</span>Tu material sin recibir</h2>
