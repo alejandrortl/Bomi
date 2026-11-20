@@ -4,7 +4,7 @@
 //   · Mis tareas de hoy (con las pendientes de días anteriores arriba), con Cómo llegar y Llamar.
 //     Las tareas hechas que aún no tienen parte de trabajo lo avisan y traen el botón «Hacer el parte».
 //   · Mi material pedido que aún no se ha recibido (Pendiente o Pedido).
-//   · Mis horas de esta semana (según los partes).
+//   · Mis horas de las últimas 4 semanas, con «Ver todo el año» (el mismo cuadro de Partes).
 //   · Mensajes sin leer.
 // Además lleva la cuenta de altas pendientes de aprobar (solo Admin y SuperAdmin): punto rojo junto al nombre
 // y número junto a «Empleados» en el menú.
@@ -20,7 +20,7 @@
     const CHIP = 'text-xs bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 px-3 py-1.5 rounded-full inline-flex items-center gap-1 text-blue-700 dark:text-blue-300 font-medium';
 
     let vista = null;
-    let datos = { partes: null, material: null, mensajes: null, horas: null };
+    let datos = { partes: null, material: null, mensajes: null };
     let cargando = false;
 
     // ---------- Fechas ----------
@@ -44,15 +44,6 @@
         return t.charAt(0).toUpperCase() + t.slice(1);
     }
 
-    // ---------- Horas ("8", "8,5", "7:30", "7h30") ----------
-    function numHoras(v) {
-        const t = String(v ?? '').toLowerCase().replace(/\s+/g, '').replace(/horas?|hrs?/g, 'h');
-        if (!t) return null;
-        let m = /^(\d{1,2})[:h](\d{1,2})m?(in)?$/.exec(t);
-        if (m && +m[2] < 60) return +m[1] + (+m[2]) / 60;
-        m = /^(\d+(?:[.,]\d+)?)h?$/.exec(t);
-        return m ? Number(m[1].replace(',', '.')) : null;
-    }
     const soyYo = (o) => (o.operario_id && o.operario_id === yo().id) || (!!o.operario_nombre && norm(o.operario_nombre) === norm(nombreDe(yo())));
 
     // ---------- Carga de datos (cada bloque por separado: si uno falla, el resto se ve) ----------
@@ -64,11 +55,6 @@
             .gte('fecha', isoLocal(desde)).lte('fecha', s.hasta).limit(3000);
         if (error) throw error;
         datos.partes = data || [];
-        let horas = 0;
-        datos.partes.filter((p) => (p.fecha || '').slice(0, 10) >= s.desde).forEach((p) => (p.partes_operarios || []).forEach((o) => {
-            if (soyYo(o)) { const n = numHoras(o.horas); if (n) horas += n; }
-        }));
-        datos.horas = { total: horas, semana: s.num };
     }
     async function cargarMaterial() {
         const { data, error } = await db().from('materiales_solicitudes').select('id, cliente, obra, estado, created_by, created_at, materiales_solicitud_items ( cantidad, material )')
@@ -175,14 +161,11 @@
             </section>`;
     }
 
+    // El mismo cuadro de horas de Partes (4 semanas, días de la semana elegida y «Ver todo el año»).
+    // Aquí solo va el hueco; lo rellena BomiPartes.horasEn() después de pintar.
     function htmlHoras() {
-        if (!datos.horas) return '';
-        const h = Number(datos.horas.total.toFixed(2)).toLocaleString('es-ES', { maximumFractionDigits: 2 });
-        return `
-            <button type="button" data-md="partes" class="${TARJETA} !flex-row items-center justify-between text-left">
-                <span><span class="font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-blue-600 dark:text-blue-400">schedule</span>Tus horas esta semana</span><span class="block text-xs text-slate-500 mt-0.5">Según tus partes (S${esc(datos.horas.semana)})</span></span>
-                <span class="text-3xl font-semibold text-blue-600 dark:text-blue-400 shrink-0">${esc(h)} h</span>
-            </button>`;
+        if (!window.BomiPartes || !window.BomiPartes.horasEn) return '';
+        return `<section id="midia-horas" class="${TARJETA} !gap-2 !p-3"></section>`;
     }
 
     function htmlMensajes() {
@@ -211,6 +194,7 @@
             ${htmlMaterial()}
             ${htmlHoras()}
             ${htmlMensajes()}`;
+        if (window.BomiPartes && window.BomiPartes.horasEn) window.BomiPartes.horasEn(document.getElementById('midia-horas'));
     }
 
     async function cargar() {
@@ -218,10 +202,11 @@
         cargando = true;
         pintar();
         await Promise.all([
-            cargarPartes().catch(() => { datos.partes = null; datos.horas = null; }),
+            cargarPartes().catch(() => { datos.partes = null; }),
             cargarMaterial().catch(() => { datos.material = null; }),
             cargarMensajes().catch(() => { datos.mensajes = null; }),
             contarAltas(),
+            window.BomiPartes && window.BomiPartes.cargarHoras ? window.BomiPartes.cargarHoras().catch(() => {}) : null,
         ]);
         cargando = false;
         pintar();

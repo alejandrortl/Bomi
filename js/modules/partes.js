@@ -272,7 +272,7 @@
         }
         partes = await conFijados(res.data || []);
         pintarLista();
-        pintarHoras();
+        repintarHoras();
         reintentarNube();
         window.dispatchEvent(new CustomEvent('bomiRegistrosCambiados', { detail: { tipo: 'partes' } }));
     }
@@ -367,8 +367,13 @@
             </div>`;
         }).join('')}</div>`;
     }
-    function pintarHoras() {
-        const cont = document.getElementById('partes-horas');
+    // Cuadros de horas montados fuera de Partes (p. ej. en «Mi día»): se repintan junto al de Partes.
+    const cuadrosHoras = new Set();
+    function repintarHoras() {
+        pintarHoras();
+        for (const c of [...cuadrosHoras]) { if (c.isConnected) pintarHoras(c); else cuadrosHoras.delete(c); }
+    }
+    function pintarHoras(cont = document.getElementById('partes-horas')) {
         if (!cont) return;
         const semanas = semanasHoras();
         const desde = semanas[semanas.length - 1].desde, hasta = semanas[0].hasta;
@@ -385,7 +390,7 @@
             nombres.set(yc, miNombre());
             const opciones = [...nombres.entries()].filter(([k]) => k)
                 .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es', { sensitivity: 'base' }));
-            selector = `<select id="partes-horas-operario" aria-label="Operario" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1 text-sm max-w-[60%]">${opciones.map(([k, n]) => `<option value="${esc(k)}"${k === clave ? ' selected' : ''}>${esc(k === yc ? n + ' (yo)' : n)}</option>`).join('')}</select>`;
+            selector = `<select data-horas-operario aria-label="Operario" class="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full px-3 py-1 text-sm max-w-[60%]">${opciones.map(([k, n]) => `<option value="${esc(k)}"${k === clave ? ' selected' : ''}>${esc(k === yc ? n + ' (yo)' : n)}</option>`).join('')}</select>`;
         }
         const titulo = clave === yc ? 'Mis horas' : 'Horas';
         cont.innerHTML = `
@@ -427,6 +432,8 @@
                     </div>
                 </div>`);
             m = document.getElementById('modal-horas-anio');
+            // Escape también la cierra cuando se abre desde «Mi día» (sin haber entrado en Partes).
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && anioAbierto()) cerrarAnio(); });
             m.addEventListener('click', (e) => {
                 if (e.target === m) { cerrarAnio(); return; }
                 const b = e.target.closest('[data-anio]');
@@ -1299,8 +1306,7 @@
         const vista = document.getElementById('view-partes');
         vista.addEventListener('click', (e) => {
             const hs = e.target.closest('[data-horas-semana]');
-            if (hs) { semanaElegida = Number(hs.dataset.horasSemana); pintarHoras(); return; }
-            if (e.target.closest('[data-abrir-anio]')) { abrirAnio(); return; }
+            if (hs || e.target.closest('[data-abrir-anio]')) return;   // lo atiende el propio cuadro de horas
             const fl = e.target.closest('[data-filtro]');
             if (fl) {
                 const nuevo = fl.dataset.filtro === 'mios';
@@ -1317,7 +1323,7 @@
             else if (accion === 'reintentar') cargar();
         });
         document.getElementById('fab-nuevo-parte').addEventListener('click', () => abrirFormulario('nuevo'));
-        vista.addEventListener('change', (e) => { if (e.target.id === 'partes-horas-operario') { horasDe = e.target.value; pintarHoras(); } });
+        enlazarCuadroHoras(document.getElementById('partes-horas'));
         document.getElementById('search-partes').addEventListener('input', (e) => { busqueda = e.target.value; pintarLista(); });
 
         const modal = document.getElementById('modal-parte');
@@ -1378,6 +1384,34 @@
         });
         window.addEventListener('clientesActualizados', () => { clientesViejos = true; });
         window.addEventListener('bomiSincronizado', () => { if (iniciado) cargar().catch(() => {}); });
+    }
+
+    // Clic en una semana, «Ver todo el año» y el selector de operario (Admin) de un cuadro de horas.
+    function enlazarCuadroHoras(cont) {
+        if (!cont || cont.dataset.horasEnlazado) return;
+        cont.dataset.horasEnlazado = '1';
+        cont.addEventListener('click', (e) => {
+            const hs = e.target.closest('[data-horas-semana]');
+            if (hs) { semanaElegida = Number(hs.dataset.horasSemana); repintarHoras(); return; }
+            if (e.target.closest('[data-abrir-anio]')) abrirAnio();
+        });
+        cont.addEventListener('change', (e) => { if (e.target.matches('[data-horas-operario]')) { horasDe = e.target.value; repintarHoras(); } });
+    }
+    // Pinta el mismo cuadro de horas de Partes en otro sitio (lo usa «Mi día»). Con los datos que ya haya.
+    function horasEn(cont) {
+        if (!cont) return;
+        cuadrosHoras.add(cont);
+        enlazarCuadroHoras(cont);
+        pintarHoras(cont);
+    }
+    // Pide al servidor las horas de las últimas semanas (y los empleados, para reconocer a cada operario).
+    async function cargarHorasMiDia() {
+        await Promise.all([
+            empleados.length ? null : cargarEmpleados().catch(() => {}),
+            cargarHoras().catch(() => {}),
+        ]);
+        horasAnio.clear();
+        repintarHoras();
     }
 
     function iniciar() {
@@ -1643,6 +1677,9 @@
         // Resumen de horas y material de una obra ({ cliente, obra }). Solo Admin y SuperAdmin.
         resumenObra: (o) => abrirResumen(o),
         calcularResumen,
+        // Cuadro «Mis horas · últimas 4 semanas» con «Ver todo el año», para mostrarlo fuera de Partes.
+        horasEn,
+        cargarHoras: cargarHorasMiDia,
         abrir() { iniciar(); return cargar(); },
         recargar() { return iniciado ? cargar() : Promise.resolve(); },
         // Abre "Nuevo parte" con cliente, obra, dirección y localidad ya rellenos.
