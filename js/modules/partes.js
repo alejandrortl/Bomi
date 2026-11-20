@@ -100,21 +100,6 @@
     }
     const columnaFalta = (ex) => !!ex && (ex.code === '42703' || ex.code === 'PGRST204' || /bloqueado_(por|at)/.test(ex.message || ''));
 
-    // Empleado de una línea de operario, por id o por nombre. El nombre se compara sin mayúsculas, acentos ni espacios
-    // («JoseValdes» = «José Valdés») y, si solo se escribió el nombre de pila y hay un único empleado que se llama así
-    // («Unai» = «Unai Gómez»), también vale. Así sus horas se le suman aunque el nombre no esté escrito igual que en su perfil.
-    const pegado = (v) => norm(v).replace(/[^a-z0-9]/g, '');
-    function empleadoDe(nombre, id) {
-        if (id) { const e = empleados.find((x) => x.id === id); if (e) return e; }
-        const k = norm(nombre);
-        if (!k) return null;
-        const exacto = empleados.find((x) => norm(x.nombre) === k);
-        if (exacto) return exacto;
-        const unico = (lista) => (lista.length === 1 ? lista[0] : null);
-        return (pegado(nombre) && unico(empleados.filter((x) => pegado(x.nombre) === pegado(nombre))))
-            || unico(empleados.filter((x) => norm(x.nombre).startsWith(k + ' ')));
-    }
-
     // ---------- Permisos ----------
     const figuro = (p) => ops(p).some((o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === norm(miNombre()));
     // Un parte bloqueado no se toca nunca más. Mientras no lo esté: Admin/SuperAdmin, quien lo creó o los operarios que figuran.
@@ -333,7 +318,7 @@
     }
     // Clave de un operario dentro de un parte: el empleado (por id o nombre) o, si no es empleado, su nombre.
     function claveOperario(o) {
-        const emp = empleadoDe(o.operario_nombre, o.operario_id);
+        const emp = (o.operario_id && empleados.find((e) => e.id === o.operario_id)) || empleados.find((e) => norm(e.nombre) === norm(o.operario_nombre));
         return norm(emp ? emp.nombre : o.operario_nombre);
     }
     const consultaHoras = (desde, hasta) => db().from('partes_trabajo').select('id, fecha, partes_operarios ( operario_nombre, operario_id, horas )')
@@ -346,8 +331,7 @@
     }
     const yoClave = () => norm(miNombre());
     const claveHoras = () => (esAdmin() && horasDe ? horasDe : yoClave());
-    const esYo = (o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === yoClave()
-        || (!o.operario_id && !!yo().id && empleadoDe(o.operario_nombre)?.id === yo().id);
+    const esYo = (o) => (o.operario_id && o.operario_id === yo().id) || norm(o.operario_nombre) === yoClave();
     // Reparte las horas del operario por día y por semana. Devuelve { dias: Map(fecha -> horas), nombres }.
     function sumarHoras(filas, semanas, clave) {
         const dias = new Map(), nombres = new Map();
@@ -358,7 +342,7 @@
             const sem = semanas.find((x) => f >= x.desde && f <= x.hasta);
             for (const o of (p.partes_operarios || [])) {
                 const k = esYo(o) ? yc : claveOperario(o);
-                if (!nombres.has(k)) nombres.set(k, empleadoDe(o.operario_nombre, o.operario_id)?.nombre || o.operario_nombre);
+                if (!nombres.has(k)) nombres.set(k, o.operario_nombre);
                 if (k !== clave || !sem) continue;
                 const n = numHoras(o.horas);
                 if (n == null) { if (String(o.horas ?? '').trim()) sem.sinNumero++; continue; }
@@ -397,7 +381,7 @@
         const elegida = semanas[semanaElegida];
         let selector = '';
         if (esAdmin()) {
-            empleados.forEach((e) => nombres.set(norm(e.nombre), e.nombre));   // con el nombre del perfil, aunque en el parte esté escrito de otra forma
+            empleados.forEach((e) => { const k = norm(e.nombre); if (!nombres.has(k)) nombres.set(k, e.nombre); });
             nombres.set(yc, miNombre());
             const opciones = [...nombres.entries()].filter(([k]) => k)
                 .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es', { sensitivity: 'base' }));
@@ -1121,10 +1105,6 @@
             if (!isFinite(n) || n <= 0 || n > 24) return fallo(err, `Horas de ${o.nombre}: escribe solo un número, por ejemplo 8, 5,5 o 6,5 (como mucho 24).`);
             o.horas = String(n).replace('.', ',');
         }
-        // Un nombre que no es de ningún empleado no suma horas a nadie: se avisa antes de guardar (puede ser alguien de fuera).
-        const desconocidos = empleados.length ? operarios.filter((o) => !empleadoDe(o.nombre)).map((o) => o.nombre) : [];
-        if (desconocidos.length && !(await BomiDialogo.confirmar(`${desconocidos.length === 1 ? `«${desconocidos[0]}» no está` : `${desconocidos.map((n) => `«${n}»`).join(', ')} no están`} en la lista de empleados, así que sus horas no se sumarán a ningún empleado.\n\nSi es un empleado, pulsa «Revisar» y elige su nombre de la lista. Si es alguien de fuera, puedes guardar igualmente.`, { aceptar: 'Guardar igualmente', cancelar: 'Revisar' }))) return;
-        if (guardando) return;
         const yoEstoy = operarios.some((o) => norm(o.nombre) === norm(miNombre()));
         if (modo === 'editar' && !esAdmin() && actual.created_by_id !== yo().id && !yoEstoy) return fallo(err, 'Tu nombre debe seguir figurando entre los operarios para poder guardar el parte.');
         const items = [];
@@ -1154,7 +1134,7 @@
             const fila = { cliente: datos.cliente, obra: datos.obra, direccion: datos.direccion, localidad: datos.localidad, fecha: f.fecha, detalle_trabajo: f.detalle || null };
             if (conFuera) fila.fuera_presupuesto = f.fuera;
             if (firma.quitada) fila.firma_digital = null; else if (firma.cambiada && firma.url) fila.firma_digital = firma.url;   // sin tocar, se conserva la guardada
-            const filasOp = (parteId) => operarios.map((o) => { const emp = empleadoDe(o.nombre); return { id: O.uuid(), parte_id: parteId, operario_nombre: emp ? emp.nombre : o.nombre, operario_id: emp ? emp.id : null, horas: o.horas }; });
+            const filasOp = (parteId) => operarios.map((o) => { const emp = empleados.find((x) => norm(x.nombre) === norm(o.nombre)); return { id: O.uuid(), parte_id: parteId, operario_nombre: emp ? emp.nombre : o.nombre, operario_id: emp ? emp.id : null, horas: o.horas }; });
 
             if (modo === 'nuevo') {
                 // Un parte nuevo se puede guardar sin conexión: queda en el móvil y se envía solo.
@@ -1472,7 +1452,7 @@
     let resumen = null;   // { cliente, obra, cargando, error, grupos: { normal, fuera }, vista: 'normal' | 'fuera', datos: grupos[vista] }
 
     function calcularResumen(filas) {
-        const claveOp = (o) => o.operario_id || empleadoDe(o.operario_nombre)?.id || 'n:' + norm(o.operario_nombre);
+        const claveOp = (o) => o.operario_id || 'n:' + norm(o.operario_nombre);
         const dias = new Map();       // fecha -> { fecha, ops: Map(clave -> { nombre, horas, sinNumero }), trabajos: [] }
         const totales = new Map();    // clave -> { nombre, horas, dias: Set }
         const material = new Map();   // clave -> { material, referencia, unidades, partes: Set }

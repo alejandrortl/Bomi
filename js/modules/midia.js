@@ -53,10 +53,7 @@
         m = /^(\d+(?:[.,]\d+)?)h?$/.exec(t);
         return m ? Number(m[1].replace(',', '.')) : null;
     }
-    // Mi nombre se compara también sin espacios ni signos («JoseValdes» = «José Valdés»), como en Partes.
-    const pegado = (s) => norm(s).replace(/[^a-z0-9]/g, '');
-    const soyYo = (o) => (o.operario_id && o.operario_id === yo().id)
-        || (!!pegado(o.operario_nombre) && pegado(o.operario_nombre) === pegado(nombreDe(yo())));
+    const soyYo = (o) => (o.operario_id && o.operario_id === yo().id) || (!!o.operario_nombre && norm(o.operario_nombre) === norm(nombreDe(yo())));
 
     // ---------- Carga de datos (cada bloque por separado: si uno falla, el resto se ve) ----------
     async function cargarPartes() {
