@@ -22,6 +22,7 @@
     let iniciado = false;
     let busqueda = '';
     let soloMios = false;
+    let bloqueo = 'todos';   // 'todos' | 'abiertos' (sin bloquear) | 'bloqueados'
     let guardando = false;
     let union = null;            // parte nuevo: el parte del mismo día y obra y lo que eligió el operario (ver avisarUnion)
     // Mientras no se ejecute en Supabase la migración de «unir partes», no existe la columna aportado_por del material.
@@ -118,6 +119,20 @@
         try { await db().from('perfiles').update({ ui_preferencias: p.ui_preferencias }).eq('id', p.id); } catch (e) { /* queda en el dispositivo */ }
     }
 
+    // ---------- Preferencia: todos / sin bloquear / bloqueados (se guarda en el usuario, junto a la anterior) ----------
+    const BLOQUEOS = ['todos', 'abiertos', 'bloqueados'];
+    function leerBloqueo() {
+        const pref = yo().ui_preferencias;
+        if (pref && BLOQUEOS.includes(pref.partes_bloqueo)) return pref.partes_bloqueo;
+        try { const v = localStorage.getItem(CLAVE_LOCAL + '-bloqueo'); return BLOQUEOS.includes(v) ? v : 'todos'; } catch (e) { return 'todos'; }
+    }
+    async function guardarBloqueo(v) {
+        const p = yo();
+        p.ui_preferencias = { ...(p.ui_preferencias || {}), partes_bloqueo: v };
+        try { localStorage.setItem(CLAVE_LOCAL + '-bloqueo', v); } catch (e) { /* sin almacenamiento local */ }
+        try { await db().from('perfiles').update({ ui_preferencias: p.ui_preferencias }).eq('id', p.id); } catch (e) { /* queda en el dispositivo */ }
+    }
+
     // ---------- Lista ----------
     const spinner = '<div class="text-center p-4"><span class="material-symbols-outlined animate-spin text-blue-600 text-3xl">sync</span></div>';
     const aviso = (txt) => `<p class="text-slate-500 text-center mt-8 bg-slate-100 dark:bg-zinc-800 p-4 rounded-2xl">${esc(txt)}</p>`;
@@ -168,6 +183,8 @@
         const palabras = tokens.filter((k) => !/^s\d{1,2}$/.test(k));
         return partes.filter((p) => {
             if (soloMios && !figuro(p)) return false;
+            if (esAdmin() && bloqueo === 'abiertos' && p.bloqueado) return false;      // filtro solo para Admin y SuperAdmin
+            if (esAdmin() && bloqueo === 'bloqueados' && !p.bloqueado) return false;
             if (semanas.length && !semanas.every((n) => semanaDe(p) === n)) return false;
             if (!palabras.length) return true;
             const t = norm(texto(p));
@@ -205,7 +222,14 @@
         const lista = filtrar();
         if (badge) badge.textContent = `${lista.length} ${lista.length === 1 ? 'parte' : 'partes'}`;
         if (!partes.length) { cont.innerHTML = aviso('Aún no hay partes. Pulsa + para crear el primero.'); return; }
-        if (!lista.length) { cont.innerHTML = aviso(soloMios && !busqueda ? 'No hay partes en los que figures como operario.' : 'No se encontraron resultados.'); return; }
+        if (!lista.length) {
+            const txt = busqueda ? 'No se encontraron resultados.'
+                : !esAdmin() ? (soloMios ? 'No hay partes en los que figures como operario.' : 'No se encontraron resultados.')
+                : bloqueo === 'abiertos' ? (soloMios ? 'No tienes partes sin bloquear.' : 'No hay partes sin bloquear.')
+                : bloqueo === 'bloqueados' ? (soloMios ? 'No tienes partes bloqueados.' : 'Aún no hay partes bloqueados.')
+                : soloMios ? 'No hay partes en los que figures como operario.' : 'No se encontraron resultados.';
+            cont.innerHTML = aviso(txt); return;
+        }
         cont.innerHTML = lista.map(htmlParte).join('');
     }
 
@@ -213,6 +237,15 @@
         document.querySelectorAll('#view-partes [data-filtro]').forEach((b) => {
             const act = (b.dataset.filtro === 'mios') === soloMios;
             b.className = 'flex-1 py-2 rounded-full text-sm font-medium transition-colors ' + (act ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300');
+            b.setAttribute('aria-pressed', String(act));
+        });
+        const filaBloqueo = document.getElementById('partes-filtro-bloqueo');
+        if (filaBloqueo) { filaBloqueo.classList.toggle('hidden', !esAdmin()); filaBloqueo.classList.toggle('flex', esAdmin()); }   // solo Admin y SuperAdmin
+        document.querySelectorAll('#view-partes [data-bloqueo]').forEach((b) => {
+            const act = b.dataset.bloqueo === bloqueo;
+            b.className = 'flex-1 py-1.5 rounded-full text-xs font-semibold flex items-center justify-center gap-1 transition-colors border '
+                + (act ? (b.dataset.bloqueo === 'bloqueados' ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 dark:border-amber-700 text-amber-800 dark:text-amber-200' : 'bg-blue-50 dark:bg-blue-950 border-blue-400 dark:border-blue-700 text-blue-800 dark:text-blue-200')
+                    : 'border-transparent text-slate-500 dark:text-slate-400');
             b.setAttribute('aria-pressed', String(act));
         });
     }
@@ -257,6 +290,7 @@
         const cont = document.getElementById('partes-lista');
         if (cont && !partes.length) cont.innerHTML = spinner;
         soloMios = leerSoloMios();
+        bloqueo = leerBloqueo();
         pintarInterruptor();
         const [res] = await Promise.all([
             consultar((c) => db().from('partes_trabajo').select(c).order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(LIMITE)),
@@ -1261,6 +1295,11 @@
                 <button type="button" data-filtro="todos" class="flex-1 py-2 rounded-full text-sm font-medium">Todos los partes</button>
                 <button type="button" data-filtro="mios" class="flex-1 py-2 rounded-full text-sm font-medium">Mis partes</button>
             </div>
+            <div id="partes-filtro-bloqueo" class="hidden gap-1 -mt-1" role="group" aria-label="Ver partes bloqueados o sin bloquear">
+                <button type="button" data-bloqueo="todos">Todos</button>
+                <button type="button" data-bloqueo="abiertos"><span class="material-symbols-outlined text-[16px]">lock_open_right</span>Sin bloquear</button>
+                <button type="button" data-bloqueo="bloqueados"><span class="material-symbols-outlined text-[16px]">lock</span>Bloqueados</button>
+            </div>
             <div id="partes-horas" class="hidden bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm p-3 flex flex-col gap-2"></div>
             <div class="sticky top-0 z-10 bg-slate-50 dark:bg-black pt-1 pb-2">
                 <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-full flex items-center px-4 py-2 shadow-sm">
@@ -1311,6 +1350,12 @@
             if (fl) {
                 const nuevo = fl.dataset.filtro === 'mios';
                 if (nuevo !== soloMios) { soloMios = nuevo; guardarSoloMios(nuevo); }
+                pintarInterruptor(); pintarLista();
+                return;
+            }
+            const bq = e.target.closest('[data-bloqueo]');
+            if (bq) {
+                if (bq.dataset.bloqueo !== bloqueo) { bloqueo = bq.dataset.bloqueo; guardarBloqueo(bloqueo); }
                 pintarInterruptor(); pintarLista();
                 return;
             }
