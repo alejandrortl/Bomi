@@ -1,5 +1,6 @@
 // js/modules/mensajes.js
 // Mensajería interna: cualquier empleado escribe (o dicta) un mensaje a uno, varios o todos los compañeros.
+// Admin y SuperAdmin pueden además elegir en bloque: Todos, Administradores (Admin + SuperAdmin) u Operarios.
 // Cada destinatario recibe una notificación (y un aviso push en el móvil si lo tiene activado).
 // Script clásico: expone window.BomiMensajes. Depende de `supabaseClient` y `window.currentUserProfile`.
 (function () {
@@ -25,6 +26,14 @@
 
     const db = () => supabaseClient;
     const yo = () => window.currentUserProfile || {};
+    const rolDe = (p) => String(p?.rol ?? '').trim().toLowerCase();
+    const esAdmin = () => ['admin', 'superadmin'].includes(rolDe(yo()));
+    // Grupos para elegir destinatarios en bloque (solo Admin y SuperAdmin los ven).
+    const GRUPOS = [
+        { id: 'todos', txt: 'Todos', icono: 'group', filtro: () => true },
+        { id: 'admins', txt: 'Administradores', icono: 'badge', filtro: (e) => ['admin', 'superadmin'].includes(e.rol) },
+        { id: 'operarios', txt: 'Operarios', icono: 'engineering', filtro: (e) => e.rol === 'operario' },
+    ];
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const norm = (v) => String(v ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
     const nombreDe = (p) => [p.nombre, p.apellido].filter((x) => x && String(x).trim()).join(' ').trim() || p.email || 'Usuario';
@@ -97,8 +106,16 @@
         if (r.error) r = await db().from('perfiles').select('id, nombre, apellido, email, activo');
         if (r.error) throw r.error;
         empleados = (r.data || []).filter((p) => p.activo !== false)
-            .map((p) => ({ id: p.id, nombre: nombreDe(p), pref: p.preferencias_notificaciones || null }))
+            .map((p) => ({ id: p.id, nombre: nombreDe(p), pref: p.preferencias_notificaciones || null, rol: '' }))
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        // Roles: solo un Admin/SuperAdmin los recibe de todos (roles_perfiles); un Operario no los necesita.
+        if (esAdmin()) {
+            const r = await db().rpc('roles_perfiles');
+            if (!r.error) {
+                const mapa = new Map((r.data || []).map((x) => [x.id, String(x.rol ?? '').trim().toLowerCase()]));
+                empleados.forEach((e) => { e.rol = mapa.get(e.id) || ''; });
+            }
+        }
     }
 
     async function cargar() {
@@ -132,8 +149,39 @@
             </label>`).join('') : '<p class="text-sm text-slate-500 p-3">No hay compañeros.</p>';
         const todos = document.getElementById('msg-todos');
         if (todos) todos.checked = otros().length > 0 && otros().every((e) => seleccion.has(e.id));
+        pintarGrupos();
         const res = document.getElementById('msg-resumen');
         if (res) res.textContent = seleccion.size ? `${seleccion.size} ${seleccion.size === 1 ? 'destinatario' : 'destinatarios'}` : 'Ningún destinatario';
+    }
+
+    const miembros = (g) => otros().filter(g.filtro);
+    function pintarGrupos() {
+        const cont = document.getElementById('msg-grupos');
+        const todos = document.getElementById('msg-todos-fila');
+        if (!cont) return;
+        const admin = esAdmin();
+        cont.classList.toggle('hidden', !admin);
+        cont.classList.toggle('flex', admin);
+        if (todos) { todos.classList.toggle('hidden', admin); todos.classList.toggle('flex', !admin); }
+        if (!admin) { cont.innerHTML = ''; return; }
+        cont.innerHTML = GRUPOS.map((g) => {
+            const ms = miembros(g);
+            const act = ms.length > 0 && ms.every((e) => seleccion.has(e.id));
+            return `<button type="button" data-grupo="${g.id}" aria-pressed="${act}" ${ms.length ? '' : 'disabled'}
+                title="${g.txt}" class="flex-1 min-w-0 flex flex-col items-center gap-0.5 px-1 py-2 rounded-xl border text-[11px] font-medium transition-colors disabled:opacity-40 ${act ? 'bg-blue-600 border-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200'}">
+                <span class="material-symbols-outlined text-[20px]">${act ? 'check_circle' : g.icono}</span>
+                <span class="truncate max-w-full">${g.txt}</span>
+                <span class="text-[10px] opacity-80">${ms.length} ${ms.length === 1 ? 'persona' : 'personas'}</span>
+            </button>`;
+        }).join('');
+    }
+    function alternarGrupo(id) {
+        const g = GRUPOS.find((x) => x.id === id);
+        if (!g) return;
+        const ms = miembros(g);
+        const todosDentro = ms.length > 0 && ms.every((e) => seleccion.has(e.id));
+        ms.forEach((e) => { if (todosDentro) seleccion.delete(e.id); else seleccion.add(e.id); });
+        pintarDestinatarios();
     }
 
     function soporteDictado() { return window.SpeechRecognition || window.webkitSpeechRecognition; }
@@ -285,7 +333,8 @@
                                 <span class="text-xs font-medium">Para</span>
                                 <span id="msg-resumen" class="text-xs text-slate-500"></span>
                             </div>
-                            <label class="flex items-center gap-3 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 cursor-pointer">
+                            <div id="msg-grupos" class="hidden gap-2" role="group" aria-label="Enviar a un grupo"></div>
+                            <label id="msg-todos-fila" class="flex items-center gap-3 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 cursor-pointer">
                                 <input type="checkbox" id="msg-todos" class="w-5 h-5 accent-blue-600 shrink-0"><span class="text-sm font-medium">Todos los empleados</span>
                             </label>
                             <input id="msg-buscar" type="text" autocomplete="off" placeholder="Buscar compañero..." aria-label="Buscar compañero" class="${INPUT}">
@@ -328,6 +377,8 @@
         modal.addEventListener('click', (e) => {
             if (e.target === modal) { cerrarModal(); return; }
             const btn = e.target.closest('[data-accion]');
+            const grupo = e.target.closest('[data-grupo]');
+            if (grupo) { alternarGrupo(grupo.dataset.grupo); return; }
             if (!btn) return;
             if (btn.dataset.accion === 'cerrar') cerrarModal();
             else if (btn.dataset.accion === 'dictar') alternarDictado();
